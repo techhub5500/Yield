@@ -65,11 +65,14 @@ body.chat-active .cards-grid {
 .ai-chat-container {
     position: fixed;
     bottom: -100vh; /* Emergir de baixo */
-    left: 201px; /* 20px left + 166px width + 15px margin */
+    left: 50%;
+    transform: translateX(-50%);
     width: auto;
     display: flex;
     justify-content: flex-start;
-    transition: bottom 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), left 0.3s, transform 0.3s;
+    transition: bottom 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), 
+                left 0.8s cubic-bezier(0.165, 0.84, 0.44, 1),
+                transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
     z-index: 1100;
 }
 
@@ -82,6 +85,7 @@ body:not(.chat-active) .ai-chat-container {
 body.chat-active .ai-chat-container {
     bottom: 5px; /* Padding bottom mínimo */
     left: 201px; /* 166px sidebar + 20px body margin + 15px gap */
+    transform: none;
 }
 
 body.chat-active:has(.sidebar.collapsed) .ai-chat-container {
@@ -97,14 +101,16 @@ body.chat-active:has(.sidebar.collapsed) .ai-chat-container {
     border-width: 1px 2px 2px 1px;
     width: 660px; /* 10% increase from 600px */
     max-width: 90%;
-    min-height: 83px;
+    min-height: 90px;
     height: auto;
     border-radius: 21px;
     display: flex;
     flex-direction: column;
     padding: 10px 15px;
     box-shadow: 10px 8px 32px 0 rgba(0, 0, 0, 0.483);
-    transition: all 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+    transition: width 0.8s cubic-bezier(0.165, 0.84, 0.44, 1),
+                height 0.8s cubic-bezier(0.165, 0.84, 0.44, 1),
+                border-radius 0.8s ease;
     overflow: hidden;
 }
 
@@ -113,6 +119,32 @@ body.chat-active .ai-chat-bar {
     height: calc(100vh - 10px); /* Padding mínimo topo/bottom */
     background: rgba(0, 0, 0, 0.42); /* 15% menos opaco que card */
     border-radius: 25px;
+}
+
+/* Side Card for Chat Info */
+.ai-chat-side-card {
+    display: none;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(2.2px);
+    -webkit-backdrop-filter: blur(2.2px);
+    border-style: solid;
+    border-color: rgba(94, 94, 94, 0.46);
+    border-width: 1px 2px 2px 1px;
+    border-radius: 25px;
+    height: calc(100vh - 10px);
+    width: 343px; /* ~40% de 858px */
+    margin-left: 30px; /* Espaçamento da lateral direita agora entre chat e card */
+    opacity: 0;
+    transform: translateX(50px);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+    pointer-events: none;
+}
+
+body.chat-active .ai-chat-side-card {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
 }
 
 /* Input Container Box - Floating effect when active */
@@ -145,7 +177,7 @@ body.chat-active .input-container-box {
 }
 
 .message {
-    max-width: 75%;
+    max-width: 85%;
     padding: 12px 18px;
     border-radius: 18px;
     font-size: 15px;
@@ -155,6 +187,9 @@ body.chat-active .input-container-box {
     border-color: rgba(94, 94, 94, 0.4);
     border-width: 1px 2px 2px 1px;
     animation: fadeIn 0.3s ease-out;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-all; /* Garante que palavras muito longas quebrem */
 }
 
 /* Bot à esquerda */
@@ -275,4 +310,22 @@ body.chat-active .input-container-box {
 
 .send-btn:hover {
     transform: translateY(-2px);
+}
+
+/* Scrollbar Harmônico para a área de mensagens */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
