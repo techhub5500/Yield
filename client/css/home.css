@@ -1,0 +1,281 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-image: url('../assets/1.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    overflow-x: hidden;
+}
+
+.content-wrapper {
+    margin-left: 210px; /* Ajustado para nova sidebar */
+    padding: 0 40px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centraliza verticalmente */
+    transition: margin-left 0.3s;
+}
+
+/* Seta de retorno over sidebar (Removido daqui pois está em integration.css) */
+
+/* Quando a sidebar estiver colapsada */
+body:has(.sidebar.collapsed) .content-wrapper {
+    margin-left: 90px;
+}
+
+/* Grid de Cards */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(-10%); /* Deslocado 10% para cima por padrão */
+}
+
+body.chat-active .cards-grid {
+    opacity: 0;
+    transform: translateY(-30%); /* Fading up */
+    pointer-events: none;
+}
+
+.main-card {
+    background: rgba(0, 0, 0, 0.49);
+    backdrop-filter: blur(2.2px);
+    -webkit-backdrop-filter: blur(2.2px);
+    border-style: solid;
+    border-color: rgba(94, 94, 94, 0.46);
+    border-width: 1px 2px 2px 1px;
+    height: 350px;
+    border-radius: 25px;
+    box-shadow: 10px 8px 32px 0 rgba(0, 0, 0, 0.483);
+}
+
+/* Chatbox de IA */
+.ai-chat-container {
+    position: fixed;
+    bottom: -100vh; /* Emergir de baixo */
+    left: 201px; /* 20px left + 166px width + 15px margin */
+    width: auto;
+    display: flex;
+    justify-content: flex-start;
+    transition: bottom 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), left 0.3s;
+    z-index: 1100;
+}
+
+body:not(.chat-active) .ai-chat-container {
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(calc(-50% + 140px));
+}
+
+body:not(.chat-active):has(.sidebar.collapsed) .ai-chat-container {
+    transform: translateX(calc(-50% + 40px));
+}
+
+body.chat-active .ai-chat-container {
+    bottom: 5px; /* Padding bottom mínimo */
+}
+
+body:has(.sidebar.collapsed) .ai-chat-container {
+    left: 100px; /* 20px left + 65px width + 15px margin */
+}
+
+.ai-chat-bar {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2.2px);
+    -webkit-backdrop-filter: blur(2.2px);
+    border-style: solid;
+    border-color: rgba(94, 94, 94, 0.46);
+    border-width: 1px 2px 2px 1px;
+    width: 600px;
+    max-width: 90%;
+    min-height: 83px;
+    height: auto;
+    border-radius: 21px;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 15px;
+    box-shadow: 10px 8px 32px 0 rgba(0, 0, 0, 0.483);
+    transition: all 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+    overflow: hidden;
+}
+
+body.chat-active .ai-chat-bar {
+    width: 780px; /* 30% maior que 600px */
+    height: calc(100vh - 10px); /* Padding mínimo topo/bottom */
+    background: rgba(0, 0, 0, 0.42); /* 15% menos opaco que card */
+    border-radius: 25px;
+}
+
+/* Input Container Box - Floating effect when active */
+.input-container-box {
+    display: flex;
+    align-items: flex-end;
+    width: 100%;
+    padding: 5px 0;
+    transition: all 0.3s;
+}
+
+body.chat-active .input-container-box {
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(94, 94, 94, 0.46);
+    border-radius: 20px;
+    padding: 10px 15px;
+    margin-top: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Sombra flutuante */
+    margin-bottom: 5px;
+}
+
+.chat-messages {
+    flex-grow: 1;
+    width: 100%;
+    overflow-y: auto;
+    padding: 20px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 75%;
+    padding: 12px 18px;
+    border-radius: 18px;
+    font-size: 15px;
+    color: #fff;
+    line-height: 1.5;
+    border-style: solid;
+    border-color: rgba(94, 94, 94, 0.4);
+    border-width: 1px 2px 2px 1px;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Bot à esquerda */
+.message.bot {
+    align-self: flex-start;
+    background: rgba(0, 0, 0, 0.72); /* 0.42 + 30% */
+    border-bottom-left-radius: 5px;
+}
+
+/* Usuário à direita */
+.message.user {
+    align-self: flex-end;
+    background: rgba(0, 0, 0, 0.62); /* 0.42 + 20% */
+    border-bottom-right-radius: 5px;
+}
+
+.action-icons-left {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 5px;
+}
+
+.chat-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(94, 94, 94, 0.46);
+    width: 35px;
+    height: 35px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #fff;
+    transition: all 0.2s;
+}
+
+.chat-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.chat-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 5px 15px; /* Reduzido 50% conforme pedido anterior */
+    font-size: 16px;
+    color: #fff;
+    resize: none;
+    max-height: 150px;
+    overflow-y: auto;
+    line-height: 1.4;
+}
+
+.chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.send-btn {
+    background: none;
+    color: #fff;
+    border: none;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.send-btn:hover {
+    transform: scale(1.1);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar Harmônico */
+.chat-input::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-input::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-input::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.chat-input::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.send-btn {
+    background: none;
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+    margin-bottom: 2px;
+}
+
+.send-btn i {
+    font-size: 1.15em; /* Aumentado 15% */
+}
+
+.send-btn:hover {
+    transform: translateY(-2px);
+}

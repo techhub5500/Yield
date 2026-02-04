@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance - Yield</title>
+    <!-- CSS da Sidebar e Geral -->
+    <link rel="stylesheet" href="../css/integration.css">
+    <!-- CSS Específico da Finance -->
+    <link rel="stylesheet" href="../css/finance.css">
+    <!-- Font Awesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content-wrapper">
+        <!-- Header -->
+        <header class="finance-header">
+            <div class="welcome-text">
+                <h1>Bem-vindo, João</h1>
+                <p>Aqui estão suas finanças</p>
+            </div>
+            <div class="date-selector">
+                <button id="prev-month" class="nav-arrow"><i class="fas fa-chevron-left"></i></button>
+                <div class="month-display" id="month-year-picker">
+                    <span id="current-month-display">Fev/2026</span>
+                </div>
+                <button id="next-month" class="nav-arrow"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </header>
+
+        <!-- 6 Cards principais -->
+        <section class="top-cards-row">
+            <div class="stat-card"></div>
+            <div class="stat-card"></div>
+            <div class="stat-card"></div>
+            <div class="stat-card"></div>
+            <div class="stat-card"></div>
+            <div class="stat-card"></div>
+        </section>
+
+        <!-- Seção Inferior: Opções + Chat -->
+        <section class="bottom-layout">
+            <div class="options-section">
+                <div class="options-header">
+                    <button class="option-btn active" data-target="opt1">Opção 1</button>
+                    <button class="option-btn" data-target="opt2">Opção 2</button>
+                    <button class="option-btn" data-target="opt3">Opção 3</button>
+                    <button class="option-btn" data-target="opt4">Opção 4</button>
+                    <button class="option-btn" data-target="opt5">Opção 5</button>
+                    <button class="option-btn" data-target="opt6">Opção 6</button>
+                </div>
+                <div class="options-content" id="options-container">
+                    <div class="option-view active" id="opt1">
+                        <div class="single-card"></div>
+                    </div>
+                    <div class="option-view" id="opt2">
+                        <div class="single-card"></div>
+                    </div>
+                    <div class="option-view" id="opt3">
+                        <div class="single-card"></div>
+                    </div>
+                    <div class="option-view" id="opt4">
+                        <div class="single-card"></div>
+                    </div>
+                    <div class="option-view" id="opt5">
+                        <div class="single-card"></div>
+                    </div>
+                    <div class="option-view" id="opt6">
+                        <div class="single-card"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-section">
+                <div class="ai-chat-box">
+                    <div class="chat-header">
+                        <span>Assistente de IA</span>
+                    </div>
+                    <div class="chat-messages">
+                        <!-- Mensagens aqui -->
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="action-icons">
+                            <button class="chat-btn"><i class="fas fa-plus"></i></button>
+                            <button class="chat-btn"><i class="fas fa-history"></i></button>
+                        </div>
+                        <input type="text" placeholder="Pergunte sobre suas finanças">
+                        <button class="send-btn"><i class="fas fa-arrow-up"></i></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="year-modal" class="modal">
+        <div class="modal-content">
+            <h3>Selecione o Ano</h3>
+            <div class="year-grid">
+                <button class="year-btn">2020</button>
+                <button class="year-btn">2021</button>
+                <button class="year-btn">2022</button>
+                <button class="year-btn">2023</button>
+                <button class="year-btn">2024</button>
+                <button class="year-btn">2025</button>
+                <button class="year-btn">2026</button>
+                <button class="year-btn">2027</button>
+                <button class="year-btn">2028</button>
+            </div>
+            <button id="close-modal" class="close-modal-btn">Fechar</button>
+        </div>
+    </div>
+
+    <script src="../js/integration.js"></script>
+    <script src="../js/finance.js"></script>
+</body>
+</html>

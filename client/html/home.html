@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Yield</title>
+    <!-- CSS da Sidebar e Geral -->
+    <link rel="stylesheet" href="../css/integration.css">
+    <!-- CSS Específico da Home -->
+    <link rel="stylesheet" href="../css/home.css">
+    <!-- Font Awesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- O HTML da Sidebar deve ser inserido aqui vindo de integration.html -->
+    <div id="sidebar-placeholder"></div>
+
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content-wrapper">
+        <!-- Três cards principais -->
+        <div class="cards-grid">
+            <div class="main-card"></div>
+            <div class="main-card"></div>
+            <div class="main-card"></div>
+        </div>
+
+        <!-- Barra de Interação de IA -->
+        <div class="ai-chat-container">
+            <div class="ai-chat-bar">
+                <div class="chat-messages" id="home-chat-messages" style="display: none;">
+                    <!-- Mensagens aparecerão aqui -->
+                </div>
+                <div class="input-container-box">
+                    <div class="action-icons-left">
+                        <button class="chat-btn"><i class="fas fa-plus"></i></button>
+                        <button class="chat-btn"><i class="fas fa-history"></i></button>
+                    </div>
+                    <textarea class="chat-input" placeholder="Pergunte sobre suas finanças" rows="1"></textarea>
+                    <button class="send-btn">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/integration.js"></script>
+    <script src="../js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invest Dash - Yield</title>
+    <link rel="stylesheet" href="../css/integration.css">
+    <link rel="stylesheet" href="../css/invest-dash.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+    <div id="sidebar-placeholder"></div>
+
+    <main class="content-wrapper">
+        <!-- Page Header (Top Navigation & Indicators) -->
+        <header class="invest-top-nav">
+            <div class="header-options">
+                <button class="nav-opt active">Resumo</button>
+                <button class="nav-opt">Análise</button>
+            </div>
+            
+            <div class="market-indicators">
+                <div class="indicator">
+                    <span class="label">Dolar:</span>
+                    <span class="value">R$ 5,42</span>
+                    <i class="fas fa-chart-line up"></i>
+                </div>
+                <div class="indicator">
+                    <span class="label">Ibovespa:</span>
+                    <span class="value">128.432</span>
+                    <i class="fas fa-chart-line up"></i>
+                </div>
+                <button class="add-indicator-btn"><i class="fas fa-plus"></i></button>
+            </div>
+        </header>
+
+        <!-- Content Area Header -->
+        <div class="content-header">
+            <h1>Aqui estão seus investimentos, João</h1>
+            <p>Sua carteira rendeu 1.2% este mês.</p>
+        </div>
+
+        <!-- Main Options Section (4 Options) -->
+        <section class="main-options-section">
+            <div class="options-menu">
+                <button class="main-opt-btn active" data-target="m-opt1">Carteira</button>
+                <button class="main-opt-btn" data-target="m-opt2">Renda Fixa</button>
+                <button class="main-opt-btn" data-target="m-opt3">Renda Variável</button>
+                <button class="main-opt-btn" data-target="m-opt4">Cripto</button>
+            </div>
+
+            <div class="options-container">
+                <div class="option-content active" id="m-opt1">
+                    <div class="dual-cards">
+                        <div class="main-card-50"></div>
+                        <div class="main-card-50"></div>
+                    </div>
+                    <div class="stats-row-5">
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                    </div>
+                </div>
+                <!-- Repeat for other 3 options in JS or keep hidden structures -->
+                <div class="option-content" id="m-opt2">
+                    <div class="dual-cards">
+                        <div class="main-card-50"></div>
+                        <div class="main-card-50"></div>
+                    </div>
+                    <div class="stats-row-5">
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                    </div>
+                </div>
+                 <div class="option-content" id="m-opt3">
+                    <div class="dual-cards">
+                        <div class="main-card-50"></div>
+                        <div class="main-card-50"></div>
+                    </div>
+                    <div class="stats-row-5">
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                    </div>
+                </div>
+                <div class="option-content" id="m-opt4">
+                    <div class="dual-cards">
+                        <div class="main-card-50"></div>
+                        <div class="main-card-50"></div>
+                    </div>
+                    <div class="stats-row-5">
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                        <div class="stat-card-mini"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Fixed Activities Section -->
+        <section class="fixed-activities">
+            <div class="activities-header">
+                <h2>Últimas atividades de investimentos</h2>
+            </div>
+            <div class="activities-container">
+                <!-- Estrutura sem conteúdo conforme solicitado -->
+                <div class="activity-placeholder"></div>
+                <div class="activity-placeholder"></div>
+                <div class="activity-placeholder"></div>
+            </div>
+        </section>
+
+        <!-- Bottom Floating Menu -->
+        <div class="bottom-floating-menu expanded" id="bottom-menu">
+            <button class="toggle-menu-btn" id="toggle-bottom-menu">
+                <i class="fas fa-bars" id="menu-icon"></i>
+            </button>
+            <div class="menu-items">
+                <div class="menu-item" title="Folder">
+                    <i class="fas fa-folder"></i>
+                </div>
+                <div class="menu-item" title="Chat">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <div class="menu-item" title="Ações">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="menu-item" title="Configurações">
+                    <i class="fas fa-cog"></i>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/integration.js"></script>
+    <script src="../js/invest-dash.js"></script>
+</body>
+</html>
