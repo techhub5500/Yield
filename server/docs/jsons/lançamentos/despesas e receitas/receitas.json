@@ -1,0 +1,177 @@
+{
+  "tipo": "receitas",
+  "categorias": [
+    {
+      "id": "rec_001",
+      "nome": "Salário",
+      "subcategorias": [
+        "Salário Principal",
+        "13º Salário",
+        "Férias",
+        "Bônus",
+        "Comissões",
+        "Horas Extras"
+      ]
+    },
+    {
+      "id": "rec_002",
+      "nome": "Trabalho Autônomo",
+      "subcategorias": [
+        "Freelancer",
+        "Prestação de Serviços",
+        "Consultoria",
+        "Projetos",
+        "Trabalhos Pontuais",
+        "MEI"
+      ]
+    },
+    {
+      "id": "rec_003",
+      "nome": "Negócio Próprio",
+      "subcategorias": [
+        "Faturamento",
+        "Vendas",
+        "Lucros",
+        "Participação",
+        "Royalties",
+        "Franquias"
+      ]
+    },
+    {
+      "id": "rec_004",
+      "nome": "Investimentos",
+      "subcategorias": [
+        "Dividendos",
+        "Juros",
+        "Rendimento de Aplicações",
+        "Venda de Ativos",
+        "Ganho de Capital",
+        "Fundos Imobiliários"
+      ]
+    },
+    {
+      "id": "rec_005",
+      "nome": "Aluguel",
+      "subcategorias": [
+        "Aluguel de Imóvel",
+        "Aluguel de Veículo",
+        "Aluguel de Equipamentos",
+        "Aluguel Temporada",
+        "Aluguel Comercial"
+      ]
+    },
+    {
+      "id": "rec_006",
+      "nome": "Benefícios",
+      "subcategorias": [
+        "Vale Alimentação",
+        "Vale Transporte",
+        "Auxílio Educação",
+        "Plano de Saúde",
+        "Auxílio Creche",
+        "Outros Benefícios"
+      ]
+    },
+    {
+      "id": "rec_007",
+      "nome": "Pensão e Aposentadoria",
+      "subcategorias": [
+        "Aposentadoria",
+        "Pensão Alimentícia",
+        "Previdência Privada",
+        "Pensão por Morte",
+        "INSS"
+      ]
+    },
+    {
+      "id": "rec_008",
+      "nome": "Reembolsos",
+      "subcategorias": [
+        "Reembolso de Despesas",
+        "Devolução de Compras",
+        "Cashback",
+        "Reembolso Médico",
+        "Reembolso de Viagem"
+      ]
+    },
+    {
+      "id": "rec_009",
+      "nome": "Prêmios e Presentes",
+      "subcategorias": [
+        "Prêmios",
+        "Presentes Recebidos",
+        "Heranças",
+        "Loterias",
+        "Sorteios",
+        "Doações Recebidas"
+      ]
+    },
+    {
+      "id": "rec_010",
+      "nome": "Vendas",
+      "subcategorias": [
+        "Venda de Bens",
+        "Venda de Veículo",
+        "Venda de Imóvel",
+        "Vendas Online",
+        "Brechó/Usados",
+        "Marketplace"
+      ]
+    },
+    {
+      "id": "rec_011",
+      "nome": "Governo",
+      "subcategorias": [
+        "Restituição de IR",
+        "Bolsa Família",
+        "Auxílio",
+        "Subsídios",
+        "Benefícios Sociais"
+      ]
+    },
+    {
+      "id": "rec_012",
+      "nome": "Educação",
+      "subcategorias": [
+        "Bolsa de Estudos",
+        "Auxílio Pesquisa",
+        "Estágio",
+        "Monitoria",
+        "Bolsa de Extensão"
+      ]
+    },
+    {
+      "id": "rec_013",
+      "nome": "Renda Extra",
+      "subcategorias": [
+        "Bicos",
+        "Trabalho Temporário",
+        "Apps de Renda",
+        "Aluguel de Espaço",
+        "Monetização Online",
+        "Anúncios/Parcerias"
+      ]
+    },
+    {
+      "id": "rec_014",
+      "nome": "Empréstimos Recebidos",
+      "subcategorias": [
+        "Empréstimo Pessoal",
+        "Empréstimo Familiar",
+        "Adiantamento",
+        "Financiamento Recebido"
+      ]
+    },
+    {
+      "id": "rec_015",
+      "nome": "Outras Receitas",
+      "subcategorias": [
+        "Vendas Eventuais",
+        "Receitas Diversas",
+        "Não Categorizado",
+        "Reembolsos Diversos",
+        "Rendas Extras"
+      ]
+    }
+  ]
+}

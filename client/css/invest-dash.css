@@ -5,12 +5,50 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Scrollbar Personalizado */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+    background-clip: content-box;
+}
+
+html {
+    scroll-behavior: auto !important;
+}
+
 body {
+    min-height: 100vh;
+    background-color: #000;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background-image: url('../assets/3.jpg');
     background-size: cover;
     background-position: center;
-    background-attachment: fixed;
     background-repeat: no-repeat;
+    z-index: -1;
+    will-change: transform;
 }
 
 .content-wrapper {
@@ -43,7 +81,7 @@ body:has(.sidebar.collapsed) .content-wrapper {
     cursor: pointer;
     font-weight: 500;
     color: #fff;
-    transition: all 0.3s;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
     border-radius: 10px;
 }
 
@@ -130,7 +168,7 @@ body:has(.sidebar.collapsed) .content-wrapper {
     position: relative;
     font-weight: 500;
     border-radius: 8px;
-    transition: all 0.3s;
+    transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .main-opt-btn.active {
@@ -241,7 +279,11 @@ body:has(.sidebar.collapsed) .content-wrapper {
     display: flex;
     align-items: center;
     padding: 0 10px;
-    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                right 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+                background-color 0.5s;
     z-index: 1000;
 }
 
@@ -303,6 +345,16 @@ body:has(.sidebar.collapsed) .content-wrapper {
 .menu-item:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
+}
+
+/* Otimizações de Performance */
+.main-card-50, 
+.stat-card-mini, 
+.fixed-activities, 
+.indicator, 
+.bottom-floating-menu {
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 @keyframes fadeIn {

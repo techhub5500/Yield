@@ -1,0 +1,291 @@
+{
+  "tipo": "despesas",
+  "categorias": [
+    {
+      "id": "desp_001",
+      "nome": "Alimentação",
+      "subcategorias": [
+        "Supermercado",
+        "Restaurante",
+        "Lanchonete/Fast Food",
+        "Delivery",
+        "Padaria",
+        "Feira/Hortifruti"
+      ]
+    },
+    {
+      "id": "desp_002",
+      "nome": "Moradia",
+      "subcategorias": [
+        "Aluguel",
+        "Condomínio",
+        "IPTU",
+        "Manutenção/Reparos",
+        "Segurança",
+        "Limpeza"
+      ]
+    },
+    {
+      "id": "desp_003",
+      "nome": "Transporte",
+      "subcategorias": [
+        "Combustível",
+        "Transporte Público",
+        "App de Transporte",
+        "Estacionamento",
+        "Pedágio",
+        "Moto/Bicicleta"
+      ]
+    },
+    {
+      "id": "desp_004",
+      "nome": "Saúde",
+      "subcategorias": [
+        "Plano de Saúde",
+        "Medicamentos",
+        "Consultas",
+        "Exames",
+        "Dentista",
+        "Terapias"
+      ]
+    },
+    {
+      "id": "desp_005",
+      "nome": "Educação",
+      "subcategorias": [
+        "Mensalidade Escolar",
+        "Cursos",
+        "Material Didático",
+        "Livros",
+        "Idiomas",
+        "Faculdade/Pós-graduação"
+      ]
+    },
+    {
+      "id": "desp_006",
+      "nome": "Lazer e Entretenimento",
+      "subcategorias": [
+        "Cinema/Teatro",
+        "Streaming",
+        "Viagens",
+        "Hobbies",
+        "Eventos/Shows",
+        "Jogos"
+      ]
+    },
+    {
+      "id": "desp_007",
+      "nome": "Vestuário",
+      "subcategorias": [
+        "Roupas",
+        "Calçados",
+        "Acessórios",
+        "Joias/Relógios",
+        "Roupas Íntimas"
+      ]
+    },
+    {
+      "id": "desp_008",
+      "nome": "Contas Domésticas",
+      "subcategorias": [
+        "Energia Elétrica",
+        "Água",
+        "Gás",
+        "Internet/Telefone",
+        "TV por Assinatura",
+        "Telefonia Móvel"
+      ]
+    },
+    {
+      "id": "desp_009",
+      "nome": "Veículo",
+      "subcategorias": [
+        "Seguro",
+        "IPVA",
+        "Manutenção",
+        "Lavagem",
+        "Licenciamento",
+        "Acessórios"
+      ]
+    },
+    {
+      "id": "desp_010",
+      "nome": "Beleza e Cuidados Pessoais",
+      "subcategorias": [
+        "Salão/Barbearia",
+        "Cosméticos",
+        "Academia",
+        "Spa/Estética",
+        "Perfumaria"
+      ]
+    },
+    {
+      "id": "desp_011",
+      "nome": "Pets",
+      "subcategorias": [
+        "Ração",
+        "Veterinário",
+        "Pet Shop",
+        "Banho e Tosa",
+        "Brinquedos/Acessórios"
+      ]
+    },
+    {
+      "id": "desp_012",
+      "nome": "Impostos e Taxas",
+      "subcategorias": [
+        "Imposto de Renda",
+        "Taxas Bancárias",
+        "Multas",
+        "Impostos Municipais",
+        "Taxas Governamentais"
+      ]
+    },
+    {
+      "id": "desp_013",
+      "nome": "Seguros",
+      "subcategorias": [
+        "Seguro de Vida",
+        "Seguro Residencial",
+        "Seguro Saúde",
+        "Seguro Odontológico",
+        "Outros Seguros"
+      ]
+    },
+    {
+      "id": "desp_014",
+      "nome": "Investimentos",
+      "subcategorias": [
+        "Previdência Privada",
+        "Ações",
+        "Fundos",
+        "Criptomoedas",
+        "Renda Fixa",
+        "Imóveis"
+      ]
+    },
+    {
+      "id": "desp_015",
+      "nome": "Doações e Presentes",
+      "subcategorias": [
+        "Presentes",
+        "Doações",
+        "Contribuições",
+        "Caridade",
+        "Dízimo/Ofertas"
+      ]
+    },
+    {
+      "id": "desp_016",
+      "nome": "Empréstimos e Financiamentos",
+      "subcategorias": [
+        "Parcela de Empréstimo",
+        "Financiamento Imobiliário",
+        "Financiamento de Veículo",
+        "Empréstimo Consignado",
+        "Crédito Pessoal"
+      ]
+    },
+    {
+      "id": "desp_017",
+      "nome": "Cartão de Crédito",
+      "subcategorias": [
+        "Fatura Integral",
+        "Anuidade",
+        "Juros e Encargos",
+        "Parcelas",
+        "Taxas"
+      ]
+    },
+    {
+      "id": "desp_018",
+      "nome": "Tecnologia",
+      "subcategorias": [
+        "Eletrônicos",
+        "Software/Apps",
+        "Manutenção de Equipamentos",
+        "Assinaturas Digitais",
+        "Gadgets",
+        "Cloud/Armazenamento"
+      ]
+    },
+    {
+      "id": "desp_019",
+      "nome": "Casa e Decoração",
+      "subcategorias": [
+        "Móveis",
+        "Eletrodomésticos",
+        "Decoração",
+        "Utensílios",
+        "Reforma",
+        "Jardinagem"
+      ]
+    },
+    {
+      "id": "desp_020",
+      "nome": "Filhos",
+      "subcategorias": [
+        "Creche/Babá",
+        "Fraldas/Higiene",
+        "Roupas Infantis",
+        "Brinquedos",
+        "Atividades Extras",
+        "Mesada"
+      ]
+    },
+    {
+      "id": "desp_021",
+      "nome": "Profissional",
+      "subcategorias": [
+        "Associações",
+        "Sindicatos",
+        "Certificações",
+        "Networking",
+        "Material de Trabalho"
+      ]
+    },
+    {
+      "id": "desp_022",
+      "nome": "Serviços",
+      "subcategorias": [
+        "Contabilidade",
+        "Advocacia",
+        "Consultoria",
+        "Reparos Diversos",
+        "Mudança/Frete"
+      ]
+    },
+    {
+      "id": "desp_023",
+      "nome": "Farmácia e Drogaria",
+      "subcategorias": [
+        "Medicamentos",
+        "Suplementos",
+        "Vitaminas",
+        "Primeiros Socorros",
+        "Higiene"
+      ]
+    },
+    {
+      "id": "desp_024",
+      "nome": "Cultura",
+      "subcategorias": [
+        "Museus",
+        "Exposições",
+        "Livros/Revistas",
+        "Música",
+        "Arte"
+      ]
+    },
+    {
+      "id": "desp_025",
+      "nome": "Outras Despesas",
+      "subcategorias": [
+        "Despesas Diversas",
+        "Emergências",
+        "Não Categorizado",
+        "Imprevistos"
+      ]
+    }
+  ]
+}

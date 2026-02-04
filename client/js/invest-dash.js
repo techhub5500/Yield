@@ -1,4 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // ---- Otimização de Scroll ----
+    // Remove qualquer delay potencial garantindo que o navegador não espere por JS para rolar
+    window.addEventListener('wheel', () => {}, { passive: true });
+    window.addEventListener('touchstart', () => {}, { passive: true });
+
     // ---- Main Options Switcher ----
     const mainOptBtns = document.querySelectorAll('.main-opt-btn');
     const optionContents = document.querySelectorAll('.option-content');
