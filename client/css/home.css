@@ -69,26 +69,23 @@ body.chat-active .cards-grid {
     width: auto;
     display: flex;
     justify-content: flex-start;
-    transition: bottom 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), left 0.3s;
+    transition: bottom 0.8s cubic-bezier(0.165, 0.84, 0.44, 1), left 0.3s, transform 0.3s;
     z-index: 1100;
 }
 
 body:not(.chat-active) .ai-chat-container {
     bottom: 30px;
     left: 50%;
-    transform: translateX(calc(-50% + 140px));
-}
-
-body:not(.chat-active):has(.sidebar.collapsed) .ai-chat-container {
-    transform: translateX(calc(-50% + 40px));
+    transform: translateX(-50%);
 }
 
 body.chat-active .ai-chat-container {
     bottom: 5px; /* Padding bottom mínimo */
+    left: 201px; /* 166px sidebar + 20px body margin + 15px gap */
 }
 
-body:has(.sidebar.collapsed) .ai-chat-container {
-    left: 100px; /* 20px left + 65px width + 15px margin */
+body.chat-active:has(.sidebar.collapsed) .ai-chat-container {
+    left: 101px; /* Ajuste quando a sidebar está colapsada e o chat ativo */
 }
 
 .ai-chat-bar {
@@ -98,7 +95,7 @@ body:has(.sidebar.collapsed) .ai-chat-container {
     border-style: solid;
     border-color: rgba(94, 94, 94, 0.46);
     border-width: 1px 2px 2px 1px;
-    width: 600px;
+    width: 660px; /* 10% increase from 600px */
     max-width: 90%;
     min-height: 83px;
     height: auto;
@@ -112,7 +109,7 @@ body:has(.sidebar.collapsed) .ai-chat-container {
 }
 
 body.chat-active .ai-chat-bar {
-    width: 780px; /* 30% maior que 600px */
+    width: 858px; /* 10% maior que 780px */
     height: calc(100vh - 10px); /* Padding mínimo topo/bottom */
     background: rgba(0, 0, 0, 0.42); /* 15% menos opaco que card */
     border-radius: 25px;
