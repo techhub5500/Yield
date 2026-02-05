@@ -9,12 +9,43 @@ document.addEventListener('DOMContentLoaded', () => {
     
     let hasSentMessage = false;
 
+    // Inicializar serviço de chat unificado
+    const chatService = ChatManager.getChat('home');
+
+    // Configurar callbacks do chat
+    chatService.on('loading', (isLoading) => {
+        if (sendBtn) {
+            sendBtn.disabled = isLoading;
+            if (isLoading) {
+                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+            }
+        }
+    });
+
     function addMessage(text, sender) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
         msgDiv.textContent = text;
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function addTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'message bot typing-indicator';
+        indicator.id = 'typing-indicator';
+        indicator.innerHTML = '<span></span><span></span><span></span>';
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
     }
 
     function openChat() {
@@ -39,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.value = '';
         chatInput.style.height = 'auto';
         hasSentMessage = false;
-        // Opcional: chatMessages.innerHTML = '';
     }
 
     chatInput.addEventListener('input', () => {
@@ -51,17 +81,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function handleSend() {
+    async function handleSend() {
         const text = chatInput.value.trim();
-        if (text) {
+        if (text && !chatService.isProcessing()) {
             hasSentMessage = true;
             addMessage(text, 'user');
             chatInput.value = '';
             chatInput.style.height = 'auto';
 
-            setTimeout(() => {
-                addMessage('Seja bem-vindo', 'bot');
-            }, 800);
+            // Mostrar indicador de digitação
+            addTypingIndicator();
+
+            // Enviar para o backend
+            const result = await chatService.sendMessage(text);
+            
+            // Remover indicador e mostrar resposta
+            removeTypingIndicator();
+            addMessage(result.response, 'bot');
         }
     }
 

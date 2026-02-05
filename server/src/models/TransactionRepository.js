@@ -1,6 +1,6 @@
-const Transaction = require('../../models/Transaction');
-const logger = require('../../utils/logger');
-const { ValidationError, DatabaseError } = require('../../utils/error-handler');
+const Transaction = require('./Transaction');
+const logger = require('../utils/logger');
+const { ValidationError, DatabaseError } = require('../utils/error-handler');
 
 /**
  * Repository para operações CRUD básicas de transações

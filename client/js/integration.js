@@ -597,6 +597,236 @@ const AuthModal = {
 
 /**
  * ===================================================
+ * SERVIÇO DE CHAT UNIFICADO
+ * ===================================================
+ * 
+ * Este serviço gerencia a comunicação entre o frontend e o backend
+ * para todos os chats da plataforma (home, finance, e futuros).
+ * 
+ * Uso:
+ *   const chat = new ChatService('home'); // ou 'finance', etc.
+ *   const response = await chat.sendMessage('Quanto gastei este mês?');
+ */
+
+const CHAT_API_URL = 'http://localhost:3000/api/chat';
+
+/**
+ * Gerenciador de Chat
+ * Mantém estado da sessão e histórico de mensagens
+ */
+class ChatService {
+  /**
+   * @param {string} pageContext - Identificador da página (home, finance, etc.)
+   * @param {Object} options - Opções de configuração
+   */
+  constructor(pageContext = 'home', options = {}) {
+    this.pageContext = pageContext;
+    this.chatId = options.chatId || null;
+    this.messages = [];
+    this.isLoading = false;
+    this.onMessageCallback = options.onMessage || null;
+    this.onErrorCallback = options.onError || null;
+    this.onLoadingCallback = options.onLoading || null;
+  }
+
+  /**
+   * Obtém o ID do chat atual (ou gera um novo)
+   */
+  getChatId() {
+    if (!this.chatId) {
+      const userId = AuthManager.getUserId() || 'anonymous';
+      this.chatId = `chat_${userId}_${this.pageContext}_${Date.now()}`;
+    }
+    return this.chatId;
+  }
+
+  /**
+   * Define callbacks para eventos
+   */
+  on(event, callback) {
+    switch (event) {
+      case 'message':
+        this.onMessageCallback = callback;
+        break;
+      case 'error':
+        this.onErrorCallback = callback;
+        break;
+      case 'loading':
+        this.onLoadingCallback = callback;
+        break;
+    }
+    return this;
+  }
+
+  /**
+   * Envia uma mensagem para o backend
+   * @param {string} message - Mensagem do usuário
+   * @returns {Promise<Object>} Resposta do servidor
+   */
+  async sendMessage(message) {
+    if (!message || typeof message !== 'string' || message.trim() === '') {
+      const error = new Error('Mensagem não pode estar vazia');
+      if (this.onErrorCallback) this.onErrorCallback(error);
+      throw error;
+    }
+
+    const trimmedMessage = message.trim();
+
+    // Adicionar mensagem do usuário ao histórico
+    this.messages.push({
+      role: 'user',
+      content: trimmedMessage,
+      timestamp: new Date().toISOString()
+    });
+
+    // Notificar loading
+    this.isLoading = true;
+    if (this.onLoadingCallback) this.onLoadingCallback(true);
+
+    try {
+      const token = AuthManager.getToken();
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(CHAT_API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message: trimmedMessage,
+          chatId: this.getChatId(),
+          pageContext: this.pageContext
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao processar mensagem');
+      }
+
+      // Atualizar chatId se o servidor retornou um novo
+      if (data.chatId) {
+        this.chatId = data.chatId;
+      }
+
+      // Adicionar resposta ao histórico
+      const aiMessage = {
+        role: 'assistant',
+        content: data.response,
+        timestamp: new Date().toISOString(),
+        metadata: data.metadata
+      };
+      this.messages.push(aiMessage);
+
+      // Notificar callback de mensagem
+      if (this.onMessageCallback) {
+        this.onMessageCallback(aiMessage);
+      }
+
+      return {
+        success: true,
+        response: data.response,
+        metadata: data.metadata
+      };
+
+    } catch (error) {
+      console.error('ChatService error:', error);
+      
+      // Adicionar mensagem de erro ao histórico
+      const errorMessage = {
+        role: 'error',
+        content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
+        timestamp: new Date().toISOString()
+      };
+      this.messages.push(errorMessage);
+
+      if (this.onErrorCallback) {
+        this.onErrorCallback(error);
+      }
+
+      return {
+        success: false,
+        error: error.message,
+        response: errorMessage.content
+      };
+
+    } finally {
+      this.isLoading = false;
+      if (this.onLoadingCallback) this.onLoadingCallback(false);
+    }
+  }
+
+  /**
+   * Obtém histórico de mensagens
+   */
+  getHistory() {
+    return [...this.messages];
+  }
+
+  /**
+   * Limpa histórico e reinicia chat
+   */
+  clearHistory() {
+    this.messages = [];
+    this.chatId = null;
+  }
+
+  /**
+   * Verifica se está processando uma mensagem
+   */
+  isProcessing() {
+    return this.isLoading;
+  }
+}
+
+/**
+ * Factory para criar instâncias de ChatService
+ * Mantém uma instância por página para reutilização
+ */
+const ChatManager = {
+  instances: {},
+
+  /**
+   * Obtém ou cria uma instância de ChatService para a página
+   * @param {string} pageContext - Contexto da página
+   * @param {Object} options - Opções de configuração
+   * @returns {ChatService} Instância do serviço de chat
+   */
+  getChat(pageContext = 'home', options = {}) {
+    const key = pageContext;
+    
+    if (!this.instances[key]) {
+      this.instances[key] = new ChatService(pageContext, options);
+    }
+    
+    return this.instances[key];
+  },
+
+  /**
+   * Remove instância de chat
+   * @param {string} pageContext - Contexto da página
+   */
+  removeChat(pageContext) {
+    if (this.instances[pageContext]) {
+      delete this.instances[pageContext];
+    }
+  },
+
+  /**
+   * Limpa todas as instâncias
+   */
+  clearAll() {
+    this.instances = {};
+  }
+};
+
+/**
+ * ===================================================
  * SIDEBAR - Código existente
  * ===================================================
  */
@@ -641,10 +871,21 @@ const initSidebar = () => {
 document.addEventListener('DOMContentLoaded', () => {
     const placeholder = document.getElementById('sidebar-placeholder');
     if (placeholder) {
-        fetch('integration.html')
-            .then(response => response.text())
+        fetch('/html/integration.html')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.text();
+            })
             .then(data => {
                 placeholder.innerHTML = data;
+                initSidebar();
+                AuthModal.init();
+            })
+            .catch(error => {
+                console.error('Erro ao carregar integration.html:', error);
+                // Tenta inicializar mesmo sem o template
                 initSidebar();
                 AuthModal.init();
             });
@@ -659,3 +900,5 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 window.AuthManager = AuthManager;
 window.AuthModal = AuthModal;
+window.ChatService = ChatService;
+window.ChatManager = ChatManager;

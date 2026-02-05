@@ -74,10 +74,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ---- Chat Logic ----
+    // ---- Chat Logic (Usando serviço unificado) ----
     const chatInput = document.querySelector('.chat-input-area textarea');
     const sendBtn = document.querySelector('.chat-input-area .send-btn');
     const chatMessages = document.querySelector('.chat-messages');
+
+    // Inicializar serviço de chat unificado para a página finance
+    const chatService = ChatManager.getChat('finance');
+
+    // Configurar callbacks do chat
+    chatService.on('loading', (isLoading) => {
+        if (sendBtn) {
+            sendBtn.disabled = isLoading;
+            if (isLoading) {
+                sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            } else {
+                sendBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+            }
+        }
+    });
 
     function addMessage(text, sender) {
         const msgDiv = document.createElement('div');
@@ -87,17 +102,38 @@ document.addEventListener('DOMContentLoaded', () => {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    function handleSend() {
+    function addTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'message bot typing-indicator';
+        indicator.id = 'finance-typing-indicator';
+        indicator.innerHTML = '<span></span><span></span><span></span>';
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const indicator = document.getElementById('finance-typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    async function handleSend() {
         const text = chatInput.value.trim();
-        if (text) {
+        if (text && !chatService.isProcessing()) {
             addMessage(text, 'user');
             chatInput.value = '';
             chatInput.style.height = 'auto';
 
-            // Resposta fake do bot
-            setTimeout(() => {
-                addMessage('Em que posso ajudar com suas finanças hoje?', 'bot');
-            }, 800);
+            // Mostrar indicador de digitação
+            addTypingIndicator();
+
+            // Enviar para o backend
+            const result = await chatService.sendMessage(text);
+            
+            // Remover indicador e mostrar resposta
+            removeTypingIndicator();
+            addMessage(result.response, 'bot');
         }
     }
 

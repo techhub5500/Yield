@@ -52,11 +52,8 @@ class Database {
     } catch (error) {
       logger.error('Falha ao conectar ao MongoDB:', error);
       
-      // Tentar reconectar após 5 segundos
-      setTimeout(() => {
-        logger.info('Tentando reconectar ao MongoDB...');
-        this.connect();
-      }, 5000);
+      // Não tentar reconectar automaticamente em desenvolvimento
+      // (evita logs repetitivos quando o banco não está disponível)
       
       throw error;
     }

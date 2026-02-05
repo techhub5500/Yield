@@ -17,6 +17,7 @@ const orchestratorAgent = require('./orchestrator');
 const coordinators = require('./coordinators');
 const responseAgent = require('./response');
 const execution = require('./execution');
+const strategicLogger = require('../../utils/strategic-logger');
 
 /**
  * Processa uma mensagem do usuário (fluxo completo)
@@ -28,16 +29,30 @@ const execution = require('./execution');
  * @returns {Promise<Object>} Resultado do processamento
  */
 async function processMessage(memory, userMessage, context = {}) {
+  const startTime = Date.now();
+  
   // 1. Processar com Agente Júnior
   const result = await juniorAgent.processMessage(memory, userMessage, context);
   
   // 2. Se precisa escalar para Orquestrador
   if (result.action === 'escalate' && result.target === 'orchestrator') {
+    // Log estratégico de escalada
+    await strategicLogger.agentEscalation('Junior', 'Orchestrator', 
+      result.payload.reason || 'Tarefa complexa detectada',
+      { complexity: result.complexity }
+    );
+    
     // 2.1 Processar tarefa complexa via Orquestrador
     const orchestratorResult = await orchestratorAgent.processComplexTask(
       result.payload.memory,
       result.payload.query,
       result.payload.context
+    );
+
+    // Log estratégico do orquestrador
+    await strategicLogger.decision('Orchestrator', 
+      `DOC gerado com ${orchestratorResult.doc?.task_distribution?.length || 0} tarefas`,
+      'Decomposição de tarefa complexa'
     );
 
     // 2.2 Se tem resultados dos coordenadores, sintetizar resposta
@@ -47,6 +62,17 @@ async function processMessage(memory, userMessage, context = {}) {
         userMessage,
         orchestratorResult.doc,
         orchestratorResult.results
+      );
+      
+      const duration = Date.now() - startTime;
+      
+      // Log estratégico da resposta final
+      await strategicLogger.info('agent', 'ResponseAgent',
+        `Resposta sintetizada de ${Object.keys(orchestratorResult.results.completed || {}).length} coordenadores`,
+        {
+          eventName: 'agent.response.deliver',
+          meta: { duration: `${duration}ms` }
+        }
       );
       
       return {
@@ -61,6 +87,20 @@ async function processMessage(memory, userMessage, context = {}) {
 
     return orchestratorResult;
   }
+  
+  // Log estratégico de resolução pelo Junior
+  const duration = Date.now() - startTime;
+  await strategicLogger.info('agent', 'JuniorAgent',
+    `Processado localmente: ${result.action || 'resolved'}`,
+    {
+      eventName: 'agent.junior.classify',
+      meta: { 
+        complexity: result.complexity,
+        action: result.action,
+        duration: `${duration}ms`
+      }
+    }
+  );
   
   return result;
 }

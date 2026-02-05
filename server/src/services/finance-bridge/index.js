@@ -5,6 +5,7 @@ const deleteOperation = require('./operations/delete');
 const aggregateOperation = require('./operations/aggregate');
 const compareOperation = require('./operations/compare');
 const logger = require('../../utils/logger');
+const strategicLogger = require('../../utils/strategic-logger');
 const { ErrorHandler, OperationNotFoundError, ValidationError } = require('../../utils/error-handler');
 
 /**
@@ -66,6 +67,12 @@ class FinanceBridge {
         user_id: context?.user_id
       });
 
+      // Log estratégico da operação
+      await strategicLogger.bridgeOperation(operation, true, executionTime, {
+        userId: context?.user_id,
+        resultsCount: Array.isArray(result) ? result.length : result?.data?.length
+      });
+
       // Retornar resultado formatado
       return {
         success: true,
@@ -84,6 +91,11 @@ class FinanceBridge {
         execution_time_ms: executionTime,
         error: error.message,
         operation: payload?.operation
+      });
+
+      // Log estratégico de erro
+      await strategicLogger.bridgeOperation(payload?.operation || 'unknown', false, executionTime, {
+        error: error.message
       });
 
       // Retornar erro formatado

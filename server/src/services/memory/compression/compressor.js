@@ -3,6 +3,7 @@ const wordCounter = require('../utils/word-counter');
 const summarizer = require('./summarizer');
 const preservation = require('./preservation');
 const logger = require('../../../utils/logger');
+const strategicLogger = require('../../../utils/strategic-logger');
 
 /**
  * Sistema de Compressão de Memória
@@ -94,6 +95,9 @@ class MemoryCompressor {
         reductionPercent: ((reduction / status.totalWords) * 100).toFixed(1) + '%'
       });
 
+      // Log estratégico de compressão
+      await strategicLogger.memoryCompression(status.totalWords, memory.metadata.total_word_count, duration);
+
       return memory;
 
     } catch (error) {
@@ -102,6 +106,13 @@ class MemoryCompressor {
         chatId,
         error: error.message
       });
+      
+      // Log estratégico de erro
+      await strategicLogger.error('memory', 'MemoryCompressor',
+        `Falha na compressão de memória: ${error.message}`,
+        { error, meta: { chatId } }
+      );
+      
       throw error;
     }
   }

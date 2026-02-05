@@ -118,7 +118,7 @@ const UserSchema = new mongoose.Schema({
 // ÍNDICES
 // ===================================================
 
-UserSchema.index({ email: 1 }, { unique: true });
+// Nota: índice de email já criado via 'unique: true' na definição do campo
 UserSchema.index({ 'oauth.google.id': 1 }, { sparse: true });
 UserSchema.index({ status: 1 });
 UserSchema.index({ createdAt: -1 });

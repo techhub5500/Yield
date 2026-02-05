@@ -1,6 +1,6 @@
-const dateUtils = require('../shared/date-utils');
-const transactionRepository = require('../../models/TransactionRepository');
-const { ValidationError } = require('../../utils/error-handler');
+const dateUtils = require('../../shared/date-utils');
+const transactionRepository = require('../../../models/TransactionRepository');
+const { ValidationError } = require('../../../utils/error-handler');
 
 /**
  * Períodos Inteligentes

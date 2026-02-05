@@ -96,9 +96,9 @@ class UpdateOperation {
    */
   validateUpdates(updates) {
     // Campos protegidos que não podem ser atualizados
-    const protected = ['_id', 'user_id', 'created_at'];
+    const protectedFields = ['_id', 'user_id', 'created_at'];
     
-    const invalid = protected.filter(field => updates.hasOwnProperty(field));
+    const invalid = protectedFields.filter(field => updates.hasOwnProperty(field));
     
     if (invalid.length > 0) {
       throw new ValidationError(
