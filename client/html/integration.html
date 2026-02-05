@@ -1,3 +1,111 @@
+<!-- Modal de Login/Cadastro -->
+<div class="auth-modal-overlay" id="auth-modal-overlay">
+    <div class="auth-modal">
+        <div class="auth-modal-header">
+            <h2 class="auth-title" id="auth-title">Entrar</h2>
+            <p class="auth-subtitle" id="auth-subtitle">Bem-vindo de volta ao Yield</p>
+        </div>
+
+        <!-- Formulário de Login -->
+        <form class="auth-form" id="login-form">
+            <div class="auth-input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="login-email" placeholder="E-mail" required>
+            </div>
+            <div class="auth-input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="login-password" placeholder="Senha" required>
+                <button type="button" class="toggle-password" data-target="login-password">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <div class="auth-options">
+                <label class="auth-checkbox">
+                    <input type="checkbox" id="remember-me">
+                    <span>Lembrar-me</span>
+                </label>
+                <a href="#" class="forgot-password" id="forgot-password-link">Esqueceu a senha?</a>
+            </div>
+            <button type="submit" class="auth-submit-btn">
+                <span>Entrar</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <div class="auth-error" id="login-error"></div>
+        </form>
+
+        <!-- Formulário de Cadastro -->
+        <form class="auth-form" id="register-form" style="display: none;">
+            <div class="auth-input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" id="register-name" placeholder="Nome completo" required>
+            </div>
+            <div class="auth-input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="register-email" placeholder="E-mail" required>
+            </div>
+            <div class="auth-input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="register-password" placeholder="Senha (mín. 6 caracteres)" required minlength="6">
+                <button type="button" class="toggle-password" data-target="register-password">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <div class="auth-input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="register-confirm-password" placeholder="Confirmar senha" required>
+                <button type="button" class="toggle-password" data-target="register-confirm-password">
+                    <i class="fas fa-eye"></i>
+                </button>
+            </div>
+            <div class="password-strength" id="password-strength">
+                <div class="strength-bar"></div>
+                <span class="strength-text">Força da senha</span>
+            </div>
+            <button type="submit" class="auth-submit-btn">
+                <span>Criar conta</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+            <div class="auth-error" id="register-error"></div>
+        </form>
+
+        <!-- Formulário de Recuperação de Senha -->
+        <form class="auth-form" id="forgot-form" style="display: none;">
+            <p class="forgot-description">Digite seu e-mail e enviaremos instruções para redefinir sua senha.</p>
+            <div class="auth-input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="forgot-email" placeholder="E-mail" required>
+            </div>
+            <button type="submit" class="auth-submit-btn">
+                <span>Enviar instruções</span>
+                <i class="fas fa-paper-plane"></i>
+            </button>
+            <button type="button" class="auth-back-btn" id="back-to-login">
+                <i class="fas fa-arrow-left"></i>
+                <span>Voltar ao login</span>
+            </button>
+            <div class="auth-error" id="forgot-error"></div>
+            <div class="auth-success" id="forgot-success"></div>
+        </form>
+
+        <div class="auth-divider">
+            <span>ou</span>
+        </div>
+
+        <div class="auth-social">
+            <button class="social-btn google-btn" id="google-login">
+                <i class="fab fa-google"></i>
+                <span>Continuar com Google</span>
+            </button>
+        </div>
+
+        <div class="auth-footer">
+            <p id="auth-toggle-text">Não tem uma conta? 
+                <a href="#" id="auth-toggle-link">Criar conta</a>
+            </p>
+        </div>
+    </div>
+</div>
+
 <!-- Sidebar Template -->
 <nav class="sidebar collapsed" id="sidebar">
     <button id="close-chat-btn" class="return-arrow" style="display: none;">
@@ -34,13 +142,13 @@
             </ul>
         </li>
         <li>
-            <a href="#">
+            <a href="#" id="profile-link">
                 <i class="fas fa-user"></i>
                 <span class="link-name">Perfil</span>
             </a>
         </li>
         <li class="logout">
-            <a href="#">
+            <a href="#" id="logout-link">
                 <i class="fas fa-sign-out-alt"></i>
                 <span class="link-name">Sair</span>
             </a>

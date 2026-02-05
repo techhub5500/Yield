@@ -15,7 +15,7 @@ Ao receber uma mensagem, o sistema verifica se o chat já possui histórico:
 ### 1.2 Estrutura Simples de Memória
 
 **Memória Recente:**
-- Últimos 2 ciclos completos mantidos na íntegra
+- Últimos 2 ciclos completos mantidos na íntegra (Um ciclo = mensagem do usuário + resposta completa da IA)
 - Acesso direto sem processamento
 
 **Memória Antiga:**
@@ -23,7 +23,7 @@ Ao receber uma mensagem, o sistema verifica se o chat já possui histórico:
 - Resumo feito por GPT-5 nano (Verbosity: Low, Reasoning: Low)
 - Preserva: valores numéricos, datas, decisões importantes e contexto essencial
 
-(Esse sistema funciona de forma comitante ous eja sempre se atulaizando a cada ciclo novas novas. é importante que a memoria seja feito a cada ciclo, pois assim o gpt 5 nano tem oq ue eu usuairo enviou e o que a IA respondeu para facilitar resumo e deixar mais inteligente, do que reusmir a cada coisa enviada ou recebida.)
+(Esse sistema funciona de forma concomitante, ou seja, sempre se atualizando a cada ciclo. A memória é persistida após cada ciclo completo, garantindo que o GPT-5 nano tenha o que o usuário enviou e o que a IA respondeu para facilitar o resumo e manter o contexto inteligente.)
 
 ### 1.3 Gestão de Volume
 
@@ -57,7 +57,7 @@ O sistema sempre preserva informações críticas mesmo durante compressão:
 O Junior analisa a query e decide:
 - Se for **consulta simples**: usa FinanceBridge para buscar dados
 - Se for **lançamento de dados**: usa FinanceBridge para inserir a transação
-- Se for **busca externa**: usa Serper para pesquisar na internet
+- Se for **busca externa**: invoca diretamente a API Serper para buscas objetivas
 - Se for **complexo ou multi-tarefa**: escala para o Orquestrador
 
 OBS: Se for **lançamento de dados**: O agente junior deve antes de enivar para o gpt 5 nano ele deve ver se tem algo faltando no, por exemplo se o usuario fala "Eu gasti 200" - essa query é insuficiente, o junior retorna "voce gastou em que esse R$ 200,00 ?" ai o usuario manda "no supermercado"
@@ -78,7 +78,7 @@ Ai o agente junior pode enviar para o agente GPT  5 nano.
 
 **Para Junior (Execução Direta):**
 - Bridge/Serper: Memória COMPLETA 
-- Lançamento: Memória NÃO enviada (apenas parsing do input)
+- Lançamento: Memória enviada apenas para parsing de contexto e follow-up (não enviada ao GPT-5 nano)
 
 **Para Orquestrador (Escalada):**
 - Memória COMPLETA 
@@ -95,16 +95,9 @@ Ai o agente junior pode enviar para o agente GPT  5 nano.
 
 ###  Contratos dos Agentes Coordenadores
 
-  - O agente orquestrador recebe os contratos de cada agente, os contratos, são quem sao cada agente e o que eles fazem, os contratos dos agentes são essenciais para o raciocínio do orquestrador, os agentes são:
+  - O agente orquestrador recebe os contratos de cada agente, que definem quem são e o que fazem. Os contratos estão em `server\docs\md\diferenças_coor.md` e são essenciais para o raciocínio do orquestrador.
 
-**Agente de Análise:**
-
-**Agente de Investimentos:**
-
-**Agente de Planejamento:**
-O que cada agente faz esta em "server\jsons\md\diferenças_coor.md" deve ser guia para elaboração do contrato
-
-O Orquestrador segue três etapas de raciocínio:
+O Orquestrador segue quatro etapas de raciocínio:
 
 **ETAPA 1 - DECOMPOSIÇÃO:**
 Identifica quais áreas estão envolvidas na solicitação do usuário:
@@ -129,7 +122,7 @@ Define a estratégia de execução:
 
 **Estrutura do DOC (Documento de Direção):**
 
-O DOC é um documento estruturado que contém:
+O DOC é um documento em JSON estruturado que contém:
 
 **Identificação:**
 - ID único da requisição
@@ -169,8 +162,9 @@ Precisamos criar um sistema que controle a prioridade e dependência entre agent
 
 **Arquitetura de Consulta Flexível:**
 O banco de dados usado é o mongodb!
-O Finance Bridge é um middleware de comunicação estruturada que permite ao Agente de IA realizar operações financeiras complexas através de um protocolo JSON estrito, suportando lógica booleana e contextos temporais inteligentes.
+O Finance Bridge é um middleware de comunicação estruturada que permite ao Agente de IA realizar operações financeiras complexas através de um protocolo JSON estrito.
 
+#### 4.1.1 Fluxo de Consulta e Operações
 O agente de IA vai receber uma descrição do que é o financial bridgt e será orientado a responder um texto simples como "Busque gastos de alimentação entre R$ 120 e R$ 145 nos últimos 6 dias, mas ignore “Restaurantes”, ordene pelos 10 mais recentes." 
 
 NO financial bridgt tera Uma IA que sera o gpt 5 nano com verbosity low e resongin middle. esse agente tera um instrução clara, ele recebe a query do outro agente + tudo que ele pode usar como filtro e faz um json e envia para o financial brigdt, o financial bridgt retorna os dados conforme o json recebido e envia direto para o agente de IA que primeiro requisitou. (nao tem para que enviar novamente para o gpt 5 nano)
@@ -241,7 +235,9 @@ O ano fiscal vigente
 
 since_last_payday
 Filtra transações desde o último recebimento de salário detectado
-(Essencial para análise de fluxo de caixa pessoal)
+
+last_x_days (ex: last_6_days)
+Período relativo flexível para buscas recentes
 
 3. Operações Suportadas
 Operação	Descrição
@@ -297,12 +293,10 @@ JSON Gerado pelo Agente
     "filters": {
       "period": { "named_period": "last_6_days" },
       "amount": { "min": 120.00, "max": 145.00 },
-      "categories": ["alimentação"]
+      "categories": ["alimentação"],
+      "exclude_tags": ["restaurante"]
     },
-    "logic": "NOT",
-    "exclude": {
-      "tags": ["restaurante"]
-    },
+    "logic": "AND",
     "sort": {
       "field": "date",
       "order": "desc"
@@ -311,6 +305,7 @@ JSON Gerado pelo Agente
   }
 }
 
+#### 4.1.2 Fluxo de Lançamento (Agente Júnior)
 O sistema de lançamentos feito pelo Agente Júnior deve seguir uma lógica diferente.
 Exemplo de uso:
 - O Agente Júnior envia para o GPT‑5 Nano a instrução: “Lançar compra de R$ 150,00 no supermercado”.
@@ -347,6 +342,9 @@ São dois arquivos json, um para despesas e um para receitas, esses arquivos tem
 
 ### 4.2 Sistema de Pesquisa Externa (Search Layer)
 
+**Critérios de Seleção:**
+A escolha de qual API utilizar depende da necessidade da tarefa. Os critérios detalhados estão no arquivo `server\docs\md\diferenças_API.md`, que deve ser consultado para entender as capacidades de cada ferramenta.
+
 **API 1: Serper (Pesquisas Gerais)**
 - Uso: Informações gerais, notícias, tutoriais
 - Acesso: Junior + Coordenadores
@@ -370,10 +368,10 @@ Os Coordenadores recebem orientação estratégica: usar Serper para contexto ge
 ### 4.3 Módulo Matemático (Precision Engine)
 
 **Quando usar:**
-- Cálculos complexos
-- Juros compostos
-- Projeções financeiras
-- Análises de risco (VaR, Sharpe Ratio, etc.)
+O modo matemático é ativado automaticamente quando a tarefa envolve:
+- Cálculos com mais de 2 operações encadeadas
+- Fórmulas financeiras (Juros compostos, VPL, TIR)
+- Projeções financeiras e análises de risco (VaR, Sharpe Ratio)
 
 **Prompt Sistema:**
 
@@ -420,6 +418,8 @@ Decompor a solução em etapas numeradas, mostrando cada passo do raciocínio ma
 2. **Inventário de Recursos:**
    - "Quais é a ferramenta que devo usar para essa tarefa?"
 
+3. **Planejamento de Execução:**
+   - "Em que ordem devo usar as ferramentas?"
 
 4. **Critério de Qualidade:**
    - "Como sei que terminei bem?"
@@ -451,14 +451,16 @@ gera a resposta e envia ao usuario.
 -
 
 PONTO EXTREMAMENTE IMPORTANTE:
-"Os agentes precisam ser capazes de interagir com sistemas externos sem encerrar o fluxo de execução.
-Por exemplo:
-Quando o agente júnior precisa utilizar o Financial Bridge, ele deve executar uma ação que ative o Financial Bridge e já envie a solicitação necessária.
-Em seguida, o agente júnior deve aguardar a resposta, mantendo seu estado e contexto.
-Após alguns segundos, quando o Financial Bridge retornar os dados, o agente júnior deve retomar o fluxo normalmente, dando continuidade à tarefa.
-Atualmente, a  forma como meu sistema funciona é assim: 
-O agente júnior envia a requisição ao Financial Bridge e encerra a execução.
-Quando o Financial Bridge retorna os dados, ele precisa enviar não apenas a resposta, mas também um histórico completo, para que o agente júnior consiga reconstruir o contexto.
-------
-O objetivo é que o sistema funcione de forma contínua. Sempre que for necessário utilizar um sistema ou ferramenta externa, o agente deve ser capaz de ativá-la, aguardar o retorno preservando sua memória e, quando a resposta chegar, continuar o fluxo para executar a próxima tarefa, sem perda de contexto."
+
+Os agentes precisam ser capazes de interagir com sistemas externos sem encerrar o fluxo de execução. 
+
+**Fluxo de Execução Contínua:**
+1. **Ativação:** O agente aciona a ferramenta externa (ex: Financial Bridge).
+2. **Estado de Espera:** O agente entra em estado de "waiting", preservando sua memória e contexto.
+3. **Reativação:** O agente é reativado pelo evento de retorno da ferramenta.
+4. **Continuidade:** O fluxo segue para a próxima tarefa sem necessidade de reconstrução de histórico.
+
+**Regras Críticas:**
+- **Timeout:** O limite máximo de espera para qualquer ferramenta externa é de **80 segundos**.
+- **Contexto:** A resposta da ferramenta deve ser integrada ao fluxo atual de forma transparente.
 
