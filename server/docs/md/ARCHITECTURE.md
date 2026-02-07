@@ -146,11 +146,21 @@ Todos os pontos de IA possuem fallbacks:
 
 ## Limitações Conhecidas
 
-### 1. Coordenadores não executam ferramentas reais
-Os coordenadores (Análise, Investimentos, Planejamento) recebem descrições de ferramentas no prompt e as mencionam no `reasoning` e `tools_used`, mas **não há mecanismo de execução real**. `BaseCoordinator.execute()` apenas chama `model.completeJSON()` sem function calling nem pós-processamento de tool calls. Coordenadores respondem com base no conhecimento prévio do modelo, sem acesso a dados reais do usuário.
+### 1. Coordenadores executam ferramentas via two-pass (RESOLVIDO)
+~~Os coordenadores não executavam ferramentas reais.~~ **Resolvido em 06/02/2026.**
+`BaseCoordinator.execute()` agora implementa execução em dois passos:
+1. **Passo 1 (Planejamento):** IA analisa a tarefa e pode solicitar ferramentas via campo `tool_requests` no JSON
+2. **Execução:** O sistema executa as ferramentas solicitadas (Finance Bridge, Search, Math) e coleta resultados reais
+3. **Passo 2 (Síntese):** IA recebe os dados reais e produz análise final baseada em dados concretos do usuário
 
-### 2. ExternalCallManager não integrado
-Os módulos `AgentState`, `ExternalCallManager` e `ContextRecovery` em `core/state/` foram implementados mas não são utilizados em nenhum fluxo real. Todas as chamadas externas são síncronas via `await` direto, sem preservação de estado conforme descrito na constituição.
+Ferramentas disponíveis: `finance_bridge:query`, `search:serper/brapi/tavily`, `math:compoundInterest/netPresentValue/internalRateOfReturn/sharpeRatio/valueAtRisk/projectionWithContributions`.
+
+### 2. ExternalCallManager integrado ao fluxo (RESOLVIDO)
+~~Os módulos AgentState, ExternalCallManager e ContextRecovery não eram utilizados.~~ **Resolvido em 06/02/2026.**
+- `Dispatcher` usa `ExternalCallManager` em todas as rotas diretas (bridge_query, bridge_insert, serper)
+- `BaseCoordinator` usa `ExternalCallManager` ao executar ferramentas durante o two-pass
+- `message.js` faz cleanup dos estados via `clearChatStates(chatId)` após cada ciclo
+- `chatId` é propagado por toda a cadeia: message.js → Dispatcher → ExecutionManager → Coordinators
 
 ### 3. Modelos placeholder
 Os modelos GPT-5.2, GPT-5-mini e GPT-5-nano referidos na constituição não existem ainda. O sistema usa placeholders: `nano → gpt-4o-mini`, `mini → gpt-4o-mini`, `full → gpt-4o`. Troca requer apenas alteração em `config/index.js`.

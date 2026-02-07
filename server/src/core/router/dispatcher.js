@@ -26,6 +26,7 @@ class Dispatcher {
     this.searchManager = tools.searchManager || null;
     this.orchestrator = tools.orchestrator || null;
     this.executionManager = tools.executionManager || null;
+    this.externalCallManager = tools.externalCallManager || null;
   }
 
   /**
@@ -42,7 +43,7 @@ class Dispatcher {
    * @param {Object} memory - Memória completa do chat
    * @returns {Promise<Object>} Resultado da execução
    */
-  async route(decision, query, memory) {
+  async route(decision, query, memory, chatId) {
     const route = decision.decision;
 
     logger.logic('DEBUG', 'Dispatcher', `Roteando para "${route}"`, {
@@ -51,36 +52,42 @@ class Dispatcher {
 
     switch (route) {
       case 'bridge_query':
-        return await this._handleBridgeQuery(query, memory);
+        return await this._handleBridgeQuery(query, memory, chatId);
 
       case 'bridge_insert':
-        return await this._handleBridgeInsert(query);
+        return await this._handleBridgeInsert(query, chatId);
 
       case 'serper':
-        return await this._handleSerper(query, memory);
+        return await this._handleSerper(query, memory, chatId);
 
       case 'escalate':
-        return await this._handleEscalate(query, memory);
+        return await this._handleEscalate(query, memory, chatId);
 
       default:
         logger.warn('Dispatcher', 'logic', `Rota desconhecida: "${route}", escalando`);
-        return await this._handleEscalate(query, memory);
+        return await this._handleEscalate(query, memory, chatId);
     }
   }
 
   /**
    * Roteia para consulta ao Finance Bridge.
    * Memória COMPLETA é enviada (conforme constituição).
+   * Usa ExternalCallManager para preservação de estado.
    * @private
    */
-  async _handleBridgeQuery(query, memory) {
+  async _handleBridgeQuery(query, memory, chatId) {
     if (!this.financeBridge) {
       logger.error('Dispatcher', 'logic', 'Finance Bridge não disponível');
       return { success: false, error: 'Finance Bridge não configurado' };
     }
 
     try {
-      const result = await this.financeBridge.query(query, memory);
+      const result = await this._executeExternal(
+        'junior', chatId,
+        () => this.financeBridge.query(query, memory),
+        { query },
+        'finance_bridge:query'
+      );
       logger.logic('DEBUG', 'Dispatcher', 'Bridge query executada com sucesso');
       return { success: true, type: 'bridge_query', data: result };
     } catch (error) {
@@ -92,16 +99,22 @@ class Dispatcher {
   /**
    * Roteia para insert no Finance Bridge.
    * Memória NÃO é enviada (conforme constituição).
+   * Usa ExternalCallManager para preservação de estado.
    * @private
    */
-  async _handleBridgeInsert(query) {
+  async _handleBridgeInsert(query, chatId) {
     if (!this.financeBridge) {
       logger.error('Dispatcher', 'logic', 'Finance Bridge não disponível');
       return { success: false, error: 'Finance Bridge não configurado' };
     }
 
     try {
-      const result = await this.financeBridge.insert(query);
+      const result = await this._executeExternal(
+        'junior', chatId,
+        () => this.financeBridge.insert(query),
+        { query },
+        'finance_bridge:insert'
+      );
       logger.logic('DEBUG', 'Dispatcher', 'Bridge insert executado com sucesso');
       return { success: true, type: 'bridge_insert', data: result };
     } catch (error) {
@@ -113,16 +126,22 @@ class Dispatcher {
   /**
    * Roteia para busca na internet (Serper).
    * Memória COMPLETA é enviada (conforme constituição).
+   * Usa ExternalCallManager para preservação de estado.
    * @private
    */
-  async _handleSerper(query, memory) {
+  async _handleSerper(query, memory, chatId) {
     if (!this.searchManager) {
       logger.error('Dispatcher', 'logic', 'Search Manager não disponível');
       return { success: false, error: 'Search Manager não configurado' };
     }
 
     try {
-      const result = await this.searchManager.search(query, 'serper');
+      const result = await this._executeExternal(
+        'junior', chatId,
+        () => this.searchManager.search(query, 'serper'),
+        { query },
+        'search:serper'
+      );
       logger.logic('DEBUG', 'Dispatcher', 'Serper search executada com sucesso');
       return { success: true, type: 'serper', data: result };
     } catch (error) {
@@ -137,7 +156,7 @@ class Dispatcher {
    * O Orquestrador gera o DOC e o ExecutionManager executa os coordenadores.
    * @private
    */
-  async _handleEscalate(query, memory) {
+  async _handleEscalate(query, memory, chatId) {
     if (!this.orchestrator || !this.executionManager) {
       logger.warn('Dispatcher', 'logic', 'Orquestrador ou ExecutionManager não disponíveis, retornando indicador de escalada');
       return {
@@ -158,7 +177,7 @@ class Dispatcher {
 
       // 2. ExecutionManager executa os coordenadores conforme DOC
       logger.logic('INFO', 'Dispatcher', `Executando DOC ${doc.request_id} com ${doc.execution_plan.agents.length} agente(s)`);
-      const results = await this.executionManager.execute(doc);
+      const results = await this.executionManager.execute(doc, chatId);
 
       // 3. Converter Map para objeto para serialização
       const outputs = {};
@@ -185,6 +204,27 @@ class Dispatcher {
       logger.error('Dispatcher', 'logic', 'Falha na escalada para Orquestrador', { error: error.message });
       return { success: false, type: 'escalate', error: error.message };
     }
+  }
+
+  /**
+   * Executa uma chamada externa com preservação de estado via ExternalCallManager.
+   * Fallback transparente para execução direta se ExternalCallManager não disponível.
+   * LÓGICA PURA.
+   * @private
+   * @param {string} agentId - ID do agente que faz a chamada
+   * @param {string} chatId - ID do chat
+   * @param {Function} fn - Função async a executar
+   * @param {Object} params - Parâmetros para logging/estado
+   * @param {string} systemName - Nome do sistema externo
+   * @returns {Promise<*>} Resultado da chamada
+   */
+  async _executeExternal(agentId, chatId, fn, params, systemName) {
+    if (this.externalCallManager && chatId) {
+      return this.externalCallManager.executeWithState(
+        agentId, chatId, async () => fn(), params, systemName
+      );
+    }
+    return fn();
   }
 }
 

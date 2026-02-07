@@ -76,7 +76,7 @@ server/
 | Agente de Investimentos (`agents/coordinators/investments.js`) | ✅ | Ferramentas descritas no prompt: Brapi, Finance Bridge, Serper, Tavily, Math. Foco: mercado e portfólio |
 | Agente de Planejamento (`agents/coordinators/planning.js`) | ✅ | Ferramentas descritas no prompt: Finance Bridge, Serper, Math. Foco: metas, orçamentos, viabilidade |
 | Separação de ferramentas por coordenador | ✅ | Cada prompt descreve APENAS as ferramentas que o coordenador pode usar |
-| Execução real de ferramentas pelos coordenadores | ⚠️ | **Não implementado.** Ferramentas são injetadas no construtor mas não invocadas durante `execute()`. A IA descreve uso de ferramentas no `reasoning` mas não há mecanismo de function calling ou pós-processamento que execute as ferramentas reais. Coordenadores operam apenas com conhecimento prévio do modelo. |
+| Execução real de ferramentas pelos coordenadores | ✅ | **Implementado (06/02/2026).** `BaseCoordinator.execute()` agora implementa execução de ferramentas em dois passos (two-pass): Passo 1 — IA solicita ferramentas via `tool_requests`, Execução — sistema executa Finance Bridge, Search, Math, Passo 2 — IA sintetiza com dados reais. Usa `ExternalCallManager` para preservação de estado. |
 
 ### Objetivo 3.4: Módulo Matemático (Precision Engine)
 
@@ -180,7 +180,7 @@ O `Dispatcher._handleEscalate()` foi atualizado de stub (Fase 2) para implementa
 | Modular e extensível | Classe base `BaseCoordinator` permite adicionar novos coordenadores sem refatoração |
 | Memória COMPLETA para escalada | `Dispatcher._handleEscalate(query, memory)` envia memória completa ao Orquestrador |
 | DOC (Documento de Direção) | JSON estruturado com request_id, reasoning, execution_plan conforme constituição |
-| Ferramentas por coordenador | Cada prompt descreve apenas as ferramentas do contrato (ex: Brapi apenas para Investimentos). **Limitação:** ferramentas são descritas no prompt mas não executadas de fato — não há function calling nem pós-processamento de tool calls. Coordenadores raciocinam sobre ferramentas mas não as invocam. |
+| Ferramentas por coordenador | Cada prompt descreve apenas as ferramentas do contrato (ex: Brapi apenas para Investimentos). **Integrado (06/02/2026):** coordenadores agora executam ferramentas reais via two-pass (plan → execute → synthesize) com `ExternalCallManager` para preservação de estado. |
 | Módulo Matemático com precisão | Decimal.js para evitar erros de ponto flutuante, formatação BRL |
 | Resiliência | Fallbacks em todos os pontos de IA, timeout em dependências, erros não bloqueiam pipeline |
 
@@ -218,7 +218,7 @@ O `Dispatcher._handleEscalate()` foi atualizado de stub (Fase 2) para implementa
 
 ### Atenção especial
 
-- **⚠️ Ferramentas dos Coordenadores (LIMITAÇÃO CRÍTICA)**: As ferramentas são descritas no prompt para que a IA planeje seu uso, mas **não há execução real**. Os coordenadores recebem ferramentas no construtor (`tools`) mas o método `BaseCoordinator.execute()` apenas chama `model.completeJSON()` — não há mecanismo de function calling, tool-use da API OpenAI, nem pós-processamento que detecte e execute tool calls. Isso significa que coordenadores baseiam suas respostas apenas no conhecimento prévio do modelo, sem acesso a dados reais do usuário via Finance Bridge, APIs de busca ou Módulo Matemático. **Esta é a principal lacuna funcional do sistema.**
+- **✅ Ferramentas dos Coordenadores (RESOLVIDO em 06/02/2026)**: `BaseCoordinator.execute()` agora implementa execução de ferramentas em dois passos: Passo 1 — IA recebe tarefa e solicita ferramentas via `tool_requests` no JSON; Execução — sistema executa Finance Bridge, Search APIs e Módulo Matemático; Passo 2 — IA recebe dados reais e produz análise final baseada em dados concretos. Todas as chamadas externas são gerenciadas via `ExternalCallManager` com preservação de estado. Prompt template atualizado com seção `SOLICITAÇÃO DE FERRAMENTAS`.
 - **Concorrência**: O ExecutionManager executa agentes sequencialmente por prioridade. Agentes sem dependência mútua poderiam ser paralelizados na Fase 4 para melhor performance
 - **Timeout**: O timeout padrão por agente é `config.timeouts.agent` (80s). Para queries muito complexas com 3 coordenadores, o tempo total pode ser 240s+ — considerar streaming na Fase 4
 - **Tamanho do prompt**: O prompt do Orquestrador inclui todos os contratos (~600 tokens). Se novos coordenadores forem adicionados, monitorar tamanho do prompt

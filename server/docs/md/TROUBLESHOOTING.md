@@ -82,12 +82,19 @@
 
 **Sintoma:** Respostas de coordenadores são genéricas, sem valores financeiros reais.
 
-**Causa raiz (limitação conhecida):**
-- Os coordenadores descrevem ferramentas no prompt, mas **não as executam de fato**.
-- `BaseCoordinator.execute()` apenas chama `model.completeJSON()` — não há function calling nem pós-processamento de tool calls.
-- Resultado: a IA "planeja" usar Finance Bridge, Serper, etc., mas os dados retornados são baseados no conhecimento prévio do modelo.
+**Status:** ✅ **RESOLVIDO** (06/02/2026)
 
-**Status:** Limitação arquitetural pendente. Resolução requer implementação de function calling da API OpenAI ou pós-processamento de tool calls nos coordenadores.
+**Solução implementada:**
+`BaseCoordinator.execute()` agora implementa execução de ferramentas em dois passos (two-pass):
+1. **Passo 1:** IA recebe a tarefa e solicita ferramentas via `tool_requests` no JSON
+2. **Execução:** O sistema executa Finance Bridge, Search APIs e Módulo Matemático
+3. **Passo 2:** IA recebe os dados reais e produz análise baseada em dados concretos
+
+**Diagnóstico (se o problema persistir):**
+1. Verificar se as ferramentas estão sendo injetadas nos coordenadores: `tools.financeBridge`, `tools.searchManager`, `tools.mathModule`
+2. Verificar logs: `[AI] <Coordenador> — Executando N ferramenta(s) solicitada(s)`
+3. Verificar se o prompt inclui a seção `SOLICITAÇÃO DE FERRAMENTAS` em `prompt-template.js`
+4. Conferir se `metadata.tools_executed > 0` no resultado do coordenador
 
 ---
 

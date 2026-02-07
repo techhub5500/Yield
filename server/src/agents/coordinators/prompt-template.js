@@ -70,6 +70,23 @@ REGRAS:
 - Inclua o raciocínio completo no campo "reasoning"
 - Se receber outputs de agentes anteriores, USE-OS como base
 - Retorne APENAS JSON válido
+- Quando a tarefa envolver dados financeiros do usuário ou informações externas, SEMPRE solicite dados reais via tool_requests
+- NÃO invente dados financeiros — use tool_requests para obter dados reais
+
+SOLICITAÇÃO DE FERRAMENTAS (tool_requests):
+Quando precisar de DADOS REAIS para completar a tarefa, inclua o campo "tool_requests" no JSON.
+O sistema executará as ferramentas e retornará os resultados para você completar a análise.
+
+Ferramentas disponíveis para solicitação:
+- finance_bridge (action: "query") — params: { "query": "descrição em linguagem natural" }
+- search (action: "serper" | "brapi" | "tavily") — params: { "query": "termo de busca" }
+- math (action: "compoundInterest" | "netPresentValue" | "internalRateOfReturn" | "sharpeRatio" | "valueAtRisk" | "projectionWithContributions") — params: parâmetros específicos da função
+
+Exemplo de tool_requests:
+[
+  { "tool": "finance_bridge", "action": "query", "params": { "query": "gastos de alimentação nos últimos 30 dias" } },
+  { "tool": "math", "action": "compoundInterest", "params": { "principal": 1000, "rate": 0.01, "periods": 12 } }
+]
 
 FORMATO DE SAÍDA:
 {

@@ -21,12 +21,13 @@
  * @param {Map<string, Object>} results - Resultados já obtidos de outros agentes
  * @returns {Object} Input estruturado para o coordenador
  */
-function prepareInput(agentSpec, results) {
+function prepareInput(agentSpec, results, chatId) {
   const input = {
     memory_context: agentSpec.memory_context || '',
     task_description: agentSpec.task_description,
     expected_output: agentSpec.expected_output,
     dependency_outputs: {},
+    chatId: chatId || null,
   };
 
   // Adicionar outputs de dependências (se houver)

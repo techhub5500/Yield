@@ -44,7 +44,7 @@ class ExecutionManager {
    * @param {Object} doc - Documento de Direção gerado pelo Orquestrador
    * @returns {Promise<Map<string, Object>>} Resultados de todos os agentes
    */
-  async execute(doc) {
+  async execute(doc, chatId) {
     const queue = new ExecutionQueue();
     const agents = doc.execution_plan.agents;
 
@@ -72,8 +72,8 @@ class ExecutionManager {
           await queue.waitForDependencies(agentSpec.dependencies);
         }
 
-        // Preparar input com outputs de dependências
-        const input = prepareInput(agentSpec, queue.getResults());
+        // Preparar input com outputs de dependências (inclui chatId para ExternalCallManager)
+        const input = prepareInput(agentSpec, queue.getResults(), chatId);
 
         // Executar coordenador
         const coordinator = this.coordinators[agentName];

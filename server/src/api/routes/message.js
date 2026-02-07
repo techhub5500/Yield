@@ -41,6 +41,7 @@ function createMessageRouter(deps = {}) {
     junior,
     dispatcher,
     responseAgent,
+    externalCallManager,
   } = deps;
 
   /**
@@ -115,7 +116,7 @@ function createMessageRouter(deps = {}) {
         return res.status(503).json({ error: 'Dispatcher não disponível' });
       }
 
-      const routeResult = await dispatcher.route(decision, query, memory);
+      const routeResult = await dispatcher.route(decision, query, memory, chatId);
 
       // --- 5/6. Gerar resposta final ---
       let finalResponse;
@@ -156,6 +157,11 @@ function createMessageRouter(deps = {}) {
 
       // --- 7. Atualizar memória (LÓGICA + IA nano para resumo) ---
       await memoryManager.updateAfterCycle(chatId, query, finalResponse);
+
+      // --- Cleanup de estados de chamadas externas ---
+      if (externalCallManager) {
+        externalCallManager.clearChatStates(chatId);
+      }
 
       // --- 8. Retornar resposta ---
       const elapsed = Date.now() - startTime;

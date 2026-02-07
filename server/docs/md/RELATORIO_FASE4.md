@@ -69,7 +69,7 @@ server/
 | Recuperação de contexto (`core/state/context-recovery.js`) | ✅ | Reconstrói contexto completo, mescla resultados, valida integridade |
 | Serialização/Deserialização | ✅ | `toJSON()` e `fromJSON()` no AgentState |
 | Cleanup de estados | ✅ | `clearState()` e `clearChatStates()` após ciclo completo |
-| Integração com fluxo principal | ⚠️ | **Não integrado.** Os módulos `AgentState`, `ExternalCallManager` e `ContextRecovery` foram implementados como infraestrutura isolada, mas não são utilizados em nenhum fluxo real: o Junior não usa `ExternalCallManager` ao chamar Finance Bridge, os Coordenadores não usam `AgentState` durante execução, e `message.js` não instancia nem referencia esses módulos. Atualmente, todas as chamadas externas são síncronas via `await` direto, sem preservação de estado. |
+| Integração com fluxo principal | ✅ | **Integrado (06/02/2026).** `ExternalCallManager` agora é utilizado em todo o fluxo: `Dispatcher` usa `_executeExternal()` para preservar estado em chamadas a Finance Bridge e APIs de busca; `BaseCoordinator` usa `ExternalCallManager` ao executar ferramentas durante o two-pass; `message.js` recebe `externalCallManager` via injeção de dependências e faz cleanup via `clearChatStates(chatId)` após cada ciclo. `chatId` é propagado pela cadeia completa. |
 
 ### Objetivo 4.3: API HTTP e Interface Cliente
 
@@ -161,6 +161,7 @@ const app = createServer({
   junior,
   dispatcher,
   responseAgent,
+  externalCallManager,
 });
 ```
 
@@ -168,6 +169,7 @@ Isso permite:
 - Testes com mocks de qualquer componente
 - Substituição de componentes sem alterar rotas
 - Startup parcial (sistema funciona sem ResponseAgent, com fallbacks)
+- ExternalCallManager integrado para preservação de estado em chamadas externas
 
 ### 3.6 Formato do endpoint de mensagem
 
@@ -240,7 +242,7 @@ Isso permite:
 | Reasoning High para Resposta | Decisão complexa: integrar múltiplos outputs, avaliar trade-offs de priorização |
 | Verbosity High para Resposta | Único agente cujo output é lido por HUMANOS — precisa de clareza |
 | Regras de formatação | Prompt inclui regras: evitar listas em conversas casuais, máximo 2 níveis de cabeçalho, formatos monetários BRL |
-| Interação com sistemas externos sem perder contexto | `ExternalCallManager` foi implementado mas **não está integrado** ao fluxo principal. Nenhum agente (Junior, Coordenadores) utiliza `ExternalCallManager` ou `AgentState` durante chamadas a Finance Bridge, APIs de busca ou Módulo Matemático. Todas as chamadas externas são síncronas via `await` direto, sem persistência de estado. A infraestrutura existe e está pronta para ser conectada. |
+| Interação com sistemas externos sem perder contexto | **Integrado (06/02/2026).** `ExternalCallManager` é utilizado em todo o fluxo principal: `Dispatcher` preserva estado via `_executeExternal()` em chamadas a Finance Bridge e APIs de busca; `BaseCoordinator` preserva estado durante execução de ferramentas no two-pass; `message.js` faz cleanup de estados após cada ciclo via `clearChatStates(chatId)`. `chatId` propagado por toda a cadeia de execução. |
 | Memória atualizada a cada ciclo COMPLETO | `MemoryManager.updateAfterCycle()` chamado após resposta final gerada |
 | Regras de envio de memória | Respeitadas no Dispatcher e mantidas na Fase 4 |
 | Resiliência | Fallbacks em todos os pontos de IA, HTTP 503 para dependências indisponíveis |
@@ -412,35 +414,32 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 
 ## 8. Lacunas de integração identificadas (pós-auditoria)
 
-Esta seção documenta lacunas de integração entre fases identificadas durante auditoria técnica. Não são bugs — são funcionalidades implementadas isoladamente mas não conectadas ao fluxo principal.
+Esta seção documenta lacunas de integração entre fases identificadas durante auditoria técnica. **Todas as lacunas críticas foram resolvidas em 06/02/2026.**
 
-### 8.1 ExternalCallManager / AgentState não integrados ao fluxo
+### 8.1 ExternalCallManager / AgentState — ✅ INTEGRADO (06/02/2026)
 
 **Requisito da constituição:**
 > "Os agentes precisam ser capazes de interagir com sistemas externos sem encerrar o fluxo de execução. [...] o agente deve ser capaz de ativá-la, aguardar o retorno preservando sua memória e, quando a resposta chegar, continuar o fluxo para executar a próxima tarefa, sem perda de contexto."
 
-**Estado atual:**
-- `core/state/agent-state.js` — implementado e funcional
-- `core/state/external-call-manager.js` — implementado e funcional
-- `core/state/context-recovery.js` — implementado e funcional
-- Nenhum deles é instanciado ou utilizado em `api/routes/message.js`, `agents/junior/index.js`, `agents/coordinators/base.js` ou `core/router/dispatcher.js`
-- Todas as chamadas externas (Finance Bridge, APIs de busca) são `await` direto sem ciclo de preservação de estado
+**Resolução:**
+- `Dispatcher` recebe `externalCallManager` via construtor e usa `_executeExternal()` em todas as rotas (bridge_query, bridge_insert, serper)
+- `BaseCoordinator` usa `ExternalCallManager` ao executar ferramentas via `_executeSingleTool()`
+- `message.js` recebe `externalCallManager` via injeção de dependências e faz cleanup via `clearChatStates(chatId)` após cada ciclo
+- `chatId` é propagado: message.js → dispatcher.route(chatId) → _handleEscalate(chatId) → executionManager.execute(doc, chatId) → prepareInput(chatId) → coordinator.execute(input.chatId)
 
-**Impacto:** Baixo no momento (chamadas são síncronas e rápidas), mas impede future scaling com chamadas assíncronas de longa duração.
-
-### 8.2 Coordenadores sem execução real de ferramentas
+### 8.2 Coordenadores com execução real de ferramentas — ✅ IMPLEMENTADO (06/02/2026)
 
 **Requisito da constituição:**
 > "Agente de Análise: Ferramentas: Finance Bridge, Serper, Tavily, Módulo Matemático"
 
-**Estado atual:**
-- Ferramentas são injetadas via construtor (`tools = {}`)
-- Ferramentas são **descritas** nos prompts (ANALYSIS_TOOLS_DESCRIPTION, etc.)
-- A IA menciona uso de ferramentas no `reasoning` e `tools_used`
-- **Não há mecanismo que execute as ferramentas reais** — `BaseCoordinator.execute()` apenas chama `model.completeJSON()` sem function calling nem pós-processamento de tool calls
-- Resultado: coordenadores respondem com base no conhecimento prévio do modelo, sem dados reais do usuário
-
-**Impacto:** Alto — invalida a principal funcionalidade dos coordenadores conforme a constituição. Análises, investimentos e planejamento não acessam dados financeiros reais do usuário.
+**Resolução:**
+- `BaseCoordinator.execute()` implementa execução em dois passos (two-pass):
+  1. **Passo 1 (Planejamento):** IA analisa tarefa e solicita ferramentas via `tool_requests` no JSON
+  2. **Execução:** Sistema executa ferramentas reais (`_executeToolRequests` → `_executeSingleTool`)
+  3. **Passo 2 (Síntese):** IA recebe dados reais e produz análise final com `_buildSynthesisPrompt`
+- Prompt template atualizado com seção `SOLICITAÇÃO DE FERRAMENTAS` documentando formato de tool_requests
+- Ferramentas disponíveis: finance_bridge:query, search:serper/brapi/tavily, math:compoundInterest/netPresentValue/internalRateOfReturn/sharpeRatio/valueAtRisk/projectionWithContributions
+- Fallback transparente: se ferramentas não estão injetadas, coordenador opera como antes (apenas conhecimento do modelo)
 
 ### 8.3 Modelos placeholder
 
