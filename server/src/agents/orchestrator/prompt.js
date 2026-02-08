@@ -62,7 +62,9 @@ REGRAS:
 - Cada agente deve ter um expected_output DESCREVENDO o que se espera dele
 - dependencies deve ser um array com os nomes dos agentes que precisam terminar antes
 - Prioridades devem ser números inteiros únicos começando em 1
-- Retorne APENAS JSON válido
+
+FORMATO DE SAÍDA:
+**IMPORTANTE:** Retorne EXCLUSIVAMENTE um objeto JSON válido.
 
 Retorne JSON no formato DOC (Documento de Direção):
 {

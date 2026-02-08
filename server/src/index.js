@@ -90,3 +90,70 @@ module.exports = {
   AIClient: require('./utils/ai/client'),
   OpenAIClient: require('./utils/ai/openai-client'),
 };
+
+// --- Inicialização do servidor HTTP ---
+// Se executado diretamente (não via require), iniciar o servidor.
+if (require.main === module) {
+  const { createServer, startServer } = require('./api/server');
+  const memoryManager = require('./core/memory/manager');        // singleton
+  const junior = require('./agents/junior');                      // { analyze, formatMemoryForPrompt }
+  const Dispatcher = require('./core/router/dispatcher');         // class
+  const orchestrator = require('./agents/orchestrator');           // { plan, formatMemoryForOrchestrator }
+  const ExecutionManager = require('./core/orchestrator/execution-manager'); // class
+  const responseAgent = require('./agents/response');              // { synthesize, formatDirectResponse }
+  const ExternalCallManager = require('./core/state/external-call-manager'); // class
+
+  // Ferramentas (Fase 2 + 3)
+  const FinanceBridge = require('./tools/finance-bridge');
+  const SearchManager = require('./tools/search');
+  const MathModule = require('./tools/math');
+
+  // Coordenadores (Fase 3)
+  const AnalysisCoordinator = require('./agents/coordinators/analysis');
+  const InvestmentsCoordinator = require('./agents/coordinators/investments');
+  const PlanningCoordinator = require('./agents/coordinators/planning');
+
+  // Instanciar ferramentas
+  const financeBridge = new FinanceBridge();
+  const searchManager = new SearchManager();
+  const mathModule = MathModule; // já é singleton (module.exports = new MathModule())
+  const externalCallManager = new ExternalCallManager();
+
+  // Instanciar coordenadores com ferramentas injetadas
+  const coordinatorTools = { financeBridge, searchManager, mathModule };
+  const coordinators = {
+    analysis: new AnalysisCoordinator(coordinatorTools),
+    investments: new InvestmentsCoordinator(coordinatorTools),
+    planning: new PlanningCoordinator(coordinatorTools),
+  };
+
+  // Instanciar ExecutionManager com coordenadores
+  const executionManager = new ExecutionManager(coordinators);
+
+  // Instanciar Dispatcher com TODAS as ferramentas e agentes
+  const dispatcher = new Dispatcher({
+    financeBridge,
+    searchManager,
+    orchestrator,
+    executionManager,
+    externalCallManager,
+  });
+
+  const dependencies = {
+    memoryManager,
+    junior,
+    dispatcher,
+    orchestrator,
+    executionManager,
+    responseAgent,
+    externalCallManager,
+  };
+
+  const app = createServer(dependencies);
+  startServer(app).then(() => {
+    logger.system('INFO', 'Server', `Yield Server pronto para receber conexões na porta ${config.server.port}`);
+  }).catch((err) => {
+    logger.error('Server', 'system', `Falha ao iniciar servidor: ${err.message}`);
+    process.exit(1);
+  });
+}

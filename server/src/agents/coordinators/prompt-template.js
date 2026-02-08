@@ -69,9 +69,11 @@ REGRAS:
 - Siga TODAS as 6 etapas em ordem
 - Inclua o raciocínio completo no campo "reasoning"
 - Se receber outputs de agentes anteriores, USE-OS como base
-- Retorne APENAS JSON válido
 - Quando a tarefa envolver dados financeiros do usuário ou informações externas, SEMPRE solicite dados reais via tool_requests
 - NÃO invente dados financeiros — use tool_requests para obter dados reais
+
+FORMATO DE SAÍDA:
+**IMPORTANTE:** Retorne EXCLUSIVAMENTE um objeto JSON válido.
 
 SOLICITAÇÃO DE FERRAMENTAS (tool_requests):
 Quando precisar de DADOS REAIS para completar a tarefa, inclua o campo "tool_requests" no JSON.
@@ -88,7 +90,7 @@ Exemplo de tool_requests:
   { "tool": "math", "action": "compoundInterest", "params": { "principal": 1000, "rate": 0.01, "periods": 12 } }
 ]
 
-FORMATO DE SAÍDA:
+ESTRUTURA JSON DE RESPOSTA:
 {
   "agent": "${name.toLowerCase().includes('análise') ? 'analysis' : name.toLowerCase().includes('investimento') ? 'investments' : 'planning'}",
   "task_completed": true,

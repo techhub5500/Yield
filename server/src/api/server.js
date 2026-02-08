@@ -12,6 +12,7 @@
  * - Health check
  */
 
+const path = require('path');
 const express = require('express');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -62,6 +63,15 @@ function createServer(dependencies = {}) {
     });
 
     next();
+  });
+
+  // --- Arquivos estáticos do frontend ---
+  const clientDir = path.resolve(__dirname, '../../../client');
+  app.use(express.static(clientDir));
+
+  // Redirecionar raiz para home
+  app.get('/', (req, res) => {
+    res.redirect('/html/home.html');
   });
 
   // --- Rotas ---

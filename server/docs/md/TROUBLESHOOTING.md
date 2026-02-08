@@ -28,10 +28,16 @@
 
 **Sintoma:** Queries simples vão para escalada em vez de rotas diretas.
 
-**Diagnóstico:**
+**Status:** ✅ **RESOLVIDO PARA SAUDAÇÕES** (Patch 4.1 - 07/02/2026)
+
+**Solução implementada:**
+Rota `simple_response` adicionada para interações sociais. Saudações agora têm prioridade máxima e não são mais escaladas.
+
+**Diagnóstico (se o problema persistir para queries financeiras):**
 1. Verificar logs do Junior: `[AI] Junior — Decisão: "escalate"`
 2. Conferir o prompt em `agents/junior/prompt.js`
 3. Verificar se a memória está corretamente formatada
+4. Se saudações ainda escalando: verificar se rota `simple_response` está em `validators.js`
 
 ---
 
@@ -95,6 +101,25 @@
 2. Verificar logs: `[AI] <Coordenador> — Executando N ferramenta(s) solicitada(s)`
 3. Verificar se o prompt inclui a seção `SOLICITAÇÃO DE FERRAMENTAS` em `prompt-template.js`
 4. Conferir se `metadata.tools_executed > 0` no resultado do coordenador
+
+---
+
+### 9. Saudações recebem respostas "robóticas" ou genéricas (Patch 4.1)
+
+**Sintoma:** Respostas a "Olá", "Oi", "Bom dia" são muito formais ou não contextualizam memória recente.
+
+**Status:** Novo problema potencial (Patch 4.1)
+
+**Diagnóstico:**
+1. Verificar se rota `simple_response` está sendo usada: logs devem mostrar `[DEBUG] logic | Dispatcher — Resposta social via ResponseAgent`
+2. Verificar se ResponseAgent está disponível: caso contrário, usa fallback genérico
+3. Verificar temperatura do modelo: deve ser 0.7 para interações sociais (mais criativo)
+4. Se usuário pergunta sobre sistema mas resposta é vaga: verificar se `docs/md_sistema/sistema.md` existe e está acessível
+
+**Solução:**
+- Se fallback é usado: verificar se ResponseAgent foi injetado em `message.js`
+- Se resposta não usa memória: verificar se `formatMemoryForResponse()` está funcionando
+- Se resposta sobre sistema é genérica: verificar logs para `[DEBUG] ResponseAgent — Documentação do sistema carregada`
 
 ---
 

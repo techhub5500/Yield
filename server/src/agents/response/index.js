@@ -15,10 +15,12 @@
  */
 
 const ModelFactory = require('../../utils/ai/model-factory');
-const { RESPONSE_SYSTEM_PROMPT, DIRECT_RESPONSE_PROMPT } = require('./prompt');
+const { RESPONSE_SYSTEM_PROMPT, DIRECT_RESPONSE_PROMPT, SIMPLE_RESPONSE_PROMPT } = require('./prompt');
 const { integrateOutputs, formatIntegratedContext, formatDirectResult } = require('./integrator');
 const { suggestFormat } = require('./format-selector');
 const logger = require('../../utils/logger');
+const fs = require('fs').promises;
+const path = require('path');
 
 /**
  * Sintetiza outputs de coordenadores em resposta final para o usuário.
@@ -84,9 +86,19 @@ async function synthesize(query, memory, doc, outputs) {
   } catch (error) {
     logger.error('ResponseAgent', 'ai', `Falha ao sintetizar resposta: ${error.message}`, {
       query: query.substring(0, 80),
+      errorStatus: error.status,
     });
 
     // Fallback: tentar construir resposta básica a partir dos outputs
+    // Se é erro de API Key, não tenta fallback
+    if (error.status === 401 || error.message.includes('API key')) {
+      return {
+        response: 'Desculpe, estou com dificuldades técnicas no momento (erro de autenticação). Por favor, tente novamente em instantes.',
+        format: 'conversational',
+        tone: 'apologetic',
+        key_points: [],
+      };
+    }
     return createFallbackResponse(query, integrated);
   }
 }
@@ -143,9 +155,20 @@ async function formatDirectResponse(query, type, data, memory) {
 
     return response;
   } catch (error) {
-    logger.error('ResponseAgent', 'ai', `Falha ao formatar resposta direta: ${error.message}`);
+    logger.error('ResponseAgent', 'ai', `Falha ao formatar resposta direta: ${error.message}`, {
+      errorStatus: error.status,
+      type,
+    });
 
     // Fallback: resposta genérica
+    // Se é erro de API Key, informar o usuário adequadamente
+    if (error.status === 401 || error.message.includes('API key')) {
+      return {
+        response: 'Desculpe, estou temporariamente indisponível (erro de autenticação). Por favor, aguarde um momento e tente novamente.',
+        format: 'quick',
+        tone: 'apologetic',
+      };
+    }
     return {
       response: generateDirectFallback(type, data),
       format: 'quick',
@@ -241,4 +264,86 @@ function generateDirectFallback(type, data) {
   }
 }
 
-module.exports = { synthesize, formatDirectResponse };
+/**
+ * Formata resposta social/trivial com contexto da memória recente.
+ * Usa modelo MINI (mais leve) para interações sociais.
+ * Se usuário perguntar sobre o sistema, pode acessar documentação quando pertinente.
+ * ADICIONADO: 07/02/2026 (Opção B)
+ * 
+ * @param {string} query - Query do usuário
+ * @param {Object} memory - Memória do chat
+ * @returns {Promise<Object>} Resposta formatada
+ */
+async function formatSimpleResponse(query, memory) {
+  // Usa MINI em vez de FULL para economizar
+  const mini = ModelFactory.getMini('low', 'medium');
+  
+  const memoryContext = formatMemoryForResponse(memory);
+  
+  // LÓGICA: Detectar se usuário está perguntando sobre o sistema
+  const isAskingAboutSystem = /como (você|vc) funciona|o que (você|vc) faz|para que serve|quem é você|explica|me ajuda a entender/i.test(query);
+  
+  let systemInfo = '';
+  if (isAskingAboutSystem) {
+    // Tentar carregar informações sobre o sistema
+    try {
+      const sistemaPath = path.join(__dirname, '..', '..', '..', 'docs', 'md_sistema', 'sistema.md');
+      systemInfo = await fs.readFile(sistemaPath, 'utf-8');
+      logger.logic('DEBUG', 'ResponseAgent', 'Documentação do sistema carregada para contexto');
+    } catch (error) {
+      logger.warn('ResponseAgent', 'logic', 'Não foi possível carregar documentação do sistema', {
+        error: error.message,
+      });
+      // Continua sem a documentação — IA pode responder baseada em conhecimento
+    }
+  }
+
+  const systemPrompt = SIMPLE_RESPONSE_PROMPT;
+
+  const userPrompt = [
+    systemInfo ? `INFORMAÇÕES SOBRE O SISTEMA:\n${systemInfo}\n` : '',
+    `MEMÓRIA RECENTE:`,
+    memoryContext,
+    ``,
+    `QUERY DO USUÁRIO: "${query}"`,
+    ``,
+    `Responda de forma amigável e contextual.`,
+  ].join('\n');
+
+  try {
+    const result = await mini.completeJSON(systemPrompt, userPrompt, {
+      maxTokens: 300,
+      temperature: 0.7, // Mais criativo para interações sociais
+    });
+
+    logger.ai('DEBUG', 'ResponseAgent', `Resposta social formatada`, {
+      responseLength: result.response?.length || 0,
+      usedSystemInfo: isAskingAboutSystem,
+    });
+
+    return {
+      response: result.response || "Olá! Como posso ajudar você com suas finanças hoje?",
+      format: result.format || 'quick',
+      tone: result.tone || 'friendly',
+    };
+  } catch (error) {
+    logger.error('ResponseAgent', 'ai', `Falha ao formatar resposta social: ${error.message}`);
+    
+    // Fallback: resposta genérica
+    if (error.status === 401 || error.message.includes('API key')) {
+      return {
+        response: 'Desculpe, estou temporariamente indisponível (erro de autenticação). Por favor, aguarde um momento e tente novamente.',
+        format: 'quick',
+        tone: 'apologetic',
+      };
+    }
+    
+    return {
+      response: "Olá! Como posso ajudar você com suas finanças hoje?",
+      format: 'quick',
+      tone: 'friendly',
+    };
+  }
+}
+
+module.exports = { synthesize, formatDirectResponse, formatSimpleResponse };

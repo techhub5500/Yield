@@ -60,6 +60,9 @@ class Dispatcher {
       case 'serper':
         return await this._handleSerper(query, memory, chatId);
 
+      case 'simple_response':
+        return await this._handleSimpleResponse(query, memory, chatId);
+
       case 'escalate':
         return await this._handleEscalate(query, memory, chatId);
 
@@ -148,6 +151,23 @@ class Dispatcher {
       logger.error('Dispatcher', 'logic', 'Falha na busca Serper', { error: error.message });
       return { success: false, type: 'serper', error: error.message };
     }
+  }
+
+  /**
+   * Roteia para resposta social/trivial (simple_response).
+   * Delega para ResponseAgent formatar resposta contextual via IA (Mini).
+   * Memória é enviada para contextualização.
+   * ADICIONADO: 07/02/2026
+   * @private
+   */
+  async _handleSimpleResponse(query, memory, chatId) {
+    logger.logic('DEBUG', 'Dispatcher', 'Resposta social via ResponseAgent');
+    
+    return {
+      success: true,
+      type: 'simple_response',
+      data: { query, memory },
+    };
   }
 
   /**

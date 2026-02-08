@@ -447,3 +447,78 @@ Esta seção documenta lacunas de integração entre fases identificadas durante
 **Implementação atual:** `nano → gpt-4o-mini`, `mini → gpt-4o-mini`, `full → gpt-4o` (config/index.js)
 
 Troca para modelos reais requer alteração de uma linha por modelo em `config/index.js`. Sem impacto estrutural.
+
+---
+
+## 9. Patch 4.1: Rota `simple_response` para Interações Sociais
+
+**Data:** 07/02/2026  
+**Status:** Implementado (Opção B)
+
+### 9.1 Motivação
+
+Durante testes iniciais, identificou-se que saudações simples ("Olá", "Oi", "Bom dia") eram escaladas para o Orquestrador, resultando em:
+- Desperdício de recursos (3-5 chamadas de IA para responder "Olá!")
+- Latência de 3-5 segundos para interação trivial
+- Custo de 3.000-5.000 tokens para resposta social simples
+
+### 9.2 Solução Implementada
+
+Adicionada **5ª rota**: `simple_response` para interações sociais e perguntas triviais.
+
+**Arquivos modificados:**
+1. `agents/junior/prompt.js` — Adicionada rota `simple_response` com prioridade máxima
+2. `agents/junior/validators.js` — Validação para nova rota
+3. `core/router/dispatcher.js` — Handler `_handleSimpleResponse()`
+4. `api/routes/message.js` — Case para `simple_response`
+5. `agents/response/index.js` — Método `formatSimpleResponse()`
+6. `agents/response/prompt.js` — Prompt `SIMPLE_RESPONSE_PROMPT`
+
+**Arquivos criados:**
+- `docs/md_sistema/sistema.md` — Documentação sobre a plataforma para contexto em perguntas como "Como você funciona?"
+
+### 9.3 Comportamento
+
+| Tipo de Query | Rota | Modelo | Características |
+|---------------|------|--------|-----------------|
+| Saudações ("Oi", "Olá", "Bom dia") | `simple_response` | Mini (low/medium) | Resposta contextual, 200-300 tokens |
+| Agradecimentos ("Obrigado", "Valeu") | `simple_response` | Mini | Breve e amigável |
+| Perguntas sobre sistema ("Como você funciona?") | `simple_response` | Mini + sistema.md | Resposta informativa com base na documentação |
+| Despedidas ("Tchau", "Até logo") | `simple_response` | Mini | Breve e positivo |
+
+### 9.4 Lógica Especial: Acesso Condicional à Documentação
+
+Se o usuário pergunta sobre o sistema (detectado via regex), o ResponseAgent:
+1. Tenta carregar `docs/md_sistema/sistema.md`
+2. Se bem-sucedido, inclui no contexto para IA
+3. Se falhar (arquivo não existe), continua sem a documentação
+
+**Justificativa:** Evita carregar arquivo desnecessariamente em saudações simples, economizando tokens.
+
+### 9.5 Regras de Priorização Atualizadas
+
+```
+1. SAUDAÇÕES E INTERAÇÕES SOCIAIS → simple_response (NOVA — prioridade máxima)
+2. LANÇAMENTOS FINANCEIROS → bridge_insert
+3. CONSULTAS A DADOS PESSOAIS → bridge_query
+4. BUSCA DE DADOS PÚBLICOS → serper
+5. TAREFAS COMPLEXAS → escalate
+```
+
+### 9.6 Métricas Esperadas
+
+| Métrica | Antes (escalate) | Depois (simple_response) | Melhoria |
+|---------|------------------|-------------------------|----------|
+| Tokens por saudação | 3.000-5.000 | 200-400 | 90-95% |
+| Latência (saudação) | 3-5 segundos | 0.5-0.8 segundos | 85% |
+| Custo por interação social | Alto (Full High/High) | Baixo (Mini low/medium) | 95% |
+
+### 9.7 Compatibilidade
+
+✅ **Compatível com Fases 1-4** — Mudança aditiva, não quebra rotas existentes  
+✅ **Separação IA vs Lógica mantida** — ResponseAgent usa Mini (IA), Dispatcher roteia (lógica)  
+✅ **Fallbacks robustos** — Resposta genérica se ResponseAgent falhar
+
+---
+
+**Fim do Relatório — Fase 4 + Patch 4.1**

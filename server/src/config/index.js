@@ -29,9 +29,9 @@ const config = {
 
   // --- Modelos de IA ---
   models: {
-    nano: 'gpt-4o-mini',      // Placeholder até GPT-5-nano estar disponível
-    mini: 'gpt-4o-mini',      // Placeholder até GPT-5-mini estar disponível
-    full: 'gpt-4o',           // Placeholder até GPT-5.2 estar disponível
+    nano: 'gpt-5-nano',      // Placeholder até GPT-5-nano estar disponível
+    mini: 'gpt-5-mini',      // Placeholder até GPT-5-mini estar disponível
+    full: 'gpt-5.2',           // Placeholder até GPT-5.2 estar disponível
   },
 
   // --- Memória ---

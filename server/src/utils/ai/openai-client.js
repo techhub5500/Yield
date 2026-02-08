@@ -51,12 +51,11 @@ class OpenAIClient extends AIClient {
     };
 
     // Max tokens
-    if (callOptions.maxTokens) {
-      requestParams.max_tokens = callOptions.maxTokens;
+    if (callOptions.max_completion_tokens) {
+      requestParams.max_completion_tokens = callOptions.max_completion_tokens;
     }
 
-    // Temperatura (padrão: 0.3 para respostas mais determinísticas)
-    requestParams.temperature = callOptions.temperature ?? 0.3;
+  
 
     // Response format JSON
     if (callOptions.responseFormat === 'json') {

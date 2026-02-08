@@ -17,29 +17,29 @@ USUÁRIO ENVIA MENSAGEM (POST /api/message)
          ↓
    [LÓGICA] Dispatcher roteia baseado em decision
          ↓
-    ┌─────────────┬─────────────┬──────────────┐
-    ↓             ↓             ↓              ↓
-[Bridge]      [Serper]    [ORQUESTRADOR]   [Follow-up]
-(Nano)        (API)       (Full)           (Mini)
-    ↓             ↓             ↓              ↓
- Retorna      Retorna    [IA] Cria DOC    [IA] Pergunta
-    ↓             ↓             ↓              ↓
-    └─────────────┴─────┐      ↓         Aguarda usuário
-         ↓              ↓      ↓
-   Resposta Direta   ┌──┴──────┴──┐
-   (ResponseAgent)   ↓            ↓
-                  [Análise]  [Investimentos]  [Planejamento]
-                  (Full)     (Full)           (Full)
-                     ↓            ↓            ↓
-                  [IA] Metacognição + Ferramentas
-                     ↓            ↓            ↓
-                     └─────┬──────┴─────┬──────┘
-                           ↓            ↓
-                    [IA - RESPOSTA (Full)] Sintetiza tudo
-                           ↓
-                    [LÓGICA] Atualiza memória
-                           ↓
-                    RESPOSTA AO USUÁRIO
+    ┌──────────┬──────────┬──────────┬──────────────┬──────────────┐
+    ↓          ↓          ↓          ↓              ↓              ↓
+[Bridge]   [Serper]  [Simple]   [ORQUESTRADOR]  [Follow-up]
+(Nano)     (API)     (Mini)     (Full)          (Mini)
+    ↓          ↓          ↓          ↓              ↓
+ Retorna   Retorna   Resposta   [IA] Cria DOC  [IA] Pergunta
+    ↓          ↓       Social       ↓              ↓
+    └──────────┴─────────┴──────────┐         Aguarda usuário
+         ↓                           ↓
+   Resposta Direta              ┌───┴────────┐
+   (ResponseAgent)              ↓            ↓
+                        [Análise]  [Investimentos]  [Planejamento]
+                        (Full)     (Full)           (Full)
+                           ↓            ↓            ↓
+                        [IA] Metacognição + Ferramentas
+                           ↓            ↓            ↓
+                           └─────┬──────┴─────┬──────┘
+                                 ↓            ↓
+                          [IA - RESPOSTA (Full)] Sintetiza tudo
+                                 ↓
+                          [LÓGICA] Atualiza memória
+                                 ↓
+                          RESPOSTA AO USUÁRIO
 ```
 
 ---
@@ -61,9 +61,16 @@ Cada arquivo encapsula **exatamente um ponto de decisão de IA**.
 | Análise | Full | High | Low | Padrões financeiros |
 | Investimentos | Full | High | Low | Mercado e ativos |
 | Planejamento | Full | High | Low | Metas e orçamentos |
-| Resposta | Full | High | High | Síntese para humanos |
+| Resposta | Full | High | High | Síntese para humanos (escalada) |
+| Resposta (direta) | Full | High | High | Formatação de rotas diretas |
+| Resposta (social) | Mini | Low | Medium | Interações sociais (Patch 4.1) |
 | Summarizer | Nano | — | — | Resumo de ciclos de memória |
 | Compressor | Full | High | Low | Compressão de memória |
+
+**Nota:** O ResponseAgent possui 3 modos:
+- `synthesize()` — Escalada completa (Full High/High)
+- `formatDirectResponse()` — Rotas diretas (Full High/High)
+- `formatSimpleResponse()` — Interações sociais (Mini Low/Medium) — **Adicionado em Patch 4.1**
 
 ### 3. Core - Lógica Pura (`src/core/`)
 **NUNCA importa modelos de IA diretamente.**
@@ -164,3 +171,28 @@ Ferramentas disponíveis: `finance_bridge:query`, `search:serper/brapi/tavily`, 
 
 ### 3. Modelos placeholder
 Os modelos GPT-5.2, GPT-5-mini e GPT-5-nano referidos na constituição não existem ainda. O sistema usa placeholders: `nano → gpt-4o-mini`, `mini → gpt-4o-mini`, `full → gpt-4o`. Troca requer apenas alteração em `config/index.js`.
+
+---
+
+## Atualizações Recentes
+
+### Patch 4.1: Rota `simple_response` (07/02/2026)
+
+**Motivação:** Saudações e interações sociais eram escaladas desnecessariamente para o Orquestrador, desperdiçando tokens e tempo.
+
+**Implementação:**
+- Adicionada 5ª rota no Junior: `simple_response`
+- Prioridade máxima (antes de qualquer rota financeira)
+- ResponseAgent usa modelo **Mini** (low/medium) em vez de Full
+- Redução de custo: 90-95% para interações sociais
+- Redução de latência: de 3-5s para 0.5-0.8s
+
+**Casos de uso:**
+- Saudações: "Oi", "Olá", "Bom dia"
+- Agradecimentos: "Obrigado", "Valeu"
+- Perguntas sobre o sistema: "Como você funciona?"
+- Despedidas: "Tchau", "Até logo"
+
+**Lógica especial:** Se usuário pergunta sobre o sistema, ResponseAgent carrega `docs/md_sistema/sistema.md` para contexto adicional.
+
+**Arquivo de referência:** Ver `RELATORIO_FASE4.md` seção 9 para detalhes completos.

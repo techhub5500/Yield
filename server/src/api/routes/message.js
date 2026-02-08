@@ -135,6 +135,18 @@ function createMessageRouter(deps = {}) {
           // Fallback sem ResponseAgent
           finalResponse = formatEscalateResultFallback(routeResult.data);
         }
+      } else if (decision.decision === 'simple_response' && routeResult.success) {
+        // --- 5.5. Resposta social/trivial → ResponseAgent formata via Mini ---
+        if (responseAgent) {
+          const formatted = await responseAgent.formatSimpleResponse(
+            query,
+            memory
+          );
+          finalResponse = formatted.response;
+        } else {
+          // Fallback sem ResponseAgent
+          finalResponse = "Olá! Como posso ajudar você com suas finanças hoje?";
+        }
       } else if (routeResult.success) {
         // --- 6. Rota direta → ResponseAgent formata ---
         if (responseAgent) {
@@ -151,8 +163,9 @@ function createMessageRouter(deps = {}) {
         }
       } else {
         // Erro no processamento
-        finalResponse = 'Desculpe, houve um problema ao processar sua solicitação. Por favor, tente novamente.';
-        logger.warn('MessageRoute', 'logic', `Rota falhou: ${routeResult.error}`, { chatId });
+        const errorMsg = routeResult.error || 'erro desconhecido';
+        finalResponse = `Desculpe, encontrei um problema ao processar sua solicitação: ${errorMsg}. Por favor, tente novamente ou reformule a pergunta.`;
+        logger.warn('MessageRoute', 'logic', `Rota falhou: ${errorMsg}`, { chatId });
       }
 
       // --- 7. Atualizar memória (LÓGICA + IA nano para resumo) ---

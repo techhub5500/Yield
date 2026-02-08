@@ -74,46 +74,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ---- Chat Logic ----
+    // ---- Chat Logic (integrado via YieldChat) ----
     const chatInput = document.querySelector('.chat-input-area textarea');
     const sendBtn = document.querySelector('.chat-input-area .send-btn');
     const chatMessages = document.querySelector('.chat-messages');
 
-    function addMessage(text, sender) {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${sender}`;
-        msgDiv.textContent = text;
-        chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
+    // Botões de ação do chat
+    const actionBtns = document.querySelectorAll('.action-icons .chat-btn');
+    const newChatBtn  = actionBtns[0] || null;  // ícone +
+    const historyBtn  = actionBtns[1] || null;  // ícone histórico
 
-    function handleSend() {
-        const text = chatInput.value.trim();
-        if (text) {
-            addMessage(text, 'user');
-            chatInput.value = '';
-            chatInput.style.height = 'auto';
-
-            // Resposta fake do bot
-            setTimeout(() => {
-                addMessage('Em que posso ajudar com suas finanças hoje?', 'bot');
-            }, 800);
-        }
-    }
-
-    sendBtn.addEventListener('click', handleSend);
-
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    });
-
-    // Auto-expand textarea
-    chatInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
+    const chat = new YieldChat({
+        messagesEl   : chatMessages,
+        inputEl      : chatInput,
+        sendBtnEl    : sendBtn,
+        newChatBtnEl : newChatBtn,
+        historyBtnEl : historyBtn,
+        pageId       : 'finance',
     });
 
 });
