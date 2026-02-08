@@ -47,6 +47,7 @@ Este arquivo contém **todo o código compartilhado** do frontend:
 |--------|------|---------|---------|
 | **POST** | `/api/message` | `{ chatId, message }` | `{ response, chatId, timestamp, metadata }` |
 | **GET** | `/api/chat/:chatId/history` | — | `{ chatId, recent, summary, wordCount }` |
+| **GET** | `/api/chats` | `?limit=50` | `{ chats: [{ chatId, preview, lastMessage, timestamp, messageCount }], count }` |
 | **GET** | `/health` | — | `{ status, version, timestamp, uptime }` |
 
 O backend espera `chatId` como UUID string. Cada instância de `YieldChat` gera e persiste um chatId por página no `localStorage`.
@@ -90,6 +91,8 @@ O backend espera `chatId` como UUID string. Cada instância de `YieldChat` gera 
 | **Markdown básico** | Bold, itálico, código inline e quebras de linha |
 | **Novo chat** | Gera novo chatId, limpa o histórico visual |
 | **Carregar histórico** | GET do histórico do chatId atual e renderiza |
+| **Modal de histórico completo** | Lista todos os chats salvos, permite trocar entre eles |
+| **Troca de chat** | Selecionar chat do histórico e carregar suas mensagens |
 | **Health check** | Verificação de disponibilidade do backend |
 | **Detecção de URL** | Funciona tanto acessando via servidor (`http://localhost:3000`) quanto via `file://` |
 | **Tratamento de erros** | Mensagem amigável se o backend falhar |
@@ -178,7 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
 |--------|-----------|
 | `send(text)` | Envia mensagem ao backend e exibe resposta |
 | `loadHistory()` | Carrega histórico do backend e renderiza |
-| `newChat()` | Cria novo chatId e limpa mensagens |
+| `newChat()` | Cria novo chatId e limpa m
+| `listAllChats()` | Lista todos os chats salvos no backend |
+| `openHistoryModal()` | Abre modal com histórico completo de chats |
+| `switchToChat(chatId)` | Troca para outro chat e carrega seu histórico |ensagens |
 | `healthCheck()` | Retorna `true/false` se o backend está disponível |
 | `getChatId()` | Retorna o chatId atual |
 
@@ -292,3 +298,88 @@ O `YieldChat` injeta um elemento com a classe `.typing-indicator` contendo três
 4. **O `pageId`** deve ser único por chat. Dois chats na mesma página devem ter `pageId` diferentes para manter chatIds separados.
 
 5. **Não duplicar** `addMessage`, `handleSend`, `fetch('/api/message')` ou qualquer lógica de comunicação dentro dos arquivos de página.
+
+---
+
+## 9. Funcionalidades dos Botões de Chat
+
+### 9.1 Botão "+" (Novo Chat)
+- **Ícone:** `fas fa-plus`
+- **Ação:** Cria um novo chat do zero
+- **Comportamento:**
+  - Gera um novo UUID v4 como chatId
+  - Salva no localStorage com a chave `yield_chatId_{pageId}`
+  - Limpa todas as mensagens da interface
+  - Reseta o histórico visual
+- **Uso:** Quando o usuário quer começar uma nova conversa sem contexto anterior
+
+### 9.2 Botão "Histórico" (Lista de Chats)
+- **Ícone:** `fas fa-history`
+- **Ação:** Abre modal com lista de todos os chats salvos
+- **Comportamento:**
+  1. Faz GET `/api/chats` para buscar lista completa
+  2. Renderiza modal com glassmorphism seguindo identidade visual
+  3. Lista ordenada por data (mais recentes primeiro)
+  4. Cada item mostra:
+     - Preview da primeira mensagem (até 80 caracteres)
+     - Data formatada (Hoje, Ontem, X dias atrás, DD/MMM)
+     - Número de mensagens no chat
+  5. Chat atual destacado visualmente
+  6. Ao clicar em um chat:
+     - Troca para aquele chatId
+     - Carrega histórico completo
+     - Fecha o modal
+- **Modal:**
+  - Background com backdrop-filter blur
+  - Glassmorphism (fundo escuro com transparência)
+  - Animação de fade-in e slide-up
+  - Fecha ao clicar no X ou fora do modal
+  - Scroll interno se lista for grande
+
+### 9.3 Estrutura do Modal (integration.html)
+```html
+<div id="chat-history-modal" class="chat-modal">
+    <div class="chat-modal-content">
+        <div class="chat-modal-header">
+            <h3>Histórico de Conversas</h3>
+            <button class="chat-modal-close" id="close-history-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="chat-modal-body" id="chat-list-container">
+            <!-- Lista de chats renderizada aqui -->
+        </div>
+    </div>
+</div>
+```
+
+### 9.4 Fluxo do Modal de Histórico
+```
+[Usuário clica em botão histórico]
+          ↓
+    openHistoryModal()
+          ↓
+    Modal exibe loading
+          ↓
+    GET /api/chats
+          ↓
+    Backend consulta MongoDB
+          ↓
+    Retorna lista de chats
+          ↓
+    Renderiza itens no modal
+          ↓
+    [Usuário clica em chat]
+          ↓
+    switchToChat(chatId)
+          ↓
+    Atualiza chatId no localStorage
+          ↓
+    Limpa mensagens atuais
+          ↓
+    loadHistory() do chat selecionado
+          ↓
+    Fecha modal
+```
+
+---

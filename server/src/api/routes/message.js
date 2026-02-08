@@ -256,6 +256,37 @@ function createMessageRouter(deps = {}) {
     }
   });
 
+  /**
+   * GET /api/chats
+   * Lista todos os chats salvos ordenados por data de atualização.
+   * 
+   * Query params: ?limit=50 (opcional)
+   * Response: { chats: [{ chatId, preview, lastMessage, timestamp, messageCount }] }
+   */
+  router.get('/chats', async (req, res, next) => {
+    try {
+      if (!memoryManager) {
+        return res.status(503).json({ error: 'Sistema de memória não disponível' });
+      }
+
+      const limit = parseInt(req.query.limit) || 50;
+      const chats = await memoryManager.getAllChats(limit);
+
+      logger.logic('DEBUG', 'MessageRoute', `Lista de chats consultada`, {
+        count: chats.length,
+        limit,
+      });
+
+      return res.json({
+        chats,
+        count: chats.length,
+      });
+    } catch (error) {
+      logger.error('MessageRoute', 'system', `Erro ao listar chats: ${error.message}`);
+      next(error);
+    }
+  });
+
   return router;
 }
 

@@ -77,6 +77,15 @@ class MemoryManager {
 
     return memory;
   }
+
+  /**
+   * Lista todos os chats salvos.
+   * @param {number} limit - Número máximo de chats a retornar
+   * @returns {Promise<Array>}
+   */
+  async getAllChats(limit = 50) {
+    return await storage.getAllChats(limit);
+  }
 }
 
 module.exports = new MemoryManager();

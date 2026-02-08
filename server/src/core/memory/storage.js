@@ -106,6 +106,53 @@ async function saveMemory(chatId, memory) {
 }
 
 /**
+ * Lista todos os chats salvos ordenados por data de atualização (mais recentes primeiro).
+ * @param {number} limit - Número máximo de chats a retornar (default: 50)
+ * @returns {Promise<Array>} Lista de chats com metadata
+ */
+async function getAllChats(limit = 50) {
+  try {
+    const db = await getDb();
+    const chats = await db.collection(COLLECTION)
+      .find({})
+      .sort({ updatedAt: -1 })
+      .limit(limit)
+      .toArray();
+
+    const mapped = chats.map(doc => {
+      const memory = Memory.fromJSON(doc.memory);
+      
+      // Pegar a primeira mensagem como preview
+      let preview = '';
+      let lastMessage = '';
+      
+      if (memory.recent && memory.recent.length > 0) {
+        const firstCycle = memory.recent[0];
+        preview = firstCycle.userInput?.substring(0, 80) || 'Sem mensagem';
+        const lastCycle = memory.recent[memory.recent.length - 1];
+        lastMessage = lastCycle.userInput || lastCycle.aiResponse || '';
+      }
+
+      return {
+        chatId: doc.chatId,
+        preview: preview,
+        lastMessage: lastMessage.substring(0, 100),
+        timestamp: doc.updatedAt,
+        messageCount: memory.recent.length,
+      };
+    });
+
+    logger.logic('DEBUG', 'MemoryStorage', `${mapped.length} chats carregados`);
+    return mapped;
+  } catch (error) {
+    logger.error('MemoryStorage', 'logic', `Falha ao listar chats`, {
+      error: error.message,
+    });
+    return [];
+  }
+}
+
+/**
  * Fecha a conexão com o MongoDB.
  * @returns {Promise<void>}
  */
@@ -121,5 +168,6 @@ async function close() {
 module.exports = {
   loadMemory,
   saveMemory,
+  getAllChats,
   close,
 };

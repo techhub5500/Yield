@@ -199,6 +199,104 @@ class YieldChat {
         return this.chatId;
     }
 
+    /** Lista todos os chats salvos. */
+    async listAllChats() {
+        try {
+            const data = await this._get('/api/chats');
+            return data.chats || [];
+        } catch (err) {
+            console.error('[YieldChat] Erro ao listar chats:', err);
+            return [];
+        }
+    }
+
+    /** Abre o modal de histórico de chats. */
+    async openHistoryModal() {
+        const modal = document.getElementById('chat-history-modal');
+        const container = document.getElementById('chat-list-container');
+        
+        if (!modal || !container) {
+            console.error('[YieldChat] Elementos do modal não encontrados');
+            return;
+        }
+
+        // Mostrar modal com loading
+        modal.classList.add('show');
+        container.innerHTML = `
+            <div class="loading-chats">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Carregando conversas...</span>
+            </div>
+        `;
+
+        // Carregar lista de chats
+        const chats = await this.listAllChats();
+
+        if (chats.length === 0) {
+            container.innerHTML = `
+                <div class="empty-chats">
+                    <i class="fas fa-comment-slash"></i>
+                    <p>Nenhuma conversa encontrada</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Renderizar lista de chats
+        const chatList = document.createElement('div');
+        chatList.className = 'chat-list';
+
+        chats.forEach(chat => {
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            if (chat.chatId === this.chatId) {
+                item.classList.add('active');
+            }
+
+            const preview = chat.preview || 'Sem mensagens';
+            const date = new Date(chat.timestamp);
+            const dateStr = this._formatDate(date);
+            const messageCount = chat.messageCount || 0;
+
+            item.innerHTML = `
+                <div class="chat-item-preview">${this._escapeHtml(preview)}</div>
+                <div class="chat-item-meta">
+                    <span class="chat-item-date">
+                        <i class="fas fa-clock"></i>
+                        ${dateStr}
+                    </span>
+                    <span class="chat-item-count">
+                        <i class="fas fa-comment"></i>
+                        ${messageCount}
+                    </span>
+                </div>
+            `;
+
+            item.addEventListener('click', () => {
+                this.switchToChat(chat.chatId);
+                modal.classList.remove('show');
+            });
+
+            chatList.appendChild(item);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(chatList);
+    }
+
+    /** Troca para outro chat. */
+    async switchToChat(chatId) {
+        if (chatId === this.chatId) return;
+
+        this.chatId = chatId;
+        this._saveChatId();
+        this.messagesEl.innerHTML = '';
+        this.historyLoaded = false;
+
+        // Carregar histórico do novo chat
+        await this.loadHistory();
+    }
+
     // ── Internos — DOM ───────────────────────────────────────
 
     /** Adiciona uma mensagem ao container de chat. */
@@ -279,7 +377,21 @@ class YieldChat {
 
         // Botão de histórico
         if (this.historyBtnEl) {
-            this.historyBtnEl.addEventListener('click', () => this.loadHistory());
+            this.historyBtnEl.addEventListener('click', () => this.openHistoryModal());
+        }
+
+        // Fechar modal ao clicar no X ou fora dele
+        const modal = document.getElementById('chat-history-modal');
+        const closeBtn = document.getElementById('close-history-modal');
+        
+        if (modal && closeBtn) {
+            closeBtn.addEventListener('click', () => modal.classList.remove('show'));
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
         }
     }
 
@@ -365,6 +477,29 @@ class YieldChat {
             const v = c === 'x' ? r : (r & 0x3) | 0x8;
             return v.toString(16);
         });
+    }
+
+    /** Formata uma data de forma amigável. */
+    _formatDate(date) {
+        const now = new Date();
+        const diff = now - date;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        if (days === 0) return 'Hoje';
+        if (days === 1) return 'Ontem';
+        if (days < 7) return `${days} dias atrás`;
+        
+        return date.toLocaleDateString('pt-BR', { 
+            day: '2-digit', 
+            month: 'short' 
+        });
+    }
+
+    /** Escapa HTML para prevenir XSS. */
+    _escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
