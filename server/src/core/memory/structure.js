@@ -30,6 +30,9 @@ class Memory {
 
     /** @type {number} Cache de contagem de palavras */
     this.wordCount = 0;
+
+    /** @type {Object|null} Estado pendente de follow-up */
+    this.pendingFollowup = null;
   }
 
   /**
@@ -131,6 +134,7 @@ class Memory {
       old: this.old,
       fullHistory: this.fullHistory,
       wordCount: this.wordCount,
+      pendingFollowup: this.pendingFollowup,
     };
   }
 
@@ -152,6 +156,10 @@ class Memory {
 
     if (data.fullHistory && Array.isArray(data.fullHistory)) {
       memory.fullHistory = data.fullHistory;
+    }
+
+    if (data.pendingFollowup) {
+      memory.pendingFollowup = data.pendingFollowup;
     }
 
     memory.recalculateWordCount();

@@ -40,7 +40,7 @@ class MemoryManager {
    * @param {string} [userId] - ID do usuário (para vincular o chat)
    * @returns {Promise<Memory>} Memória atualizada
    */
-  async updateAfterCycle(chatId, userInput, aiResponse, userId = null) {
+  async updateAfterCycle(chatId, userInput, aiResponse, userId = null, options = {}) {
     // Carregar memória atual
     const memory = await this.load(chatId, userId);
 
@@ -75,6 +75,12 @@ class MemoryManager {
     }
 
     // LÓGICA: salvar no banco
+    if (options.pendingFollowup) {
+      memory.pendingFollowup = options.pendingFollowup;
+    } else if (options.clearPendingFollowup) {
+      memory.pendingFollowup = null;
+    }
+
     await storage.saveMemory(chatId, memory, userId);
 
     return memory;

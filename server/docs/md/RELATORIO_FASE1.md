@@ -63,7 +63,7 @@ server/
 | Tarefa | Status | Detalhes |
 |--------|--------|----------|
 | Persistência (`storage.js`) | ✅ | MongoDB com `loadMemory`, `saveMemory`, retry logic, fallbacks |
-| Estrutura de memória (`structure.js`) | ✅ | `Memory` class com `addCycle`, `moveToOld`, `shouldCompress` |
+| Estrutura de memória (`structure.js`) | ✅ | `Memory` class com `addCycle`, `moveToOld`, `shouldCompress` e `pendingFollowup` para continuidade de follow-up |
 | Contador de palavras (`counter.js`) | ✅ | `countWords`, `calculateTotalWords`, `calculateUsagePercentage` |
 | Sistema de ciclos (`cycle.js`) | ✅ | `Cycle` class com UUID, serialização/deserialização |
 | Testes unitários | ✅ | 21 testes passando: contagem, ciclos, movimentação, limite 90% |

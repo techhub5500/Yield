@@ -62,12 +62,21 @@ async function analyze(query, memory) {
     }
 
     // Se precisa de follow-up, enriquecer com pergunta contextualizada
+    let followupGenerated = false;
     if (decision.needs_followup && !decision.followup_question) {
       decision.followup_question = await generateFollowup(
         query,
         decision.missing_info || [],
         memory
       );
+      followupGenerated = true;
+    }
+
+    if (decision.needs_followup && decision.followup_question && !followupGenerated) {
+      logger.ai('DEBUG', 'JuniorFollowup', 'Follow-up gerado', {
+        missingFields: decision.missing_info || [],
+        source: 'model',
+      });
     }
 
     logger.ai('INFO', 'Junior', `Query classificada como "${decision.decision}"`, {

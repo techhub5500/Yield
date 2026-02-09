@@ -23,6 +23,7 @@
 const express = require('express');
 const logger = require('../../utils/logger');
 const { authenticateToken } = require('../middleware/auth');
+const { mergeFollowupResponse, shouldMergeFollowupResponse } = require('../../agents/junior/followup');
 
 /**
  * Cria o router de mensagens com dependências injetadas.
@@ -85,12 +86,27 @@ function createMessageRouter(deps = {}) {
 
       const memory = await memoryManager.load(chatId, userId);
 
+      let effectiveQuery = query;
+      const pendingFollowup = memory.pendingFollowup;
+      const shouldMerge = shouldMergeFollowupResponse(pendingFollowup, query);
+
+      if (pendingFollowup && shouldMerge) {
+        effectiveQuery = mergeFollowupResponse(pendingFollowup.originalQuery, query);
+        logger.logic('DEBUG', 'MessageRoute', 'Resposta de follow-up detectada; query mesclada', {
+          chatId,
+        });
+      } else if (pendingFollowup) {
+        logger.logic('DEBUG', 'MessageRoute', 'Follow-up pendente ignorado: resposta nao reconhecida', {
+          chatId,
+        });
+      }
+
       // --- 2. Junior classifica (IA) ---
       if (!junior) {
         return res.status(503).json({ error: 'Agente Junior não disponível' });
       }
 
-      const decision = await junior.analyze(query, memory);
+      const decision = await junior.analyze(effectiveQuery, memory);
 
       logger.logic('DEBUG', 'MessageRoute', `Junior decidiu: "${decision.decision}"`, {
         chatId,
@@ -102,7 +118,14 @@ function createMessageRouter(deps = {}) {
         logger.logic('DEBUG', 'MessageRoute', 'Retornando follow-up ao usuário');
 
         // Atualizar memória com o ciclo de follow-up
-        await memoryManager.updateAfterCycle(chatId, query, decision.followup_question, userId);
+        await memoryManager.updateAfterCycle(chatId, query, decision.followup_question, userId, {
+          pendingFollowup: {
+            originalQuery: pendingFollowup?.originalQuery || query,
+            missingFields: decision.missing_info || [],
+            decision: decision.decision,
+            createdAt: new Date().toISOString(),
+          },
+        });
 
         return res.json({
           response: decision.followup_question,
@@ -121,7 +144,7 @@ function createMessageRouter(deps = {}) {
         return res.status(503).json({ error: 'Dispatcher não disponível' });
       }
 
-      const routeResult = await dispatcher.route(decision, query, memory, chatId);
+      const routeResult = await dispatcher.route(decision, effectiveQuery, memory, chatId);
 
       // --- 5/6. Gerar resposta final ---
       let finalResponse;
@@ -130,7 +153,7 @@ function createMessageRouter(deps = {}) {
         // --- 5. Escalada completa: Orquestrador + Coordenadores → ResponseAgent sintetiza ---
         if (responseAgent) {
           const synthesized = await responseAgent.synthesize(
-            query,
+            effectiveQuery,
             memory,
             routeResult.data.doc,
             routeResult.data.outputs
@@ -144,7 +167,7 @@ function createMessageRouter(deps = {}) {
         // --- 5.5. Resposta social/trivial → ResponseAgent formata via Mini ---
         if (responseAgent) {
           const formatted = await responseAgent.formatSimpleResponse(
-            query,
+            effectiveQuery,
             memory
           );
           finalResponse = formatted.response;
@@ -156,7 +179,7 @@ function createMessageRouter(deps = {}) {
         // --- 6. Rota direta → ResponseAgent formata ---
         if (responseAgent) {
           const formatted = await responseAgent.formatDirectResponse(
-            query,
+            effectiveQuery,
             routeResult.type,
             routeResult.data,
             memory
@@ -174,7 +197,9 @@ function createMessageRouter(deps = {}) {
       }
 
       // --- 7. Atualizar memória (LÓGICA + IA nano para resumo) ---
-      await memoryManager.updateAfterCycle(chatId, query, finalResponse, userId);
+      await memoryManager.updateAfterCycle(chatId, query, finalResponse, userId, {
+        clearPendingFollowup: true,
+      });
 
       // --- Cleanup de estados de chamadas externas ---
       if (externalCallManager) {

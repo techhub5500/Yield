@@ -80,7 +80,7 @@ server/
 | Endpoint de mensagem (`POST /api/message`) | ✅ | Fluxo completo: memória → Junior → Dispatcher → Resposta → memória |
 | Endpoint de histórico (`GET /api/chat/:chatId/history`) | ✅ | Retorna ciclos recentes + resumo de memória antiga |
 | Validação de input | ✅ | chatId e message obrigatórios, tipos verificados |
-| Fluxo de follow-up | ✅ | Se Junior detecta info faltante, retorna pergunta ao usuário |
+| Fluxo de follow-up | ✅ | Se Junior detecta info faltante, retorna pergunta ao usuário e registra estado pendente para mesclar a resposta no ciclo seguinte |
 | Fluxo de escalada | ✅ | Junior → Orquestrador → Coordenadores → ResponseAgent → memória |
 | Fluxo direto | ✅ | Junior → Dispatcher → ResponseAgent formata → memória |
 | Fallbacks sem ResponseAgent | ✅ | Funções de fallback para rotas diretas e escalada |

@@ -199,7 +199,7 @@ Este documento define queries de teste para validar o fluxo completo do sistema 
 - Logs de falha/alerta: FinanceBridgeValidator "Campo \"categories\" deve ser um array".
 
 ### Teste 24 — Intervalo de valor
-- Query: "Gastos entre R$120 e R$145 em janeiro de 2026"
+- Query: "Gastos entre R$120 e R$145 nesse mes ?"
 - O que esta sendo testado: Filtros amount.min/max e period.start/end.
 - Criterios de sucesso: Query valida e executada.
 - Logs esperados (sucesso): FinanceBridgeExecutor "Query retornou".

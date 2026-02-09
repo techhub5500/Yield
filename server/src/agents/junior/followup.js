@@ -67,8 +67,9 @@ async function generateFollowup(query, missingFields, memory) {
       temperature: 0.4,
     });
 
-    logger.ai('DEBUG', 'JuniorFollowup', `Follow-up gerado para query: "${query.substring(0, 50)}..."`, {
+    logger.ai('DEBUG', 'JuniorFollowup', 'Follow-up gerado', {
       missingFields,
+      queryPreview: query.substring(0, 50),
     });
 
     return followup.trim();
@@ -114,8 +115,38 @@ function mergeFollowupResponse(originalQuery, followupResponse) {
   return `${originalQuery}. Complemento: ${followupResponse}`;
 }
 
+/**
+ * Verifica se uma resposta do usuario contem dados para completar o follow-up.
+ * LÓGICA PURA.
+ * @param {Object} pendingFollowup - Estado pendente do follow-up
+ * @param {string} followupResponse - Resposta do usuario ao follow-up
+ * @returns {boolean}
+ */
+function shouldMergeFollowupResponse(pendingFollowup, followupResponse) {
+  if (!pendingFollowup || !followupResponse) return false;
+
+  const response = followupResponse.trim();
+  if (response.length === 0) return false;
+
+  const missingFields = (pendingFollowup.missingFields || []).map(field => String(field).toLowerCase());
+  const hasAmount = /\d/.test(response);
+  const hasDescription = /[A-Za-z]/.test(response);
+
+  const needsAmount = missingFields.includes('amount') || missingFields.includes('valor');
+  const needsDescription = missingFields.includes('description')
+    || missingFields.includes('descricao')
+    || missingFields.includes('categoria')
+    || missingFields.includes('category');
+
+  if (needsAmount && !hasAmount) return false;
+  if (needsDescription && !hasDescription) return false;
+
+  return true;
+}
+
 module.exports = {
   generateFollowup,
   generateFallbackQuestion,
   mergeFollowupResponse,
+  shouldMergeFollowupResponse,
 };
