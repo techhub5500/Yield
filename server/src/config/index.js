@@ -20,6 +20,12 @@ const config = {
     apiKey: process.env.OPENAI_API_KEY,
   },
 
+  // --- Autenticação ---
+  auth: {
+    jwtSecret: process.env.JWT_SECRET || 'yield-secret-key-change-in-production',
+    jwtExpiration: process.env.JWT_EXPIRATION || '7d', // 7 dias por padrão
+  },
+
   // --- APIs Externas (Fase 2) ---
   apis: {
     serper: { apiKey: process.env.SERPER_API_KEY },

@@ -46,16 +46,13 @@ Este arquivo contém **todo o código compartilhado** do frontend:
 | Método | Rota | Payload | Retorno |
 |--------|------|---------|---------|
 | **POST** | `/api/message` | `{ chatId, message }` | `{ response, chatId, timestamp, metadata }` |
-| **GET** | `/api/chat/:chatId/history` | — | `{ chatId, recent, summary, wordCount }` |
+| **GET** | `/api/chat/:chatId/history` | — | `{ chatId, messages: [{ userInput, aiResponse, timestamp, id }], wordCount }` |
 | **GET** | `/api/chats` | `?limit=50` | `{ chats: [{ chatId, preview, lastMessage, timestamp, messageCount }], count }` |
 | **GET** | `/health` | — | `{ status, version, timestamp, uptime }` |
 
 O backend espera `chatId` como UUID string. Cada instância de `YieldChat` gera e persiste um chatId por página no `localStorage`.
 
----
-
-## 3. Como funciona o `YieldChat`
-
+**IMPORTANTE:** O endpoint de histórico retorna TODAS as mensagens reais do chat em `messages`. Não retorna resumos internos da memória do sistema.
 ### 3.1 Ciclo de vida de uma mensagem
 
 ```

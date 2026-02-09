@@ -23,10 +23,11 @@ class MemoryManager {
   /**
    * Carrega a memória de um chat.
    * @param {string} chatId
+   * @param {string} [userId] - ID do usuário (para validação de ownership)
    * @returns {Promise<Memory>}
    */
-  async load(chatId) {
-    return await storage.loadMemory(chatId);
+  async load(chatId, userId = null) {
+    return await storage.loadMemory(chatId, userId);
   }
 
   /**
@@ -36,11 +37,12 @@ class MemoryManager {
    * @param {string} chatId - ID do chat
    * @param {string} userInput - Mensagem do usuário
    * @param {string} aiResponse - Resposta da IA
+   * @param {string} [userId] - ID do usuário (para vincular o chat)
    * @returns {Promise<Memory>} Memória atualizada
    */
-  async updateAfterCycle(chatId, userInput, aiResponse) {
+  async updateAfterCycle(chatId, userInput, aiResponse, userId = null) {
     // Carregar memória atual
-    const memory = await this.load(chatId);
+    const memory = await this.load(chatId, userId);
 
     // LÓGICA: criar ciclo
     const cycle = new Cycle(userInput, aiResponse);
@@ -73,7 +75,7 @@ class MemoryManager {
     }
 
     // LÓGICA: salvar no banco
-    await storage.saveMemory(chatId, memory);
+    await storage.saveMemory(chatId, memory, userId);
 
     return memory;
   }
@@ -81,10 +83,11 @@ class MemoryManager {
   /**
    * Lista todos os chats salvos.
    * @param {number} limit - Número máximo de chats a retornar
+   * @param {string} [userId] - ID do usuário (para filtrar apenas seus chats)
    * @returns {Promise<Array>}
    */
-  async getAllChats(limit = 50) {
-    return await storage.getAllChats(limit);
+  async getAllChats(limit = 50, userId = null) {
+    return await storage.getAllChats(limit, userId);
   }
 }
 

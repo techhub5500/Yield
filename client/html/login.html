@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Yield</title>
+    <link rel="stylesheet" href="../css/login.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <h1>Yield</h1>
+            </div>
+
+            <!-- Formulário de Login -->
+            <form id="login-form" class="auth-form active">
+                <h2>Bem-vindo de volta</h2>
+                <p class="subtitle">Entre para continuar gerenciando suas finanças</p>
+
+                <div class="form-group">
+                    <label for="login-email">
+                        <i class="fas fa-envelope"></i>
+                        Email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="login-email" 
+                        name="email" 
+                        required 
+                        placeholder="seu@email.com"
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">
+                        <i class="fas fa-lock"></i>
+                        Senha
+                    </label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        name="password" 
+                        required 
+                        placeholder="••••••••"
+                        autocomplete="current-password"
+                    >
+                </div>
+
+                <div class="form-footer">
+                    <label class="checkbox">
+                        <input type="checkbox" id="remember-me">
+                        <span>Lembrar de mim</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">Entrar</span>
+                    <i class="fas fa-spinner fa-spin btn-loading" style="display: none;"></i>
+                </button>
+
+                <div class="error-message" id="login-error" style="display: none;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
+                </div>
+
+                <p class="toggle-form">
+                    Não tem uma conta? 
+                    <a href="#" id="show-register">Cadastre-se</a>
+                </p>
+            </form>
+
+            <!-- Formulário de Cadastro -->
+            <form id="register-form" class="auth-form">
+                <h2>Criar conta</h2>
+                <p class="subtitle">Comece a gerenciar suas finanças agora</p>
+
+                <div class="form-group">
+                    <label for="register-name">
+                        <i class="fas fa-user"></i>
+                        Nome
+                    </label>
+                    <input 
+                        type="text" 
+                        id="register-name" 
+                        name="name" 
+                        required 
+                        placeholder="Seu nome completo"
+                        autocomplete="name"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-email">
+                        <i class="fas fa-envelope"></i>
+                        Email
+                    </label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        name="email" 
+                        required 
+                        placeholder="seu@email.com"
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password">
+                        <i class="fas fa-lock"></i>
+                        Senha
+                    </label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        name="password" 
+                        required 
+                        placeholder="Mínimo 6 caracteres"
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password-confirm">
+                        <i class="fas fa-lock"></i>
+                        Confirmar senha
+                    </label>
+                    <input 
+                        type="password" 
+                        id="register-password-confirm" 
+                        name="password-confirm" 
+                        required 
+                        placeholder="Digite a senha novamente"
+                        autocomplete="new-password"
+                    >
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">Cadastrar</span>
+                    <i class="fas fa-spinner fa-spin btn-loading" style="display: none;"></i>
+                </button>
+
+                <div class="error-message" id="register-error" style="display: none;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span></span>
+                </div>
+
+                <p class="toggle-form">
+                    Já tem uma conta? 
+                    <a href="#" id="show-login">Entrar</a>
+                </p>
+            </form>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-content">
+                <h2>Gerencie suas finanças com inteligência</h2>
+                <ul class="features">
+                    <li>
+                        <i class="fas fa-chart-bar"></i>
+                        <div>
+                            <h3>Análise inteligente</h3>
+                            <p>Assistente de IA para suas finanças pessoais</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-wallet"></i>
+                        <div>
+                            <h3>Controle total</h3>
+                            <p>Acompanhe receitas, despesas e investimentos</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-chart-line"></i>
+                        <div>
+                            <h3>Planejamento</h3>
+                            <p>Metas financeiras e projeções personalizadas</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-shield-alt"></i>
+                        <div>
+                            <h3>Seguro e privado</h3>
+                            <p>Seus dados protegidos com criptografia</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/login.js"></script>
+</body>
+</html>

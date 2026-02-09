@@ -22,6 +22,7 @@
 
 const express = require('express');
 const logger = require('../../utils/logger');
+const { authenticateToken } = require('../middleware/auth');
 
 /**
  * Cria o router de mensagens com dependências injetadas.
@@ -47,16 +48,19 @@ function createMessageRouter(deps = {}) {
   /**
    * POST /api/message
    * Fluxo completo de processamento de uma mensagem do usuário.
+   * **REQUER AUTENTICAÇÃO**
    * 
-   * Body: { chatId: string, message: string, userId?: string }
+   * Body: { chatId: string, message: string }
+   * Headers: Authorization: Bearer <token>
    * Response: { response: string, chatId: string, timestamp: number, metadata?: Object }
    */
-  router.post('/message', async (req, res, next) => {
+  router.post('/message', authenticateToken, async (req, res, next) => {
     const startTime = Date.now();
 
     try {
       // --- Validação de input ---
-      const { chatId, message, userId } = req.body;
+      const { chatId, message } = req.body;
+      const userId = req.user.userId; // Extraído do JWT pelo middleware
 
       if (!chatId || typeof chatId !== 'string') {
         return res.status(400).json({ error: 'chatId é obrigatório e deve ser string' });
@@ -70,15 +74,16 @@ function createMessageRouter(deps = {}) {
 
       logger.logic('INFO', 'MessageRoute', `Nova mensagem recebida`, {
         chatId,
+        userId,
         queryLength: query.length,
       });
 
-      // --- 1. Carregar memória (LÓGICA) ---
+      // --- 1. Carregar memória (LÓGICA) com validação de ownership ---
       if (!memoryManager) {
         return res.status(503).json({ error: 'Sistema de memória não disponível' });
       }
 
-      const memory = await memoryManager.load(chatId);
+      const memory = await memoryManager.load(chatId, userId);
 
       // --- 2. Junior classifica (IA) ---
       if (!junior) {
@@ -97,7 +102,7 @@ function createMessageRouter(deps = {}) {
         logger.logic('DEBUG', 'MessageRoute', 'Retornando follow-up ao usuário');
 
         // Atualizar memória com o ciclo de follow-up
-        await memoryManager.updateAfterCycle(chatId, query, decision.followup_question);
+        await memoryManager.updateAfterCycle(chatId, query, decision.followup_question, userId);
 
         return res.json({
           response: decision.followup_question,
@@ -169,7 +174,7 @@ function createMessageRouter(deps = {}) {
       }
 
       // --- 7. Atualizar memória (LÓGICA + IA nano para resumo) ---
-      await memoryManager.updateAfterCycle(chatId, query, finalResponse);
+      await memoryManager.updateAfterCycle(chatId, query, finalResponse, userId);
 
       // --- Cleanup de estados de chamadas externas ---
       if (externalCallManager) {
@@ -204,13 +209,16 @@ function createMessageRouter(deps = {}) {
 
   /**
    * GET /api/chat/:chatId/history
-   * Retorna o histórico de memória do chat.
+   * Retorna o histórico completo de mensagens do chat.
+   * **REQUER AUTENTICAÇÃO**
    * 
-   * Response: { recent: [], summary: string }
+   * Headers: Authorization: Bearer <token>
+   * Response: { messages: [], wordCount: number }
    */
-  router.get('/chat/:chatId/history', async (req, res, next) => {
+  router.get('/chat/:chatId/history', authenticateToken, async (req, res, next) => {
     try {
       const { chatId } = req.params;
+      const userId = req.user.userId; // Extraído do JWT
 
       if (!chatId) {
         return res.status(400).json({ error: 'chatId é obrigatório' });
@@ -220,32 +228,20 @@ function createMessageRouter(deps = {}) {
         return res.status(503).json({ error: 'Sistema de memória não disponível' });
       }
 
-      const memory = await memoryManager.load(chatId);
+      // Carregar memória com validação de ownership
+      const memory = await memoryManager.load(chatId, userId);
 
-      // Formatar ciclos recentes
-      const recent = (memory.recent || []).map(cycle => ({
-        userInput: cycle.userInput,
-        aiResponse: cycle.aiResponse,
-        timestamp: cycle.timestamp,
-        id: cycle.id,
-      }));
-
-      // Formatar resumo de memória antiga
-      const summaries = (memory.old || []).map(item => {
-        return typeof item === 'string' ? item : item.content || '';
-      });
-      const summary = summaries.join('\n\n') || 'Sem histórico anterior.';
+      // Retornar histórico completo (todas as mensagens reais)
+      const messages = memory.fullHistory || [];
 
       logger.logic('DEBUG', 'MessageRoute', `Histórico consultado`, {
         chatId,
-        recentCycles: recent.length,
-        oldSummaries: memory.old?.length || 0,
+        totalMessages: messages.length,
       });
 
       return res.json({
         chatId,
-        recent,
-        summary,
+        messages,
         wordCount: memory.wordCount || 0,
       });
     } catch (error) {
@@ -259,20 +255,26 @@ function createMessageRouter(deps = {}) {
   /**
    * GET /api/chats
    * Lista todos os chats salvos ordenados por data de atualização.
+   * **REQUER AUTENTICAÇÃO** - retorna apenas chats do usuário logado.
    * 
+   * Headers: Authorization: Bearer <token>
    * Query params: ?limit=50 (opcional)
    * Response: { chats: [{ chatId, preview, lastMessage, timestamp, messageCount }] }
    */
-  router.get('/chats', async (req, res, next) => {
+  router.get('/chats', authenticateToken, async (req, res, next) => {
     try {
       if (!memoryManager) {
         return res.status(503).json({ error: 'Sistema de memória não disponível' });
       }
 
       const limit = parseInt(req.query.limit) || 50;
-      const chats = await memoryManager.getAllChats(limit);
+      const userId = req.user.userId; // Extraído do JWT
+      
+      // Buscar apenas chats do usuário logado
+      const chats = await memoryManager.getAllChats(limit, userId);
 
       logger.logic('DEBUG', 'MessageRoute', `Lista de chats consultada`, {
+        userId,
         count: chats.length,
         limit,
       });

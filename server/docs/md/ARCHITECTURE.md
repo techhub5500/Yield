@@ -132,10 +132,16 @@ src/tools/  → Execução pura (chamadas HTTP, MongoDB, cálculos)
 ```
 Cada ciclo = mensagem do usuário + resposta da IA
 
-Recente: últimos 2 ciclos completos (array direto)
-Antigo: resumos de ciclos anteriores (via Nano)
-Compressão: quando > 90% do limite (2250/2500 palavras), Full comprime para ~1000 palavras
+Estrutura de Memória:
+- Recente (recent): últimos 2 ciclos completos (array direto) → para contexto da IA
+- Antigo (old): resumos de ciclos anteriores (via Nano) → para contexto da IA
+- Histórico Completo (fullHistory): TODAS as mensagens → para exibição ao usuário
+- Compressão: quando > 90% do limite (2250/2500 palavras), Full comprime para ~1000 palavras
 ```
+
+**SEPARAÇÃO IMPORTANTE:**
+- `recent` + `old` = Memória contextual para a IA (limitada, resumida)
+- `fullHistory` = Histórico completo para o usuário (ilimitado, sem resumo)
 
 ---
 

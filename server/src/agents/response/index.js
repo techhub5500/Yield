@@ -280,15 +280,17 @@ async function formatSimpleResponse(query, memory) {
   
   const memoryContext = formatMemoryForResponse(memory);
   
-  // LÓGICA: Detectar se usuário está perguntando sobre o sistema
-  const isAskingAboutSystem = /como (você|vc) funciona|o que (você|vc) faz|para que serve|quem é você|explica|me ajuda a entender/i.test(query);
+  // IA (nano): detectar se usuario esta perguntando sobre o sistema
+  const isAskingAboutSystem = await detectSystemQuestion(query);
   
   let systemInfo = '';
+  let systemInfoLoaded = false;
   if (isAskingAboutSystem) {
     // Tentar carregar informações sobre o sistema
     try {
       const sistemaPath = path.join(__dirname, '..', '..', '..', 'docs', 'md_sistema', 'sistema.md');
       systemInfo = await fs.readFile(sistemaPath, 'utf-8');
+      systemInfoLoaded = true;
       logger.logic('DEBUG', 'ResponseAgent', 'Documentação do sistema carregada para contexto');
     } catch (error) {
       logger.warn('ResponseAgent', 'logic', 'Não foi possível carregar documentação do sistema', {
@@ -318,7 +320,8 @@ async function formatSimpleResponse(query, memory) {
 
     logger.ai('DEBUG', 'ResponseAgent', `Resposta social formatada`, {
       responseLength: result.response?.length || 0,
-      usedSystemInfo: isAskingAboutSystem,
+      askedAboutSystem: isAskingAboutSystem,
+      systemInfoLoaded,
     });
 
     return {
@@ -343,6 +346,40 @@ async function formatSimpleResponse(query, memory) {
       format: 'quick',
       tone: 'friendly',
     };
+  }
+}
+
+/**
+ * IA (nano) para detectar perguntas sobre o sistema.
+ * @param {string} query
+ * @returns {Promise<boolean>}
+ */
+async function detectSystemQuestion(query) {
+  const nano = ModelFactory.getNano();
+  const systemPrompt = `Voce classifica perguntas do usuario.
+
+Retorne JSON valido com:
+{
+  "is_system_question": true|false,
+  "reason": "curta justificativa"
+}
+
+Considere como true quando o usuario perguntar como o assistente funciona,
+o que ele faz, para que serve, ou pedir explicacao do sistema.`;
+
+  const userPrompt = `PERGUNTA: "${query}"`;
+
+  try {
+    const result = await nano.completeJSON(systemPrompt, userPrompt, {
+      maxTokens: 120,
+      temperature: 0.2,
+    });
+    return Boolean(result && result.is_system_question);
+  } catch (error) {
+    logger.warn('ResponseAgent', 'ai', 'Falha ao detectar pergunta sobre o sistema (nano)', {
+      error: error.message,
+    });
+    return false;
   }
 }
 

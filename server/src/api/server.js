@@ -17,6 +17,7 @@ const express = require('express');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { createMessageRouter } = require('./routes/message');
+const { createAuthRouter } = require('./routes/auth');
 
 /**
  * Cria e configura o servidor Express.
@@ -85,6 +86,10 @@ function createServer(dependencies = {}) {
       uptime: process.uptime(),
     });
   });
+
+  // Rotas de autenticação (POST /api/auth/register, /api/auth/login, etc.)
+  const authRouter = createAuthRouter();
+  app.use('/api/auth', authRouter);
 
   // Rotas de mensagem (POST /api/message, GET /api/chat/:chatId/history)
   const messageRouter = createMessageRouter(dependencies);

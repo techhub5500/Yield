@@ -179,6 +179,53 @@ grep "chatId" server/logs/YYYY-MM-DD.md
 
 ---
 
+### 8. Histórico mostra resumos internos ou apenas 2 mensagens
+
+**Sintoma:** 
+- Chat com 10 interações mostra apenas 2 mensagens
+- Aparecem textos como "Usuário perguntou... IA respondeu..." (resumos)
+- Modal de histórico mostra vários chats extras que não foram criados
+
+**Causa:**
+Sistema foi projetado com 2 componentes de memória:
+- `recent`: últimos 2 ciclos (para contexto da IA)
+- `old`: resumos de ciclos antigos (para contexto da IA)
+
+Antes da correção (08/02/2026), não havia histórico completo separado.
+
+**Status:** ✅ **CORRIGIDO** (08/02/2026)
+
+**Solução implementada:**
+Adicionado campo `fullHistory` que armazena TODAS as mensagens sem resumir:
+```javascript
+{
+  recent: [...],      // Últimos 2 ciclos → contexto para IA
+  old: [...],         // Resumos → contexto para IA
+  fullHistory: [...], // TODAS as mensagens → exibição ao usuário
+  wordCount: 0
+}
+```
+
+**Migração de dados existentes:**
+Se você tem chats criados antes desta correção e quer preservar as mensagens:
+```bash
+cd server
+node scripts/migrate-fullhistory.js
+```
+
+**⚠️ ATENÇÃO:**
+- Apenas mensagens em `recent` podem ser recuperadas
+- Mensagens que já foram resumidas em `old` foram perdidas
+- Recomenda-se executar a migração imediatamente após atualizar o código
+
+**Verificar correção:**
+1. Criar novo chat e enviar 3+ mensagens
+2. Recarregar página e abrir histórico
+3. Todas as mensagens devem aparecer
+4. Nenhum resumo interno deve ser exibido
+
+---
+
 ## Checklist Pré-Deploy
 
 - [ ] Variáveis de ambiente configuradas no servidor
@@ -188,3 +235,4 @@ grep "chatId" server/logs/YYYY-MM-DD.md
 - [ ] Testar `GET /health` após deploy
 - [ ] Testar `POST /api/message` com query simples
 - [ ] Verificar que logs estão sendo escritos em `server/logs/`
+- [ ] **[NOVO]** Executar script de migração se houver chats existentes: `node scripts/migrate-fullhistory.js`

@@ -25,6 +25,9 @@ class Memory {
     /** @type {Array<{content: string, timestamp: string}>} Resumos de ciclos anteriores */
     this.old = [];
 
+    /** @type {Array<{userInput: string, aiResponse: string, timestamp: string, id: string}>} Histórico completo para exibição */
+    this.fullHistory = [];
+
     /** @type {number} Cache de contagem de palavras */
     this.wordCount = 0;
   }
@@ -50,6 +53,14 @@ class Memory {
 
     // Adicionar novo ciclo aos recentes
     this.recent.push(cycle);
+
+    // Adicionar também ao histórico completo (para exibição ao usuário)
+    this.fullHistory.push({
+      userInput: cycle.userInput,
+      aiResponse: cycle.aiResponse,
+      timestamp: cycle.timestamp,
+      id: cycle.id,
+    });
 
     // Recalcular contagem de palavras
     this.recalculateWordCount();
@@ -118,6 +129,7 @@ class Memory {
     return {
       recent: this.recent.map(c => (c instanceof Cycle ? c.toJSON() : c)),
       old: this.old,
+      fullHistory: this.fullHistory,
       wordCount: this.wordCount,
     };
   }
@@ -136,6 +148,10 @@ class Memory {
 
     if (data.old && Array.isArray(data.old)) {
       memory.old = data.old;
+    }
+
+    if (data.fullHistory && Array.isArray(data.fullHistory)) {
+      memory.fullHistory = data.fullHistory;
     }
 
     memory.recalculateWordCount();

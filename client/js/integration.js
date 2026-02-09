@@ -3,13 +3,87 @@
  * 
  * Responsabilidades:
  *   1. Sidebar (navegação)
- *   2. YieldChat — integração centralizada dos chats com o backend
+ *   2. YieldAuth — sistema de autenticação
+ *   3. YieldChat — integração centralizada dos chats com o backend
  *
  * O backend expõe:
+ *   POST /api/auth/register  { name, email, password }
+ *   POST /api/auth/login     { email, password }
  *   POST /api/message        { chatId, message } → { response, chatId, timestamp, metadata }
  *   GET  /api/chat/:id/history                   → { chatId, recent, summary, wordCount }
  *   GET  /health                                 → { status, version, timestamp, uptime }
  * ============================================================ */
+
+// ─── Sistema de Autenticação ─────────────────────────────────
+const YieldAuth = {
+    /** Salva o token JWT no localStorage */
+    setToken(token) {
+        localStorage.setItem('yield_token', token);
+    },
+
+    /** Recupera o token JWT do localStorage */
+    getToken() {
+        return localStorage.getItem('yield_token');
+    },
+
+    /** Remove o token (logout) */
+    clearToken() {
+        localStorage.removeItem('yield_token');
+    },
+
+    /** Verifica se o usuário está autenticado */
+    isAuthenticated() {
+        return !!this.getToken();
+    },
+
+    /** Decodifica o payload do JWT (sem verificação - apenas leitura) */
+    decodeToken() {
+        const token = this.getToken();
+        if (!token) return null;
+
+        try {
+            const payload = token.split('.')[1];
+            const decoded = JSON.parse(atob(payload));
+            return decoded;
+        } catch (err) {
+            console.error('[YieldAuth] Erro ao decodificar token:', err);
+            return null;
+        }
+    },
+
+    /** Retorna os dados do usuário do token */
+    getUser() {
+        const decoded = this.decodeToken();
+        if (!decoded) return null;
+
+        return {
+            id: decoded.userId,
+            name: decoded.name,
+            email: decoded.email,
+            firstName: decoded.name?.split(' ')[0] || 'Usuário'
+        };
+    },
+
+    /** Redireciona para login se não estiver autenticado */
+    requireAuth() {
+        if (!this.isAuthenticated()) {
+            window.location.href = '/html/login.html';
+            return false;
+        }
+        return true;
+    },
+
+    /** Faz logout com confirmação */
+    logout() {
+        if (confirm('Tem certeza que deseja sair?')) {
+            this.clearToken();
+            window.location.href = '/html/login.html';
+        }
+    }
+};
+
+// Expor globalmente
+window.YieldAuth = YieldAuth;
 
 // ─── Sidebar ─────────────────────────────────────────────────
 const initSidebar = () => {
@@ -40,9 +114,24 @@ const initSidebar = () => {
             parent.classList.toggle('open');
         });
     });
+
+    // Adicionar funcionalidade ao botão de logout
+    const logoutBtn = sidebar.querySelector('.logout a');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            YieldAuth.logout();
+        });
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Verificar autenticação em páginas protegidas
+    const isLoginPage = window.location.pathname.includes('login.html');
+    if (!isLoginPage) {
+        YieldAuth.requireAuth();
+    }
+
     const placeholder = document.getElementById('sidebar-placeholder');
     if (placeholder) {
         fetch('integration.html')
@@ -50,11 +139,25 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 placeholder.innerHTML = data;
                 initSidebar();
+                updateUserName();
             });
     } else {
         initSidebar();
+        updateUserName();
     }
 });
+
+// ─── Atualizar nome do usuário ──────────────────────────────
+function updateUserName() {
+    const user = YieldAuth.getUser();
+    if (!user) return;
+
+    // Atualizar todos os elementos que exibem o nome do usuário
+    const nameElements = document.querySelectorAll('[data-user-name]');
+    nameElements.forEach(el => {
+        el.textContent = user.firstName;
+    });
+}
 
 // ─── YieldChat — integração centralizada com o backend ───────
 /**
@@ -154,20 +257,15 @@ class YieldChat {
         try {
             const data = await this._get(`/api/chat/${this.chatId}/history`);
 
-            if (!data.recent || data.recent.length === 0) return;
+            if (!data.messages || data.messages.length === 0) return;
 
             // Limpa mensagens atuais
             this.messagesEl.innerHTML = '';
 
-            // Se há resumo de conversas antigas, mostrar como contexto
-            if (data.summary && data.summary !== 'Sem histórico anterior.') {
-                this._appendMessage(data.summary, 'bot system');
-            }
-
-            // Renderizar ciclos recentes
-            data.recent.forEach(cycle => {
-                if (cycle.userInput)  this._appendMessage(cycle.userInput, 'user');
-                if (cycle.aiResponse) this._appendMessage(cycle.aiResponse, 'bot');
+            // Renderizar todas as mensagens do histórico completo
+            data.messages.forEach(msg => {
+                if (msg.userInput)  this._appendMessage(msg.userInput, 'user');
+                if (msg.aiResponse) this._appendMessage(msg.aiResponse, 'bot');
             });
 
             this.historyLoaded = true;
@@ -425,11 +523,26 @@ class YieldChat {
 
     /** POST genérico com JSON. */
     async _post(path, body) {
+        const headers = { 'Content-Type': 'application/json' };
+        
+        // Adicionar token de autenticação se disponível
+        const token = YieldAuth.getToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const res = await fetch(this.baseUrl + path, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify(body),
         });
+
+        // Se receber 401, redirecionar para login
+        if (res.status === 401) {
+            YieldAuth.clearToken();
+            window.location.href = '/html/login.html';
+            throw new Error('Sessão expirada');
+        }
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
@@ -441,7 +554,22 @@ class YieldChat {
 
     /** GET genérico. */
     async _get(path) {
-        const res = await fetch(this.baseUrl + path);
+        const headers = {};
+        
+        // Adicionar token de autenticação se disponível
+        const token = YieldAuth.getToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const res = await fetch(this.baseUrl + path, { headers });
+
+        // Se receber 401, redirecionar para login
+        if (res.status === 401) {
+            YieldAuth.clearToken();
+            window.location.href = '/html/login.html';
+            throw new Error('Sessão expirada');
+        }
 
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
