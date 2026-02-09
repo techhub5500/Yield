@@ -69,6 +69,7 @@ server/
 | Conversor NL→JSON (`tools/finance-bridge/query-builder.js`) | ✅ | GPT-5-nano, prompt com schema completo, fallback para garantir campo operation |
 | Validador de query (`tools/finance-bridge/validators.js`) | ✅ | Validação de tipos, ranges, datas ISO 8601, sanitização contra injection |
 | Executor de query (`tools/finance-bridge/executor.js`) | ✅ | Resolve períodos inteligentes, aplica lógica booleana (AND/OR/NOT), query no MongoDB |
+| Filtro por tipo em queries | ✅ | Suporte a `filters.type` (expense/income) na validação e no executor para consultas por receitas/despesas |
 | Schema de períodos inteligentes | ✅ | current_month, last_month, last_quarter, last_6_days, fiscal_year, since_last_payday |
 
 ### Objetivo 2.3: Finance Bridge — Camada de Insert

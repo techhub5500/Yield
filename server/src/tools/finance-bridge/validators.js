@@ -66,7 +66,21 @@ function validateQuery(queryJson) {
     if (!Array.isArray(params.filters.categories)) {
       errors.push('Campo "categories" deve ser um array');
     } else {
-      params.filters.categories = params.filters.categories.map(c => sanitizeString(c));
+      params.filters.categories = params.filters.categories
+        .filter(c => typeof c === 'string')
+        .map(c => sanitizeString(c))
+        .filter(c => c.length > 0);
+
+      if (params.filters.categories.length === 0) {
+        delete params.filters.categories;
+      }
+    }
+  }
+
+  // Validar tipo (expense | income)
+  if (params.filters && params.filters.type !== undefined) {
+    if (!['expense', 'income'].includes(params.filters.type)) {
+      errors.push(`Tipo inválido: "${params.filters.type}". Esperado: "expense" ou "income"`);
     }
   }
 

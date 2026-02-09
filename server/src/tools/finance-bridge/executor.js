@@ -153,6 +153,11 @@ function buildMongoFilter(params) {
       });
     }
 
+    // Tipo (expense | income)
+    if (params.filters.type) {
+      conditions.push({ type: params.filters.type });
+    }
+
     // Subcategorias
     if (params.filters.subcategories && params.filters.subcategories.length > 0) {
       conditions.push({

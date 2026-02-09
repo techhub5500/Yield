@@ -39,6 +39,10 @@ const FINANCE_BRIDGE_SCHEMA = {
           description: 'Lista de categorias para filtrar (array de strings)',
           type: 'string[]',
         },
+        type: {
+          description: 'Tipo da transação (expense | income)',
+          options: ['expense', 'income'],
+        },
         subcategories: {
           description: 'Lista de subcategorias para filtrar (array de strings)',
           type: 'string[]',
