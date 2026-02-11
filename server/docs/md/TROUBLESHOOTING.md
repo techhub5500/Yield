@@ -41,6 +41,18 @@ Rota `simple_response` adicionada para interações sociais. Saudações agora t
 
 ---
 
+### 3.1 Junior gera follow-up apos decidir por escalate
+
+**Sintoma:** Logs mostram `Junior` com `decision: "escalate"` e, logo em seguida, `JuniorFollowup` e `MessageRoute` retornando pergunta ao usuario.
+
+**Causa provavel:** Follow-up esta sendo aplicado a rotas que nao sao `bridge_insert`.
+
+**Solucao:**
+- Garantir que `agents/junior/index.js` ignore `needs_followup` quando a rota nao for `bridge_insert`.
+- Validar que o `MessageRoute` apenas retorna follow-up quando a decisao final do Junior permitir.
+
+---
+
 ### 4. Finance Bridge retorna query inválida
 
 **Sintoma:** Erro na validação do JSON gerado pelo QueryBuilder.

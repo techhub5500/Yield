@@ -114,7 +114,7 @@ function createMessageRouter(deps = {}) {
       });
 
       // --- 3. Se needs_followup → retornar pergunta ao usuário ---
-      if (decision.needs_followup && decision.followup_question) {
+      if (decision.decision === 'bridge_insert' && decision.needs_followup && decision.followup_question) {
         logger.logic('DEBUG', 'MessageRoute', 'Retornando follow-up ao usuário');
 
         // Atualizar memória com o ciclo de follow-up

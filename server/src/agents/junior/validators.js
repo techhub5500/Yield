@@ -34,8 +34,8 @@ function validateDecisionStructure(decision) {
     errors.push('Campo "needs_followup" deve ser boolean');
   }
 
-  if (decision.needs_followup && !decision.followup_question) {
-    errors.push('Campo "followup_question" obrigatório quando needs_followup = true');
+  if (decision.needs_followup && typeof decision.followup_question === 'string' && decision.followup_question.trim().length === 0) {
+    errors.push('Campo "followup_question" vazio quando needs_followup = true');
   }
 
   return { valid: errors.length === 0, errors };

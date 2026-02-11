@@ -139,7 +139,7 @@ POST /api/message { chatId, message }
 1. Validação de input (lógica)
 2. Carregar memória (lógica — MemoryManager.load)
 3. Junior classifica (IA — mini)
-4. Se needs_followup → retorna pergunta + atualiza memória
+4. Se needs_followup (apenas bridge_insert) → retorna pergunta + atualiza memoria
 5. Dispatcher roteia (lógica — switch)
 6. Se escalade:
    a. Orquestrador gera DOC (IA — full)

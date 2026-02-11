@@ -61,22 +61,36 @@ async function analyze(query, memory) {
       return createFallbackDecision(query, validation.errors);
     }
 
-    // Se precisa de follow-up, enriquecer com pergunta contextualizada
-    let followupGenerated = false;
-    if (decision.needs_followup && !decision.followup_question) {
-      decision.followup_question = await generateFollowup(
-        query,
-        decision.missing_info || [],
-        memory
-      );
-      followupGenerated = true;
-    }
+    // Follow-up e validação extra so se aplicam a bridge_insert.
+    if (decision.decision !== 'bridge_insert') {
+      if (decision.needs_followup || decision.followup_question || (decision.missing_info || []).length > 0) {
+        logger.warn('Junior', 'ai', 'Follow-up ignorado para rota nao bridge_insert', {
+          decision: decision.decision,
+          missingInfo: decision.missing_info || [],
+        });
+      }
 
-    if (decision.needs_followup && decision.followup_question && !followupGenerated) {
-      logger.ai('DEBUG', 'JuniorFollowup', 'Follow-up gerado', {
-        missingFields: decision.missing_info || [],
-        source: 'model',
-      });
+      decision.needs_followup = false;
+      decision.followup_question = null;
+      decision.missing_info = [];
+    } else {
+      // Se precisa de follow-up, enriquecer com pergunta contextualizada
+      let followupGenerated = false;
+      if (decision.needs_followup && !decision.followup_question) {
+        decision.followup_question = await generateFollowup(
+          query,
+          decision.missing_info || [],
+          memory
+        );
+        followupGenerated = true;
+      }
+
+      if (decision.needs_followup && decision.followup_question && !followupGenerated) {
+        logger.ai('DEBUG', 'JuniorFollowup', 'Follow-up gerado', {
+          missingFields: decision.missing_info || [],
+          source: 'model',
+        });
+      }
     }
 
     logger.ai('INFO', 'Junior', `Query classificada como "${decision.decision}"`, {
