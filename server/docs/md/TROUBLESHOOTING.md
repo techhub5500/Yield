@@ -116,6 +116,19 @@ Rota `simple_response` adicionada para interações sociais. Saudações agora t
 
 ---
 
+### 10. Erro em math:projectionWithContributions (PMT undefined)
+
+**Sintoma:** Log do MathModule mostra `PMT=undefined` e a ferramenta falha com `DecimalError`.
+
+**Causa provavel:** Parametros da tool_request foram enviados com nomes diferentes de `monthlyPayment`, `monthlyRate`, `months`.
+
+**Solucao:**
+- Garantir que o coordenador use os nomes exatos de parametros definidos no prompt.
+- O BaseCoordinator normaliza alguns sinonimos, mas campos obrigatorios ainda devem estar presentes.
+- Se persistir, revisar o JSON de tool_requests retornado pelo coordenador.
+
+---
+
 ### 9. Saudações recebem respostas "robóticas" ou genéricas (Patch 4.1)
 
 **Sintoma:** Respostas a "Olá", "Oi", "Bom dia" são muito formais ou não contextualizam memória recente.

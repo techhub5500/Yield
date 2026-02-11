@@ -82,7 +82,12 @@ O sistema executará as ferramentas e retornará os resultados para você comple
 Ferramentas disponíveis para solicitação:
 - finance_bridge (action: "query") — params: { "query": "descrição em linguagem natural" }
 - search (action: "serper" | "brapi" | "tavily") — params: { "query": "termo de busca" }
-- math (action: "compoundInterest" | "netPresentValue" | "internalRateOfReturn" | "sharpeRatio" | "valueAtRisk" | "projectionWithContributions") — params: parâmetros específicos da função
+- math (action: "compoundInterest") — params: { "principal", "rate", "periods" }
+- math (action: "netPresentValue") — params: { "rate", "cashFlows" }
+- math (action: "internalRateOfReturn") — params: { "cashFlows" }
+- math (action: "sharpeRatio") — params: { "returns", "riskFreeRate" }
+- math (action: "valueAtRisk") — params: { "returns", "confidence" }
+- math (action: "projectionWithContributions") — params: { "monthlyPayment", "monthlyRate", "months", "initialAmount" }
 
 Exemplo de tool_requests:
 [

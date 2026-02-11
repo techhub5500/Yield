@@ -312,24 +312,108 @@ class BaseCoordinator {
    */
   _executeMathTool(action, params) {
     const math = this.tools.mathModule;
+    const normalized = this._normalizeMathParams(action, params || {});
 
     switch (action) {
       case 'compoundInterest':
-        return math.compoundInterest(params.principal, params.rate, params.periods);
+        return math.compoundInterest(normalized.principal, normalized.rate, normalized.periods);
       case 'netPresentValue':
-        return math.netPresentValue(params.rate, params.cashFlows);
+        return math.netPresentValue(normalized.rate, normalized.cashFlows);
       case 'internalRateOfReturn':
-        return math.internalRateOfReturn(params.cashFlows);
+        return math.internalRateOfReturn(normalized.cashFlows);
       case 'sharpeRatio':
-        return math.sharpeRatio(params.returns, params.riskFreeRate);
+        return math.sharpeRatio(normalized.returns, normalized.riskFreeRate);
       case 'valueAtRisk':
-        return math.valueAtRisk(params.returns, params.confidence);
+        return math.valueAtRisk(normalized.returns, normalized.confidence);
       case 'projectionWithContributions':
         return math.projectionWithContributions(
-          params.monthlyPayment, params.monthlyRate, params.months, params.initialAmount
+          normalized.monthlyPayment, normalized.monthlyRate, normalized.months, normalized.initialAmount
         );
       default:
         throw new Error(`Função matemática desconhecida: ${action}`);
+    }
+  }
+
+  /**
+   * Normaliza parametros das funcoes matematicas para evitar variacoes de nome.
+   * LÓGICA PURA.
+   * @param {string} action
+   * @param {Object} params
+   * @returns {Object}
+   * @protected
+   */
+  _normalizeMathParams(action, params) {
+    const value = (key, fallbacks = []) => {
+      if (params[key] !== undefined && params[key] !== null) return params[key];
+      for (const alt of fallbacks) {
+        if (params[alt] !== undefined && params[alt] !== null) return params[alt];
+      }
+      return undefined;
+    };
+
+    switch (action) {
+      case 'compoundInterest': {
+        const principal = value('principal', ['p', 'initialAmount', 'capital', 'valor_inicial']);
+        const rate = value('rate', ['r', 'taxa', 'monthlyRate']);
+        const periods = value('periods', ['t', 'n', 'months', 'meses']);
+        this._assertRequiredParams(action, { principal, rate, periods });
+        return { principal, rate, periods };
+      }
+      case 'netPresentValue': {
+        const rate = value('rate', ['r', 'taxa']);
+        const cashFlows = value('cashFlows', ['fluxos', 'flows']);
+        this._assertRequiredParams(action, { rate, cashFlows });
+        return { rate, cashFlows };
+      }
+      case 'internalRateOfReturn': {
+        const cashFlows = value('cashFlows', ['fluxos', 'flows']);
+        this._assertRequiredParams(action, { cashFlows });
+        return { cashFlows };
+      }
+      case 'sharpeRatio': {
+        const returns = value('returns', ['retornos']);
+        const riskFreeRate = value('riskFreeRate', ['rf', 'taxa_livre', 'taxaLivre']);
+        this._assertRequiredParams(action, { returns, riskFreeRate });
+        return { returns, riskFreeRate };
+      }
+      case 'valueAtRisk': {
+        const returns = value('returns', ['retornos']);
+        const confidence = value('confidence', ['confianca']);
+        this._assertRequiredParams(action, { returns });
+        return { returns, confidence };
+      }
+      case 'projectionWithContributions': {
+        const monthlyPayment = value('monthlyPayment', ['pmt', 'PMT', 'aporte_mensal', 'aporteMensal', 'contribuicao_mensal', 'contribuicaoMensal']);
+        const monthlyRate = value('monthlyRate', ['rate', 'r', 'taxa']);
+        const months = value('months', ['n', 'periods', 'meses', 'monthsCount']);
+        const initialAmount = value('initialAmount', ['principal', 'valor_inicial', 'saldo_inicial', 'initial']);
+        this._assertRequiredParams(action, { monthlyPayment, monthlyRate, months });
+        return {
+          monthlyPayment,
+          monthlyRate,
+          months,
+          initialAmount: initialAmount !== undefined && initialAmount !== null ? initialAmount : 0,
+        };
+      }
+      default:
+        return params;
+    }
+  }
+
+  /**
+   * Valida parametros obrigatorios e gera erro claro para log.
+   * LÓGICA PURA.
+   * @param {string} action
+   * @param {Object} required
+   * @protected
+   */
+  _assertRequiredParams(action, required) {
+    const missing = Object.entries(required)
+      .filter(([, value]) => value === undefined || value === null)
+      .map(([key]) => key);
+
+    if (missing.length > 0) {
+      throw new Error(`Parametros invalidos para ${action}: ${missing.join(', ')} ausente(s)`);
     }
   }
 
