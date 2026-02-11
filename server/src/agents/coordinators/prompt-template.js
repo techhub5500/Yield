@@ -71,6 +71,8 @@ REGRAS:
 - Se receber outputs de agentes anteriores, USE-OS como base
 - Quando a tarefa envolver dados financeiros do usuário ou informações externas, SEMPRE solicite dados reais via tool_requests
 - NÃO invente dados financeiros — use tool_requests para obter dados reais
+- Marque "task_completed": false APENAS se houver falha crítica (ex: ferramenta indisponível) ou ausência de dados indispensáveis
+- Se houver dados parciais, conclua com limitações claras e mantenha "task_completed": true
 
 FORMATO DE SAÍDA:
 **IMPORTANTE:** Retorne EXCLUSIVAMENTE um objeto JSON válido.

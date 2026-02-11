@@ -77,10 +77,15 @@ function validateQuery(queryJson) {
     }
   }
 
-  // Validar tipo (expense | income)
+  // Validar tipo (expense | income). "all"/"both"/null significa ambos e sera removido.
   if (params.filters && params.filters.type !== undefined) {
-    if (!['expense', 'income'].includes(params.filters.type)) {
+    const normalizedType = normalizeType(params.filters.type);
+    if (normalizedType === null) {
+      delete params.filters.type;
+    } else if (!['expense', 'income'].includes(normalizedType)) {
       errors.push(`Tipo inválido: "${params.filters.type}". Esperado: "expense" ou "income"`);
+    } else {
+      params.filters.type = normalizedType;
     }
   }
 
@@ -214,3 +219,17 @@ module.exports = {
   isValidDate,
   sanitizeString,
 };
+
+/**
+ * Normaliza o tipo de transacao para validacao.
+ * @param {string|null|undefined} value
+ * @returns {'expense'|'income'|null}
+ */
+function normalizeType(value) {
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (!normalized) return null;
+  if (['all', 'both', 'ambos'].includes(normalized)) return null;
+  if (normalized === 'expense' || normalized === 'income') return normalized;
+  return normalized;
+}

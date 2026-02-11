@@ -360,6 +360,14 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 
 ---
 
+---
+
+## Adendo (11/02/2026) — Evolucao math_direct
+
+O MathModule passou a ter acesso direto via rota `math_direct` (Junior → Dispatcher → MathDirect → MathModule) para calculos puramente numericos. Os coordenadores continuam usando o MathModule normalmente em tarefas complexas.
+
+---
+
 **Fase 3 concluída com sucesso.**  
 **Todos os módulos carregam sem erros.**  
 **Pronto para iniciar Fase 4.**

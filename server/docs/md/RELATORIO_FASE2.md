@@ -333,6 +333,14 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 
 ---
 
+---
+
+## Adendo (11/02/2026) — Evolucao math_direct
+
+Foi adicionada a rota `math_direct` no Junior e no Dispatcher para calculos matematicos puros com parametros explicitos. Esta evolucao nao altera as rotas existentes e nao substitui o fluxo de escalada.
+
+---
+
 **Fase 2 concluída com sucesso.**  
 **16 módulos implementados (6 com IA, 10 com lógica pura).**  
 **Pronto para iniciar Fase 3.**

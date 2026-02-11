@@ -8,7 +8,7 @@
  * ATUALIZAÇÃO 07/02/2026: Adicionada rota 'simple_response'.
  */
 
-const VALID_DECISIONS = ['bridge_query', 'bridge_insert', 'serper', 'simple_response', 'escalate'];
+const VALID_DECISIONS = ['bridge_query', 'bridge_insert', 'serper', 'simple_response', 'math_direct', 'escalate'];
 
 /**
  * Valida a estrutura do JSON de decisão retornado pela IA.

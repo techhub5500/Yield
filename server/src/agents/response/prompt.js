@@ -70,7 +70,7 @@ Retorne um JSON com a seguinte estrutura:
 }`;
 
 /**
- * Prompt para respostas de rotas diretas (bridge_query, serper, bridge_insert).
+ * Prompt para respostas de rotas diretas (bridge_query, serper, bridge_insert, math_direct).
  * Usado quando não há escalada — o Junior resolveu diretamente.
  */
 const DIRECT_RESPONSE_PROMPT = `Você é o Agente de Resposta Final do sistema Yield — um assistente financeiro brasileiro.
@@ -85,6 +85,7 @@ REGRAS:
 - Para resultados de consulta: apresente os dados de forma clara e contextualizada
 - Para confirmação de insert: confirme a ação de forma amigável
 - Para busca na internet: resuma as informações mais relevantes
+- Para calculos matematicos: apresente o resultado principal e explique de forma simples
 - Seja conciso — o usuário fez uma pergunta direta, quer uma resposta direta
 
 FORMATO DE SAÍDA:

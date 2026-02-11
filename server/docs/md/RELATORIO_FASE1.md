@@ -275,6 +275,14 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 
 ---
 
+---
+
+## Adendo (11/02/2026) — Evolucao math_direct
+
+Esta fase permanece inalterada. A rota `math_direct` foi adicionada depois nas fases de roteamento e resposta, sem impacto na base de memoria, logger ou infraestrutura core.
+
+---
+
 **Fase 1 concluída com sucesso.**
 **21 testes unitários passando.**
 **Pronto para iniciar Fase 2.**

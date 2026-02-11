@@ -78,6 +78,7 @@ module.exports = {
 
   // Ferramentas (Fase 3)
   MathModule: require('./tools/math'),
+  MathDirect: require('./tools/math-direct'),
 
   // API HTTP (Fase 4)
   createServer: require('./api/server').createServer,
@@ -107,6 +108,7 @@ if (require.main === module) {
   const FinanceBridge = require('./tools/finance-bridge');
   const SearchManager = require('./tools/search');
   const MathModule = require('./tools/math');
+  const MathDirect = require('./tools/math-direct');
 
   // Coordenadores (Fase 3)
   const AnalysisCoordinator = require('./agents/coordinators/analysis');
@@ -117,6 +119,7 @@ if (require.main === module) {
   const financeBridge = new FinanceBridge();
   const searchManager = new SearchManager();
   const mathModule = MathModule; // já é singleton (module.exports = new MathModule())
+  const mathDirect = MathDirect;
   const externalCallManager = new ExternalCallManager();
 
   // Instanciar coordenadores com ferramentas injetadas
@@ -134,6 +137,7 @@ if (require.main === module) {
   const dispatcher = new Dispatcher({
     financeBridge,
     searchManager,
+    mathDirect,
     orchestrator,
     executionManager,
     externalCallManager,

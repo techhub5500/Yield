@@ -18,12 +18,14 @@ class Dispatcher {
    * @param {Object} tools - Ferramentas disponíveis
    * @param {Object} tools.financeBridge - Finance Bridge (query + insert)
    * @param {Object} tools.searchManager - Gerenciador de busca (Serper, Brapi, Tavily)
+   * @param {Object} [tools.mathDirect] - Executor de cálculo matemático direto
    * @param {Object} [tools.orchestrator] - Orquestrador (Fase 3)
    * @param {Object} [tools.executionManager] - Gerenciador de execução (Fase 3)
    */
   constructor(tools = {}) {
     this.financeBridge = tools.financeBridge || null;
     this.searchManager = tools.searchManager || null;
+      this.mathDirect = tools.mathDirect || null;
     this.orchestrator = tools.orchestrator || null;
     this.executionManager = tools.executionManager || null;
     this.externalCallManager = tools.externalCallManager || null;
@@ -36,6 +38,7 @@ class Dispatcher {
    * - bridge_query: Envia memória COMPLETA
    * - bridge_insert: Memória NÃO enviada
    * - serper: Envia memória COMPLETA
+  * - math_direct: Memória NÃO enviada
    * - escalate: Envia memória COMPLETA + query (delegado à Fase 3)
    * 
    * @param {Object} decision - Decisão do Junior
@@ -56,6 +59,9 @@ class Dispatcher {
 
       case 'bridge_insert':
         return await this._handleBridgeInsert(query, chatId);
+
+      case 'math_direct':
+        return await this._handleMathDirect(query);
 
       case 'serper':
         return await this._handleSerper(query, memory, chatId);
@@ -150,6 +156,27 @@ class Dispatcher {
     } catch (error) {
       logger.error('Dispatcher', 'logic', 'Falha na busca Serper', { error: error.message });
       return { success: false, type: 'serper', error: error.message };
+    }
+  }
+
+  /**
+   * Roteia para calculo matematico direto (math_direct).
+   * Nao consulta MongoDB e nao escala.
+   * @private
+   */
+  async _handleMathDirect(query) {
+    if (!this.mathDirect) {
+      logger.error('Dispatcher', 'logic', 'MathDirect nao disponivel');
+      return { success: false, error: 'MathDirect nao configurado' };
+    }
+
+    try {
+      const result = await this.mathDirect.executeMathDirect(query);
+      logger.logic('DEBUG', 'Dispatcher', 'MathDirect executado com sucesso');
+      return { success: true, type: 'math_direct', data: result };
+    } catch (error) {
+      logger.error('Dispatcher', 'logic', 'Falha no MathDirect', { error: error.message });
+      return { success: false, type: 'math_direct', error: error.message };
     }
   }
 

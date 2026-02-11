@@ -59,6 +59,9 @@ function suggestFormat(query, routeType, agentCount = 0) {
     if (routeType === 'bridge_insert') {
       return { suggestedFormat: 'quick', reason: 'Confirmação de lançamento' };
     }
+    if (routeType === 'math_direct') {
+      return { suggestedFormat: 'quick', reason: 'Cálculo direto' };
+    }
 
     const isQuick = QUICK_KEYWORDS.some(kw => queryLower.startsWith(kw));
     if (isQuick) {

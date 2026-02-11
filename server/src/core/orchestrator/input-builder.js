@@ -56,6 +56,12 @@ function formatDependencyOutputsForPrompt(dependencyOutputs) {
 
   for (const [agentName, output] of Object.entries(dependencyOutputs)) {
     lines.push(`\n--- Output do agente "${agentName}" ---`);
+    const taskCompleted = output?.task_completed !== false;
+    lines.push(`Status: ${taskCompleted ? 'sucesso' : 'falha'}`);
+    if (!taskCompleted) {
+      const errorMessage = output?.result?.error || output?.error || output?.reasoning || 'Falha sem detalhes';
+      lines.push(`Erro: ${errorMessage}`);
+    }
     if (typeof output === 'string') {
       lines.push(output);
     } else if (output && output.result) {

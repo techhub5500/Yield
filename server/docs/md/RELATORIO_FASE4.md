@@ -521,4 +521,28 @@ Se o usuário pergunta sobre o sistema (detectado via regex), o ResponseAgent:
 
 ---
 
-**Fim do Relatório — Fase 4 + Patch 4.1**
+---
+
+## 10. Patch 4.2 — Finance Bridge e Dependencias (11/02/2026)
+
+**Objetivo:** Corrigir falhas no teste 41 quando a consulta pede receitas e despesas juntas e garantir sinalizacao clara de falhas entre coordenadores.
+
+**Mudancas implementadas:**
+- `FinanceBridge` passa a aceitar consultas sem `filters.type` (ambos os tipos) e normaliza `type: all/both/ambos` para remocao
+- `QueryBuilder` remove `filters.type` quando a query menciona receitas e despesas simultaneamente
+- Prompts dos coordenadores esclarecem quando usar `task_completed: false`
+- Outputs de dependencias agora incluem status/erro no prompt, permitindo que agentes posteriores reajam a falhas
+
+**Impacto esperado:**
+- Consultas "receitas e despesas" nao falham na validacao
+- Coordenadores dependentes recebem contexto explicito de falha e podem ajustar a entrega
+
+---
+
+## Adendo (11/02/2026) — Evolucao math_direct
+
+A rota `math_direct` foi integrada ao fluxo do endpoint de mensagem como rota direta (sem escalada). O ResponseAgent passou a formatar respostas de calculo matematico e o Dispatcher passou a acionar o MathDirect.
+
+---
+
+**Fim do Relatorio — Fase 4 + Patch 4.2**

@@ -202,3 +202,13 @@ Os modelos GPT-5.2, GPT-5-mini e GPT-5-nano referidos na constituição não exi
 **Lógica especial:** Se usuário pergunta sobre o sistema, ResponseAgent carrega `docs/md_sistema/sistema.md` para contexto adicional.
 
 **Arquivo de referência:** Ver `RELATORIO_FASE4.md` seção 9 para detalhes completos.
+
+### Patch 4.2: Finance Bridge e dependências (11/02/2026)
+
+**Motivação:** Queries que pedem receitas e despesas juntas geravam `filters.type: null`, falhando na validação; agentes dependentes não viam claramente falhas anteriores.
+
+**Implementação:**
+- Finance Bridge aceita consultas sem `filters.type` (ambos os tipos) e normaliza `type: all/both/ambos` para remoção
+- QueryBuilder remove `filters.type` quando o pedido inclui receitas e despesas
+- Prompts de coordenadores esclarecem quando usar `task_completed: false`
+- Outputs de dependência agora incluem status de falha no prompt

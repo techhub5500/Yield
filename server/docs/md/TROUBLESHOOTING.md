@@ -64,6 +64,18 @@ Rota `simple_response` adicionada para interações sociais. Saudações agora t
 
 ---
 
+### 4.1. Query com receitas e despesas falha (type null)
+
+**Sintoma:** Log mostra `Tipo inválido: "null"` ao pedir receitas e despesas na mesma consulta.
+
+**Causa provável:** A IA retornou `filters.type: null` em vez de omitir o campo.
+
+**Solução:**
+- O sistema agora remove `filters.type` quando o valor é `null`, `all`, `both` ou `ambos`
+- Se persistir, validar se o QueryBuilder está normalizando o tipo
+
+---
+
 ### 5. Memória não comprime
 
 **Sintoma:** `wordCount` acima de 2250 sem compressão.

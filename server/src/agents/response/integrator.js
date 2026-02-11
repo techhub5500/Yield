@@ -114,9 +114,9 @@ function formatIntegratedContext(integrated, query, doc) {
 
 /**
  * Formata resultado direto (sem escalada) para o prompt de resposta.
- * Usado quando o Junior resolve diretamente via bridge_query, bridge_insert ou serper.
+ * Usado quando o Junior resolve diretamente via bridge_query, bridge_insert, serper ou math_direct.
  * 
- * @param {string} type - Tipo de rota (bridge_query, bridge_insert, serper)
+ * @param {string} type - Tipo de rota (bridge_query, bridge_insert, serper, math_direct)
  * @param {Object} data - Dados retornados pela ferramenta
  * @param {string} query - Query original do usuário
  * @returns {string} Texto formatado para o prompt
@@ -141,6 +141,11 @@ function formatDirectResult(type, data, query) {
 
     case 'serper':
       parts.push('RESULTADOS DE PESQUISA:');
+      parts.push(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+      break;
+
+    case 'math_direct':
+      parts.push('RESULTADO DO CALCULO MATEMATICO:');
       parts.push(typeof data === 'string' ? data : JSON.stringify(data, null, 2));
       break;
 

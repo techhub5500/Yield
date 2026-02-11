@@ -363,38 +363,38 @@ Este documento define queries de teste para validar o fluxo completo do sistema 
 
 ### Teste 46 — Projecao de aportes (math)
 - Query: "Projete aportes de R$500 por 24 meses com juros de 1% ao mes"
-- O que esta sendo testado: Uso do MathModule via coordenador.
-- Criterios de sucesso: Valores formatados e coerentes.
-- Logs esperados (sucesso): MathModule "Projecao: PMT=500".
-- Logs de falha/alerta: BaseCoordinator "Ferramenta \"math:projectionWithContributions\" falhou".
+- O que esta sendo testado: Rota math_direct com calculo direto.
+- Criterios de sucesso: MathModule executado, toolsExecuted > 0, resposta direta, sem consulta ao MongoDB.
+- Logs esperados (sucesso): Junior "math_direct"; Dispatcher "Roteando para \"math_direct\""; MathDirect "Calculo matematico direto executado"; MathModule "Projecao: PMT=500"; ResponseAgent "Resposta direta formatada (math_direct)".
+- Logs de falha/alerta: Dispatcher "Falha no MathDirect".
 
 ### Teste 47 — Juros compostos (math)
 - Query: "Calcule juros compostos de R$1000 a 1% por 12 meses"
-- O que esta sendo testado: MathModule compoundInterest.
-- Criterios de sucesso: Valor final em R$.
-- Logs esperados (sucesso): MathModule "Juros compostos: P=1000".
-- Logs de falha/alerta: BaseCoordinator "Ferramenta \"math:compoundInterest\" falhou".
+- O que esta sendo testado: Rota math_direct com calculo direto.
+- Criterios de sucesso: MathModule executado, toolsExecuted > 0, valor final em R$, sem consulta ao MongoDB.
+- Logs esperados (sucesso): Junior "math_direct"; MathDirect "Calculo matematico direto executado"; MathModule "Juros compostos: P=1000"; ResponseAgent "Resposta direta formatada (math_direct)".
+- Logs de falha/alerta: Dispatcher "Falha no MathDirect".
 
 ### Teste 48 — VPL e TIR (math)
 - Query: "Avalie VPL e TIR para fluxos -1000, 300, 400, 500 e taxa 10%"
-- O que esta sendo testado: MathModule netPresentValue e internalRateOfReturn.
-- Criterios de sucesso: VPL e TIR retornados; TIR nao N/A.
-- Logs esperados (sucesso): MathModule "VPL:" e "TIR:".
+- O que esta sendo testado: Rota math_direct com calculo direto (VPL e TIR).
+- Criterios de sucesso: MathModule executado, toolsExecuted > 0, VPL e TIR retornados, sem consulta ao MongoDB.
+- Logs esperados (sucesso): Junior "math_direct"; MathDirect "Calculo matematico direto executado"; MathModule "VPL:" e "TIR:"; ResponseAgent "Resposta direta formatada (math_direct)".
 - Logs de falha/alerta: MathModule "TIR nao convergiu".
 
 ### Teste 49 — Sharpe Ratio (math)
 - Query: "Use retornos 1%, -0,5%, 2% e taxa livre 0,6% para calcular Sharpe"
-- O que esta sendo testado: MathModule sharpeRatio.
-- Criterios de sucesso: Sharpe calculado e formatado.
-- Logs esperados (sucesso): MathModule "Sharpe:".
-- Logs de falha/alerta: BaseCoordinator "Ferramenta \"math:sharpeRatio\" falhou".
+- O que esta sendo testado: Rota math_direct com calculo direto.
+- Criterios de sucesso: MathModule executado, toolsExecuted > 0, Sharpe calculado, sem consulta ao MongoDB.
+- Logs esperados (sucesso): Junior "math_direct"; MathDirect "Calculo matematico direto executado"; MathModule "Sharpe:"; ResponseAgent "Resposta direta formatada (math_direct)".
+- Logs de falha/alerta: Dispatcher "Falha no MathDirect".
 
 ### Teste 50 — VaR (math)
 - Query: "Calcule VaR com retornos 0,5%, -1%, 0,8%, -0,3% e confianca 95%"
-- O que esta sendo testado: MathModule valueAtRisk.
-- Criterios de sucesso: VaR formatado.
-- Logs esperados (sucesso): MathModule "VaR:".
-- Logs de falha/alerta: BaseCoordinator "Ferramenta \"math:valueAtRisk\" falhou".
+- O que esta sendo testado: Rota math_direct com calculo direto.
+- Criterios de sucesso: MathModule executado, toolsExecuted > 0, VaR formatado, sem consulta ao MongoDB.
+- Logs esperados (sucesso): Junior "math_direct"; MathDirect "Calculo matematico direto executado"; MathModule "VaR:"; ResponseAgent "Resposta direta formatada (math_direct)".
+- Logs de falha/alerta: Dispatcher "Falha no MathDirect".
 
 ### Teste 51 — Escalada com dependencia e memoria
 - Query: "Com base no que gastei este mes, crie um plano de economia"

@@ -105,10 +105,10 @@ async function synthesize(query, memory, doc, outputs) {
 
 /**
  * Formata resultado de rota direta (sem escalada) para o usuário.
- * Usado quando Junior resolve via bridge_query, bridge_insert ou serper.
+ * Usado quando Junior resolve via bridge_query, bridge_insert, serper ou math_direct.
  * 
  * @param {string} query - Query original do usuário
- * @param {string} type - Tipo de rota (bridge_query, bridge_insert, serper)
+ * @param {string} type - Tipo de rota (bridge_query, bridge_insert, serper, math_direct)
  * @param {Object} data - Dados retornados pela ferramenta
  * @param {Object} memory - Memória do chat
  * @returns {Promise<Object>} Resposta formatada
@@ -259,6 +259,8 @@ function generateDirectFallback(type, data) {
       return `Resultado da consulta: ${JSON.stringify(data).substring(0, 500)}`;
     case 'serper':
       return `Resultado da pesquisa: ${JSON.stringify(data).substring(0, 500)}`;
+    case 'math_direct':
+      return `Resultado do calculo: ${JSON.stringify(data).substring(0, 500)}`;
     default:
       return 'Operação concluída.';
   }

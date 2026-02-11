@@ -40,8 +40,8 @@ const FINANCE_BRIDGE_SCHEMA = {
           type: 'string[]',
         },
         type: {
-          description: 'Tipo da transação (expense | income)',
-          options: ['expense', 'income'],
+          description: 'Tipo da transação (expense | income | all). Omitir para ambas.',
+          options: ['expense', 'income', 'all'],
         },
         subcategories: {
           description: 'Lista de subcategorias para filtrar (array de strings)',
