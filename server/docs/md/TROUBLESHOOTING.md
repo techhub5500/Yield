@@ -76,6 +76,21 @@ Rota `simple_response` adicionada para interações sociais. Saudações agora t
 
 ---
 
+### 11. Rotas de investimentos retornam 404 ou 401
+
+**Sintomas:**
+- `GET /api/investments/manifest` retorna 404
+- `POST /api/investments/cards/query` retorna 401
+
+**Causas prováveis:**
+- Servidor antigo em execução sem as rotas montadas
+- Falta de token JWT no frontend
+
+**Soluções:**
+1. Reiniciar o servidor (`npm start`) e confirmar log de startup.
+2. Confirmar que o frontend está autenticado (token em `localStorage: yield_token`).
+3. Verificar logs por `traceId` gerado pela rota para correlacionar request e execução.
+
 ### 5. Memória não comprime
 
 **Sintoma:** `wordCount` acima de 2250 sem compressão.

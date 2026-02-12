@@ -18,6 +18,7 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { createMessageRouter } = require('./routes/message');
 const { createAuthRouter } = require('./routes/auth');
+const { createInvestmentsRouter } = require('./routes/investments');
 
 /**
  * Cria e configura o servidor Express.
@@ -30,6 +31,8 @@ const { createAuthRouter } = require('./routes/auth');
  * @param {Object} dependencies.executionManager - ExecutionManager da Fase 3
  * @param {Object} dependencies.responseAgent - Agente de Resposta da Fase 4
  * @param {Object} dependencies.externalCallManager - ExternalCallManager da Fase 4
+ * @param {Object} [dependencies.financeBridge] - FinanceBridge (integração futura com investimentos)
+ * @param {Object} [dependencies.investmentsService] - Serviço de métricas de investimentos (opcional)
  * @returns {Object} Aplicação Express configurada
  */
 function createServer(dependencies = {}) {
@@ -94,6 +97,10 @@ function createServer(dependencies = {}) {
   // Rotas de mensagem (POST /api/message, GET /api/chat/:chatId/history)
   const messageRouter = createMessageRouter(dependencies);
   app.use('/api', messageRouter);
+
+  // Rotas de investimentos (GET manifest, query de métricas e cards)
+  const investmentsRouter = createInvestmentsRouter(dependencies);
+  app.use('/api/investments', investmentsRouter);
 
   // --- Error handling global ---
   app.use((err, req, res, _next) => {

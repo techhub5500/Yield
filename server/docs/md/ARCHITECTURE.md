@@ -49,6 +49,7 @@ USUÁRIO ENVIA MENSAGEM (POST /api/message)
 ### 1. API HTTP (`src/api/`)
 - **server.js** — Express.js, CORS, logging middleware, error handling
 - **routes/message.js** — `POST /api/message`, `GET /api/chat/:chatId/history`
+- **routes/investments.js** — `GET /api/investments/manifest`, `POST /api/investments/metrics/query`, `POST /api/investments/cards/query`
 - **Papel:** Interface com o frontend, orquestra o fluxo completo
 
 ### 2. Agentes de IA (`src/agents/`)
@@ -79,6 +80,10 @@ Cada arquivo encapsula **exatamente um ponto de decisão de IA**.
 - **router/** — Dispatcher (switch determinístico)
 - **orchestrator/** — ExecutionManager, fila, preparador de input
 - **state/** — Estado de agentes, chamadas externas, recuperação de contexto
+
+Base de Investimentos (dashboard):
+- **metrics/** — Registry + engine de métricas (contrato estável para expansão)
+- **investments/** — Filtros, períodos, repositório Mongo e serviço para cards/métricas
 
 ### 4. Ferramentas (`src/tools/`)
 - **finance-bridge/** — Query e insert no MongoDB via protocolo JSON

@@ -55,6 +55,9 @@ module.exports = {
   ExternalCallManager: require('./core/state/external-call-manager'),
   contextRecovery: require('./core/state/context-recovery'),
 
+  // Core - Base de Investimentos (Dashboard)
+  InvestmentsMetricsService: require('./core/investments/service'),
+
   // Agentes de IA (Fase 1)
   summarizer: require('./agents/memory/summarizer'),
   compressor: require('./agents/memory/compressor'),
@@ -151,6 +154,7 @@ if (require.main === module) {
     executionManager,
     responseAgent,
     externalCallManager,
+    financeBridge,
   };
 
   const app = createServer(dependencies);
