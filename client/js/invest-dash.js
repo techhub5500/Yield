@@ -26,6 +26,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ---- Card Options Switcher ----
+    const cardOptions = document.querySelectorAll('.card-opt');
+    cardOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            // Find sibling buttons in the same header and remove active
+            const parent = opt.parentElement;
+            parent.querySelectorAll('.card-opt').forEach(b => b.classList.remove('active'));
+            opt.classList.add('active');
+        });
+    });
+
     // ---- Bottom Floating Menu Toggle ----
     const bottomMenu = document.getElementById('bottom-menu');
     const toggleBtn = document.getElementById('toggle-bottom-menu');

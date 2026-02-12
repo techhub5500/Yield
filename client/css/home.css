@@ -1,34 +1,92 @@
+:root {
+    /* --- Paleta Golden Hour & Earth (From Invest Dash) --- */
+    --bg-deep: #1a1614;
+    --bg-overlay: rgba(20, 15, 12, 0.85);
+    
+    /* --- Glassmorphism Premium --- */
+    --glass-surface: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 238, 220, 0.08); /* Borda dourada pálida quase invisível */
+    --glass-highlight: rgba(255, 238, 220, 0.15); /* Brilho nas bordas */
+    --glass-blur: 20px;
+    
+    /* --- Acentos --- */
+    --accent-terra: #A65E44;  /* Terracota */
+    --accent-gold: #D4AF37;   /* Dourado */
+    --accent-glow: rgba(166, 94, 68, 0.4);
+    
+    /* --- Tipografia --- */
+    --text-primary: #F2EBE5;  /* Off-white (Osso) */
+    --text-secondary: #aba6a1; /* Cinza quente */
+    --font-heading: 'Playfair Display', serif;
+    --font-body: 'Inter', sans-serif;
+    
+    /* --- Espaçamento e Formas --- */
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-body);
+}
+
+/* Scrollbar Refinada */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(166, 94, 68, 0.3);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-terra);
 }
 
 body {
-    background-image: url('../assets/1.jpg');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+    min-height: 100vh;
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
     overflow-x: hidden;
 }
 
+/* Background Atmosférico Consistente */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Mantendo a imagem original da Home (1.jpg) mas com o overlay do padrão visual */
+    background: 
+        linear-gradient(to bottom, rgba(26, 22, 20, 0.7), rgba(44, 30, 25, 0.8)),
+        url('../assets/1.jpg'); 
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    will-change: transform;
+}
+
 .content-wrapper {
-    margin-left: 210px; /* Ajustado para nova sidebar */
-    padding: 0 40px;
+    margin-left: 210px;
+    padding: 0 60px; /* Alinhado ao invest-dash */
     height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Centraliza verticalmente */
-    transition: margin-left 0.3s;
+    justify-content: center;
+    transition: margin-left 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* Seta de retorno over sidebar (Removido daqui pois está em integration.css) */
-
-/* Quando a sidebar estiver colapsada */
+/* Ajuste sidebar colapsada consistente */
 body:has(.sidebar.collapsed) .content-wrapper {
-    margin-left: 90px;
+    margin-left: 100px;
 }
 
 /* Grid de Cards */
@@ -40,31 +98,38 @@ body:has(.sidebar.collapsed) .content-wrapper {
     max-width: 1200px;
     margin: 0 auto;
     transition: opacity 0.5s ease, transform 0.5s ease;
-    transform: translateY(-10%); /* Deslocado 10% para cima por padrão */
+    transform: translateY(-10%);
 }
 
 body.chat-active .cards-grid {
     opacity: 0;
-    transform: translateY(-30%); /* Fading up */
+    transform: translateY(-30%);
     pointer-events: none;
 }
 
 .main-card {
-    background: rgba(0, 0, 0, 0.49);
-    backdrop-filter: blur(2.2px);
-    -webkit-backdrop-filter: blur(2.2px);
-    border-style: solid;
-    border-color: rgba(94, 94, 94, 0.46);
-    border-width: 1px 2px 2px 1px;
+    /* Glassmorphism Premium */
+    background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-highlight);
+    
     height: 350px;
-    border-radius: 25px;
-    box-shadow: 10px 8px 32px 0 rgba(0, 0, 0, 0.483);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
+    transition: transform 0.3s ease, border-color 0.3s;
+}
+
+.main-card:hover {
+    border-color: rgba(166, 94, 68, 0.2); /* Glow sutil terracota */
 }
 
 /* Chatbox de IA */
 .ai-chat-container {
     position: fixed;
-    bottom: -100vh; /* Emergir de baixo */
+    bottom: -100vh;
     left: 50%;
     transform: translateX(-50%);
     width: auto;
@@ -83,31 +148,34 @@ body:not(.chat-active) .ai-chat-container {
 }
 
 body.chat-active .ai-chat-container {
-    bottom: 5px; /* Padding bottom mínimo */
-    left: 201px; /* 166px sidebar + 20px body margin + 15px gap */
+    bottom: 5px;
+    left: 201px;
     transform: none;
 }
 
 body.chat-active:has(.sidebar.collapsed) .ai-chat-container {
-    left: 101px; /* Ajuste quando a sidebar está colapsada e o chat ativo */
+    left: 101px;
 }
 
 .ai-chat-bar {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(2.2px);
-    -webkit-backdrop-filter: blur(2.2px);
-    border-style: solid;
-    border-color: rgba(94, 94, 94, 0.46);
-    border-width: 1px 2px 2px 1px;
-    width: 660px; /* 10% increase from 600px */
+    /* Glassmorphism Escuro para legibilidade */
+    background: rgba(20, 15, 12, 0.7); 
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid var(--glass-highlight);
+    
+    width: 660px;
     max-width: 90%;
     min-height: 90px;
     height: auto;
-    border-radius: 21px;
+    border-radius: var(--radius-lg);
     display: flex;
     flex-direction: column;
     padding: 10px 15px;
-    box-shadow: 10px 8px 32px 0 rgba(0, 0, 0, 0.483);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    
     transition: width 0.8s cubic-bezier(0.165, 0.84, 0.44, 1),
                 height 0.8s cubic-bezier(0.165, 0.84, 0.44, 1),
                 border-radius 0.8s ease;
@@ -115,25 +183,24 @@ body.chat-active:has(.sidebar.collapsed) .ai-chat-container {
 }
 
 body.chat-active .ai-chat-bar {
-    width: 858px; /* 10% maior que 780px */
-    height: calc(100vh - 10px); /* Padding mínimo topo/bottom */
-    background: rgba(0, 0, 0, 0.42); /* 15% menos opaco que card */
-    border-radius: 25px;
+    width: 858px;
+    height: calc(100vh - 10px);
+    background: rgba(20, 15, 12, 0.5); /* Mais transparente quando expandido */
 }
 
 /* Side Card for Chat Info */
 .ai-chat-side-card {
     display: none;
-    background: rgba(0, 0, 0, 0.42);
-    backdrop-filter: blur(2.2px);
-    -webkit-backdrop-filter: blur(2.2px);
-    border-style: solid;
-    border-color: rgba(94, 94, 94, 0.46);
-    border-width: 1px 2px 2px 1px;
-    border-radius: 25px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    
     height: calc(100vh - 10px);
-    width: 343px; /* ~40% de 858px */
-    margin-left: 30px; /* Espaçamento da lateral direita agora entre chat e card */
+    width: 343px;
+    margin-left: 30px;
     opacity: 0;
     transform: translateX(50px);
     transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
@@ -147,7 +214,7 @@ body.chat-active .ai-chat-side-card {
     pointer-events: auto;
 }
 
-/* Input Container Box - Floating effect when active */
+/* Input Container Box */
 .input-container-box {
     display: flex;
     align-items: flex-end;
@@ -157,12 +224,12 @@ body.chat-active .ai-chat-side-card {
 }
 
 body.chat-active .input-container-box {
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(94, 94, 94, 0.46);
-    border-radius: 20px;
+    background: rgba(20, 15, 12, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
     padding: 10px 15px;
     margin-top: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Sombra flutuante */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     margin-bottom: 5px;
 }
 
@@ -181,28 +248,28 @@ body.chat-active .input-container-box {
     padding: 12px 18px;
     border-radius: 18px;
     font-size: 15px;
-    color: #fff;
-    line-height: 1.5;
-    border-style: solid;
-    border-color: rgba(94, 94, 94, 0.4);
-    border-width: 1px 2px 2px 1px;
-    animation: fadeIn 0.3s ease-out;
+    line-height: 1.5; /* Melhor legibilidade */
     word-wrap: break-word;
     overflow-wrap: break-word;
-    word-break: break-all; /* Garante que palavras muito longas quebrem */
+    word-break: break-all;
+    animation: fadeIn 0.3s ease-out;
 }
 
 /* Bot à esquerda */
 .message.bot {
     align-self: flex-start;
-    background: rgba(0, 0, 0, 0.72); /* 0.42 + 30% */
+    background: rgba(255, 255, 255, 0.05); /* Vidro neutro */
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
     border-bottom-left-radius: 5px;
 }
 
 /* Usuário à direita */
 .message.user {
     align-self: flex-end;
-    background: rgba(0, 0, 0, 0.62); /* 0.42 + 20% */
+    background: rgba(166, 94, 68, 0.15); /* Tint de Terra */
+    border: 1px solid rgba(166, 94, 68, 0.3);
+    color: var(--text-primary);
     border-bottom-right-radius: 5px;
 }
 
@@ -213,18 +280,20 @@ body.chat-active .input-container-box {
 }
 
 .chat-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(94, 94, 94, 0.46);
+    background: transparent;
+    border: 1px solid var(--glass-border);
     width: 35px;
     height: 35px;
-    border-radius: 10px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    color: #fff;
+    color: var(--text-secondary);
     transition: all 0.2s;
 }
 
 .chat-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--glass-surface);
+    color: var(--text-primary);
+    border-color: var(--glass-highlight);
 }
 
 .chat-input {
@@ -232,22 +301,23 @@ body.chat-active .input-container-box {
     background: transparent;
     border: none;
     outline: none;
-    padding: 5px 15px; /* Reduzido 50% conforme pedido anterior */
+    padding: 5px 15px;
     font-size: 16px;
-    color: #fff;
+    color: var(--text-primary);
     resize: none;
     max-height: 150px;
     overflow-y: auto;
     line-height: 1.4;
+    font-family: var(--font-body);
 }
 
 .chat-input::placeholder {
-    color: rgba(255, 255, 255, 0.5);
+    color: rgba(242, 235, 229, 0.4);
 }
 
 .send-btn {
     background: none;
-    color: #fff;
+    color: var(--accent-terra); /* Icone na cor de acento */
     border: none;
     width: 40px;
     height: 40px;
@@ -255,11 +325,17 @@ body.chat-active .input-container-box {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s;
+    transition: transform 0.2s, color 0.2s;
+    margin-bottom: 2px;
 }
 
 .send-btn:hover {
-    transform: scale(1.1);
+    transform: translateY(-2px);
+    color: var(--accent-gold); /* Evolui para dourado no hover */
+}
+
+.send-btn i {
+    font-size: 1.2em;
 }
 
 @keyframes fadeIn {
@@ -267,52 +343,7 @@ body.chat-active .input-container-box {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Scrollbar Harmônico */
-.chat-input::-webkit-scrollbar {
-    width: 6px;
-}
-
-.chat-input::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.chat-input::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-}
-
-.chat-input::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.chat-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.send-btn {
-    background: none;
-    color: white;
-    border: none;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-    margin-bottom: 2px;
-}
-
-.send-btn i {
-    font-size: 1.15em; /* Aumentado 15% */
-}
-
-.send-btn:hover {
-    transform: translateY(-2px);
-}
-
-/* Scrollbar Harmônico para a área de mensagens */
+/* Scrollbar Harmônico para a área de mensagens - Copiado do padrão */
 .chat-messages::-webkit-scrollbar {
     width: 6px;
 }
@@ -322,10 +353,10 @@ body.chat-active .input-container-box {
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(166, 94, 68, 0.2);
     border-radius: 10px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--accent-terra);
 }
