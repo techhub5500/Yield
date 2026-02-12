@@ -240,17 +240,36 @@ class BaseCoordinator {
   async _executeToolRequests(toolRequests, chatId) {
     const results = {};
 
-    for (const request of toolRequests) {
-      const key = `${request.tool}:${request.action || 'default'}`;
-      try {
-        const result = await this._executeSingleTool(request, chatId);
-        results[key] = { success: true, data: result };
-        logger.logic('DEBUG', this.name, `Ferramenta "${key}" executada com sucesso`);
-      } catch (error) {
-        results[key] = { success: false, error: error.message };
-        logger.warn(this.name, 'logic', `Ferramenta "${key}" falhou: ${error.message}`);
-      }
-    }
+    // Execução paralela (estrutural) com determinismo preservado:
+    // - Coletamos todos os outcomes em paralelo
+    // - Aplicamos no objeto `results` na ORDEM ORIGINAL de toolRequests
+    //   (equivalente ao comportamento anterior do loop sequencial)
+    const outcomes = await Promise.all(
+      toolRequests.map(async (request, index) => {
+        const key = `${request.tool}:${request.action || 'default'}`;
+        const scope = `${key}:${index}`;
+
+        try {
+          const result = await this._executeSingleTool(request, chatId, scope);
+          return { index, key, success: true, data: result };
+        } catch (error) {
+          return { index, key, success: false, error: error.message };
+        }
+      })
+    );
+
+    // Aplicar e logar em ordem para manter previsibilidade e facilitar comparação de logs.
+    outcomes
+      .sort((a, b) => a.index - b.index)
+      .forEach((outcome) => {
+        if (outcome.success) {
+          results[outcome.key] = { success: true, data: outcome.data };
+          logger.logic('DEBUG', this.name, `Ferramenta "${outcome.key}" executada com sucesso`);
+        } else {
+          results[outcome.key] = { success: false, error: outcome.error };
+          logger.warn(this.name, 'logic', `Ferramenta "${outcome.key}" falhou: ${outcome.error}`);
+        }
+      });
 
     return results;
   }
@@ -264,7 +283,7 @@ class BaseCoordinator {
    * @returns {Promise<*>} Resultado da ferramenta
    * @protected
    */
-  async _executeSingleTool(request, chatId) {
+  async _executeSingleTool(request, chatId, stateScope) {
     const { tool, action, params } = request;
 
     const execFn = async () => {
@@ -295,7 +314,12 @@ class BaseCoordinator {
     // Usar ExternalCallManager para preservação de estado quando disponível
     if (this.tools.externalCallManager && chatId) {
       return this.tools.externalCallManager.executeWithState(
-        this.agentId, chatId, async () => execFn(), { tool, action, ...params }, `${tool}:${action}`
+        this.agentId,
+        chatId,
+        async () => execFn(),
+        { tool, action, ...params },
+        `${tool}:${action}`,
+        stateScope
       );
     }
 

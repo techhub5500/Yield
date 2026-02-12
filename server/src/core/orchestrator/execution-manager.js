@@ -55,56 +55,88 @@ class ExecutionManager {
 
     const startTime = Date.now();
 
-    // Ordenar por prioridade
+    // Ordenar por prioridade (usado para retorno determinístico e logs)
     const sorted = queue.sortByPriority(agents);
 
-    for (const agentSpec of sorted) {
-      const agentName = agentSpec.agent;
+    // Execução por ondas (wave-based): em cada onda, executa em paralelo os agentes cujas dependências já foram concluídas.
+    let remaining = [...sorted];
 
-      logger.logic('DEBUG', 'ExecutionManager', `Processando agente "${agentName}" (prioridade: ${agentSpec.priority})`, {
-        dependencies: agentSpec.dependencies.join(', ') || 'nenhuma',
+    while (remaining.length > 0) {
+      const ready = remaining.filter((agentSpec) => queue.areDependenciesMet(agentSpec.dependencies));
+
+      if (ready.length === 0) {
+        // DOC inválido ou dependências impossíveis — marcar o restante como erro para não travar.
+        const pendingAgents = remaining.map(a => a.agent).join(', ');
+        logger.error('ExecutionManager', 'logic', 'Deadlock de dependências detectado — nenhum agente está pronto para executar', {
+          pendingAgents,
+        });
+
+        for (const agentSpec of remaining) {
+          const agentName = agentSpec.agent;
+          const errorResult = {
+            agent: agentName,
+            task_completed: false,
+            reasoning: 'Falha na execução: dependências não resolvidas (deadlock) — DOC inválido ou dependências impossíveis.',
+            tools_used: [],
+            result: { error: 'Dependências não resolvidas (deadlock)' },
+            metadata: { confidence: 'none' },
+          };
+          queue.markCompleted(agentName, errorResult);
+        }
+        break;
+      }
+
+      // Remover os prontos do pool antes de executar (evita re-entrada se a onda demorar)
+      const readyNames = new Set(ready.map(r => r.agent));
+      remaining = remaining.filter((agentSpec) => !readyNames.has(agentSpec.agent));
+
+      logger.logic('INFO', 'ExecutionManager', `Iniciando onda com ${ready.length} agente(s) em paralelo`, {
+        agents: ready.map(a => `${a.agent}#${a.priority}`).join(', '),
       });
 
-      try {
-        // Aguardar dependências
-        if (agentSpec.dependencies.length > 0) {
-          logger.logic('DEBUG', 'ExecutionManager', `Aguardando dependências de "${agentName}": ${agentSpec.dependencies.join(', ')}`);
-          await queue.waitForDependencies(agentSpec.dependencies);
+      const waveResults = await Promise.all(
+        ready.map(async (agentSpec) => {
+          const agentName = agentSpec.agent;
+
+          logger.logic('DEBUG', 'ExecutionManager', `Processando agente "${agentName}" (prioridade: ${agentSpec.priority})`, {
+            dependencies: agentSpec.dependencies.join(', ') || 'nenhuma',
+          });
+
+          try {
+            const input = prepareInput(agentSpec, queue.getResults(), chatId);
+
+            const coordinator = this.coordinators[agentName];
+            if (!coordinator) {
+              throw new Error(`Coordenador "${agentName}" não disponível`);
+            }
+
+            const result = await coordinator.execute(input);
+            return { agentName, result, ok: true };
+          } catch (error) {
+            const errorResult = {
+              agent: agentName,
+              task_completed: false,
+              reasoning: `Falha na execução: ${error.message}`,
+              tools_used: [],
+              result: { error: error.message },
+              metadata: { confidence: 'none' },
+            };
+            return { agentName, result: errorResult, ok: false, error };
+          }
+        })
+      );
+
+      for (const item of waveResults) {
+        queue.markCompleted(item.agentName, item.result);
+        if (item.ok) {
+          logger.logic('INFO', 'ExecutionManager', `Agente "${item.agentName}" concluído com sucesso`, {
+            confidence: item.result?.metadata?.confidence || 'unknown',
+          });
+        } else {
+          logger.error('ExecutionManager', 'logic', `Falha no agente "${item.agentName}"`, {
+            error: item.error?.message || 'Erro desconhecido',
+          });
         }
-
-        // Preparar input com outputs de dependências (inclui chatId para ExternalCallManager)
-        const input = prepareInput(agentSpec, queue.getResults(), chatId);
-
-        // Executar coordenador
-        const coordinator = this.coordinators[agentName];
-        if (!coordinator) {
-          throw new Error(`Coordenador "${agentName}" não disponível`);
-        }
-
-        const result = await coordinator.execute(input);
-
-        // Marcar como concluído e notificar dependentes
-        queue.markCompleted(agentName, result);
-
-        logger.logic('INFO', 'ExecutionManager', `Agente "${agentName}" concluído com sucesso`, {
-          confidence: result?.metadata?.confidence || 'unknown',
-        });
-      } catch (error) {
-        logger.error('ExecutionManager', 'logic', `Falha no agente "${agentName}"`, {
-          error: error.message,
-        });
-
-        // Marcar como concluído com erro para não bloquear dependentes
-        const errorResult = {
-          agent: agentName,
-          task_completed: false,
-          reasoning: `Falha na execução: ${error.message}`,
-          tools_used: [],
-          result: { error: error.message },
-          metadata: { confidence: 'none' },
-        };
-
-        queue.markCompleted(agentName, errorResult);
       }
     }
 
@@ -115,8 +147,16 @@ class ExecutionManager {
       agentsCompleted: queue.getResults().size,
     });
 
+    // Retorno determinístico: sempre na ordem de prioridade do DOC (independente da ordem de conclusão em paralelo)
+    const results = new Map();
+    const completed = queue.getResults();
+    for (const agentSpec of sorted) {
+      if (completed.has(agentSpec.agent)) {
+        results.set(agentSpec.agent, completed.get(agentSpec.agent));
+      }
+    }
+
     // Limpar listeners
-    const results = new Map(queue.getResults());
     queue.reset();
 
     return results;

@@ -76,7 +76,7 @@ server/
 | Agente de Investimentos (`agents/coordinators/investments.js`) | ✅ | Ferramentas descritas no prompt: Brapi, Finance Bridge, Serper, Tavily, Math. Foco: mercado e portfólio |
 | Agente de Planejamento (`agents/coordinators/planning.js`) | ✅ | Ferramentas descritas no prompt: Finance Bridge, Serper, Math. Foco: metas, orçamentos, viabilidade |
 | Separação de ferramentas por coordenador | ✅ | Cada prompt descreve APENAS as ferramentas que o coordenador pode usar |
-| Execução real de ferramentas pelos coordenadores | ✅ | **Implementado (06/02/2026).** `BaseCoordinator.execute()` agora implementa execução de ferramentas em dois passos (two-pass): Passo 1 — IA solicita ferramentas via `tool_requests`, Execução — sistema executa Finance Bridge, Search, Math, Passo 2 — IA sintetiza com dados reais. Usa `ExternalCallManager` para preservação de estado. |
+| Execução real de ferramentas pelos coordenadores | ✅ | **Implementado (06/02/2026) + Otimizado (11/02/2026).** `BaseCoordinator.execute()` implementa execução em dois passos (two-pass): Passo 1 — IA solicita ferramentas via `tool_requests`; Execução — sistema executa Finance Bridge, Search, Math; Passo 2 — IA sintetiza com dados reais. **Otimização estrutural:** tool_requests passam a ser executadas em paralelo (determinístico), preservando estado via `ExternalCallManager` com escopo por chamada. |
 
 ### Objetivo 3.4: Módulo Matemático (Precision Engine)
 
@@ -93,7 +93,7 @@ server/
 
 ### 3.1 Separação IA vs Lógica mantida
 
-- **`core/orchestrator/execution-manager.js`** — LÓGICA PURA: execução sequencial, controle de dependências, coleta de resultados
+- **`core/orchestrator/execution-manager.js`** — LÓGICA PURA: execução por ondas (wave-based) com paralelismo entre agentes independentes, preservando dependências e coletando resultados
 - **`core/orchestrator/queue.js`** — LÓGICA PURA: ordenação, EventEmitter, timeout
 - **`core/orchestrator/input-builder.js`** — LÓGICA PURA: montagem de input para coordenadores
 - **`agents/orchestrator/index.js`** — PONTO DE IA: decomposição e criação do DOC via full
@@ -219,9 +219,10 @@ O `Dispatcher._handleEscalate()` foi atualizado de stub (Fase 2) para implementa
 ### Atenção especial
 
 - **✅ Ferramentas dos Coordenadores (RESOLVIDO em 06/02/2026)**: `BaseCoordinator.execute()` agora implementa execução de ferramentas em dois passos: Passo 1 — IA recebe tarefa e solicita ferramentas via `tool_requests` no JSON; Execução — sistema executa Finance Bridge, Search APIs e Módulo Matemático; Passo 2 — IA recebe dados reais e produz análise final baseada em dados concretos. Todas as chamadas externas são gerenciadas via `ExternalCallManager` com preservação de estado. Prompt template atualizado com seção `SOLICITAÇÃO DE FERRAMENTAS`.
-- **Concorrência**: O ExecutionManager executa agentes sequencialmente por prioridade. Agentes sem dependência mútua poderiam ser paralelizados na Fase 4 para melhor performance
+- **✅ Concorrência (OTIMIZADO em 11/02/2026)**: O `ExecutionManager` passou a executar agentes por **ondas (wave-based)** — agentes cujas dependências já foram resolvidas iniciam em paralelo. Dependências continuam sendo respeitadas.
 - **Timeout**: O timeout padrão por agente é `config.timeouts.agent` (80s). Para queries muito complexas com 3 coordenadores, o tempo total pode ser 240s+ — considerar streaming na Fase 4
 - **Tamanho do prompt**: O prompt do Orquestrador inclui todos os contratos (~600 tokens). Se novos coordenadores forem adicionados, monitorar tamanho do prompt
+- **✅ Dependências mínimas (OTIMIZADO em 11/02/2026)**: O prompt do Orquestrador foi ajustado para declarar apenas dependências estritamente necessárias (insumo direto), reduzindo encadeamentos conservadores e aumentando paralelismo sem afetar qualidade.
 - **DOC como contrato**: O DOC é o contrato entre Orquestrador e ExecutionManager. Qualquer mudança na estrutura do DOC deve atualizar ambos + validadores
 
 ---
@@ -273,17 +274,17 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 ### Teste 6 — ExecutionManager executa agentes em ordem
 
 - **Entrada:** DOC com Analysis (1) → Investments (2) → Planning (3)
-- **Comportamento esperado:** Agentes executados na ordem 1→2→3, cada um recebendo outputs dos anteriores
+- **Comportamento esperado:** Agentes executados respeitando dependências; agentes independentes podem executar em paralelo (ondas). Cada agente recebe apenas `dependency_outputs` declarados no DOC.
 - **Qualidade esperada:** Todos os 3 resultados coletados, elapsed time registrado
-- **Deve aparecer nos logs:** `[INFO] logic | ExecutionManager — Iniciando execução do DOC` + logs de cada agente em ordem
+- **Deve aparecer nos logs:** `[INFO] logic | ExecutionManager — Iniciando execução do DOC` + `[INFO] logic | ExecutionManager — Iniciando onda com N agente(s) em paralelo` + logs de conclusão por agente
 - **Não deve aparecer:** Execução fora de ordem
 
 ### Teste 7 — ExecutionManager aguarda dependências
 
 - **Entrada:** DOC com Planning dependendo de Analysis
-- **Comportamento esperado:** Planning não inicia até Analysis terminar; Planning recebe output de Analysis via `dependency_outputs`
+- **Comportamento esperado:** Planning não inicia até Analysis terminar; Planning recebe output de Analysis via `dependency_outputs` (dependências preservadas mesmo com execução por ondas)
 - **Qualidade esperada:** `dependency_outputs.analysis` contém resultado do Agente de Análise
-- **Deve aparecer nos logs:** `[DEBUG] logic | ExecutionManager — Aguardando dependências de "planning": analysis`
+- **Deve aparecer nos logs:** O Planning só deve aparecer na onda quando Analysis já tiver sido marcado como concluído; logs incluem `Iniciando onda...` e conclusão de Analysis antes do início de Planning
 - **Não deve aparecer:** Planning executando sem output de Analysis
 
 ### Teste 8 — ExecutionManager trata falha de coordenador

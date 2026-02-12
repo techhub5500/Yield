@@ -40,8 +40,9 @@ class ExternalCallManager {
    * @param {string} chatId
    * @returns {string}
    */
-  _stateKey(agentId, chatId) {
-    return `${agentId}:${chatId}`;
+  _stateKey(agentId, chatId, scope) {
+    if (!scope) return `${agentId}:${chatId}`;
+    return `${agentId}:${chatId}::${scope}`;
   }
 
   /**
@@ -50,8 +51,8 @@ class ExternalCallManager {
    * @param {string} chatId
    * @returns {AgentState}
    */
-  getOrCreateState(agentId, chatId) {
-    const key = this._stateKey(agentId, chatId);
+  getOrCreateState(agentId, chatId, scope) {
+    const key = this._stateKey(agentId, chatId, scope);
     if (!this.activeStates.has(key)) {
       this.activeStates.set(key, new AgentState(agentId, chatId));
     }
@@ -74,8 +75,8 @@ class ExternalCallManager {
    * @param {string} systemName - Nome do sistema externo (para logging)
    * @returns {Promise<Object>} Resultado da chamada externa
    */
-  async executeWithState(agentId, chatId, externalFn, params, systemName = 'unknown') {
-    const state = this.getOrCreateState(agentId, chatId);
+  async executeWithState(agentId, chatId, externalFn, params, systemName = 'unknown', scope) {
+    const state = this.getOrCreateState(agentId, chatId, scope);
 
     // 1. Marcar como aguardando sistema externo
     state.markWaitingExternal(systemName, params);
@@ -116,8 +117,8 @@ class ExternalCallManager {
    * @param {string} chatId
    * @returns {AgentState|null}
    */
-  getState(agentId, chatId) {
-    const key = this._stateKey(agentId, chatId);
+  getState(agentId, chatId, scope) {
+    const key = this._stateKey(agentId, chatId, scope);
     return this.activeStates.get(key) || null;
   }
 
@@ -126,8 +127,8 @@ class ExternalCallManager {
    * @param {string} agentId
    * @param {string} chatId
    */
-  clearState(agentId, chatId) {
-    const key = this._stateKey(agentId, chatId);
+  clearState(agentId, chatId, scope) {
+    const key = this._stateKey(agentId, chatId, scope);
     this.activeStates.delete(key);
   }
 
@@ -137,7 +138,7 @@ class ExternalCallManager {
    */
   clearChatStates(chatId) {
     for (const [key] of this.activeStates) {
-      if (key.endsWith(`:${chatId}`)) {
+      if (key.endsWith(`:${chatId}`) || key.includes(`:${chatId}::`)) {
         this.activeStates.delete(key);
       }
     }

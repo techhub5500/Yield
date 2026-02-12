@@ -44,6 +44,12 @@ Identifique se existe ordem de execução necessária:
 - Exemplo: Análise de gastos deve vir ANTES do Planejamento de orçamento?
 Se não há dependência, os agentes podem ter a mesma prioridade.
 
+REGRA DE DEPENDÊNCIAS (MÍNIMAS NECESSÁRIAS):
+- Declare dependência APENAS quando o output de um agente anterior é INSUMO DIRETO e NECESSÁRIO para a tarefa.
+- Prefira dependências mínimas para maximizar execução paralela sem perda de qualidade.
+- Se dois agentes podem trabalhar em paralelo após receber o MESMO insumo base (ex: diagnóstico), NÃO encadeie um no outro.
+- Exemplo: se Analysis fornece diagnóstico e Planning (plano) e Investments (investimentos) usam o diagnóstico mas NÃO se usam mutuamente, ambos devem depender apenas de Analysis (não Planning → Investments).
+
 ETAPA 3 — MEMORIZAÇÃO:
 Para CADA agente selecionado, filtre o que da memória é essencial:
 - Que informações contextuais ajudam este agente específico?

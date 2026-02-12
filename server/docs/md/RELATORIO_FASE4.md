@@ -69,7 +69,7 @@ server/
 | Recuperação de contexto (`core/state/context-recovery.js`) | ✅ | Reconstrói contexto completo, mescla resultados, valida integridade |
 | Serialização/Deserialização | ✅ | `toJSON()` e `fromJSON()` no AgentState |
 | Cleanup de estados | ✅ | `clearState()` e `clearChatStates()` após ciclo completo |
-| Integração com fluxo principal | ✅ | **Integrado (06/02/2026).** `ExternalCallManager` agora é utilizado em todo o fluxo: `Dispatcher` usa `_executeExternal()` para preservar estado em chamadas a Finance Bridge e APIs de busca; `BaseCoordinator` usa `ExternalCallManager` ao executar ferramentas durante o two-pass; `message.js` recebe `externalCallManager` via injeção de dependências e faz cleanup via `clearChatStates(chatId)` após cada ciclo. `chatId` é propagado pela cadeia completa. |
+| Integração com fluxo principal | ✅ | **Integrado (06/02/2026) + Otimizado (11/02/2026).** `ExternalCallManager` é utilizado em todo o fluxo: `Dispatcher` usa `_executeExternal()` para preservar estado em chamadas a Finance Bridge e APIs de busca; `BaseCoordinator` usa `ExternalCallManager` ao executar ferramentas durante o two-pass. **Otimização estrutural:** para suportar tool_requests em paralelo, o estado passou a aceitar escopo por chamada, evitando colisões. `message.js` faz cleanup via `clearChatStates(chatId)` após cada ciclo. |
 
 ### Objetivo 4.3: API HTTP e Interface Cliente
 
@@ -342,9 +342,9 @@ Estes testes devem ser executados no chat do frontend quando a integração esti
 
 ### Teste 6 — Escalada complexa (2+ coordenadores com dependência)
 - **Entrada:** "Analise meus investimentos e sugira ajustes no orçamento"
-- **Comportamento esperado:** Orquestrador gera DOC com Investimentos (prioridade 1) e Planejamento (prioridade 2, depende de Investimentos) → Execução sequencial → ResponseAgent integra
+- **Comportamento esperado:** Orquestrador gera DOC com Investimentos (prioridade 1) e Planejamento (prioridade 2, depende de Investimentos) → ExecutionManager executa por ondas respeitando dependências (Planejamento só inicia após Investimentos) → ResponseAgent integra
 - **Qualidade esperada:** Resposta coerente conectando análise de investimentos com sugestões de orçamento
-- **Deve aparecer nos logs:** `[INFO] logic | ExecutionManager — Iniciando execução` + logs de ambos coordenadores + `[DEBUG] logic | ExecutionManager — Aguardando dependências`
+- **Deve aparecer nos logs:** `[INFO] logic | ExecutionManager — Iniciando execução` + `[INFO] logic | ExecutionManager — Iniciando onda com N agente(s) em paralelo` + conclusão de Investimentos antes do início do Planejamento
 - **Não deve aparecer:** Execução de Planejamento ANTES de Investimentos concluir
 
 ### Teste 7 — Múltiplas mensagens no mesmo chat (memória)
@@ -435,7 +435,7 @@ Esta seção documenta lacunas de integração entre fases identificadas durante
 **Resolução:**
 - `BaseCoordinator.execute()` implementa execução em dois passos (two-pass):
   1. **Passo 1 (Planejamento):** IA analisa tarefa e solicita ferramentas via `tool_requests` no JSON
-  2. **Execução:** Sistema executa ferramentas reais (`_executeToolRequests` → `_executeSingleTool`)
+  2. **Execução:** Sistema executa ferramentas reais (`_executeToolRequests` → `_executeSingleTool`) **em paralelo (otimização estrutural, 11/02/2026)**
   3. **Passo 2 (Síntese):** IA recebe dados reais e produz análise final com `_buildSynthesisPrompt`
 - Prompt template atualizado com seção `SOLICITAÇÃO DE FERRAMENTAS` documentando formato de tool_requests
 - Ferramentas disponíveis: finance_bridge:query, search:serper/brapi/tavily, math:compoundInterest/netPresentValue/internalRateOfReturn/sharpeRatio/valueAtRisk/projectionWithContributions
