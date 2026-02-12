@@ -11,6 +11,9 @@ const { runMetrics } = require('../metrics/engine');
 const { normalizeInvestmentsFilters } = require('./filters');
 const { buildPeriodWindows } = require('./periods');
 const repository = require('./repository');
+const { ensureInvestmentsMetricsRegistered } = require('./metrics-registry');
+
+const ALLOWED_ASSET_CLASSES = ['fixed_income', 'equity', 'funds', 'crypto', 'cash'];
 
 /**
  * @class InvestmentsMetricsService
@@ -23,6 +26,365 @@ class InvestmentsMetricsService {
    */
   constructor(deps = {}) {
     this.financeBridge = deps.financeBridge || null;
+    ensureInvestmentsMetricsRegistered();
+  }
+
+  /**
+   * Valida userId obrigatório no fluxo manual.
+   * @param {string} userId
+   */
+  assertUserId(userId) {
+    if (!userId || typeof userId !== 'string') {
+      throw new Error('userId inválido para operação de investimentos');
+    }
+  }
+
+  /**
+   * Cria ativo manual e primeira posição do ativo.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async createManualAsset(input) {
+    const { userId, payload = {} } = input;
+    this.assertUserId(userId);
+
+    const name = String(payload.name || '').trim();
+    const assetClass = String(payload.assetClass || '').trim();
+    const category = String(payload.category || '').trim();
+    const referenceDate = String(payload.referenceDate || '').trim();
+
+    const quantity = Number(payload.quantity);
+    const avgPrice = Number(payload.avgPrice);
+
+    if (!name) throw new Error('Nome do ativo é obrigatório');
+    if (!ALLOWED_ASSET_CLASSES.includes(assetClass)) throw new Error('Classe de ativo inválida');
+    if (!category) throw new Error('Categoria/subtipo é obrigatório');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) throw new Error('Data inválida (YYYY-MM-DD)');
+    if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Quantidade inválida');
+    if (!Number.isFinite(avgPrice) || avgPrice < 0) throw new Error('Preço médio inválido');
+
+    const currency = String(payload.currency || 'BRL').trim() || 'BRL';
+    const status = String(payload.status || 'open').trim() || 'open';
+    const tags = Array.isArray(payload.tags) ? payload.tags : [];
+
+    const createdAsset = await repository.upsertAsset({
+      userId,
+      name,
+      assetClass,
+      category,
+      currency,
+      status,
+      accountId: payload.accountId || null,
+      tags,
+      metadata: payload.metadata || {},
+    });
+
+    const position = await repository.insertPositionSnapshot({
+      userId,
+      assetId: createdAsset.assetId,
+      referenceDate,
+      currency,
+      assetClass,
+      status,
+      accountId: payload.accountId || null,
+      tags,
+      quantity,
+      avgPrice,
+      marketPrice: payload.marketPrice,
+      source: 'manual',
+      actionType: 'create_asset',
+    });
+
+    await repository.insertInvestmentTransaction({
+      userId,
+      assetId: createdAsset.assetId,
+      referenceDate,
+      currency,
+      assetClass,
+      status,
+      accountId: payload.accountId || null,
+      tags,
+      operation: 'manual_create',
+      quantity,
+      price: avgPrice,
+      grossAmount: quantity * avgPrice,
+      source: 'manual',
+    });
+
+    return {
+      success: true,
+      asset: createdAsset,
+      position,
+    };
+  }
+
+  /**
+   * Remove um ativo manual completamente.
+   * @param {Object} input
+   * @returns {Promise<boolean>}
+   */
+  async deleteManualAsset(input) {
+    const { userId, assetId } = input;
+    this.assertUserId(userId);
+    if (!assetId) throw new Error('assetId é obrigatório para exclusão');
+
+    return repository.deleteAsset(userId, assetId);
+  }
+
+  /**
+   * Busca ativos por texto para o usuário autenticado.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async searchUserAssets(input) {
+    const { userId, query = '', limit = 20 } = input;
+    this.assertUserId(userId);
+
+    const assets = await repository.searchAssetsByName({ userId, query, limit });
+    return {
+      success: true,
+      assets,
+      total: assets.length,
+    };
+  }
+
+  /**
+   * Edita ativo por operação progressiva.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async editManualAsset(input) {
+    const { userId, assetId, operation, payload = {} } = input;
+    this.assertUserId(userId);
+
+    if (!assetId) throw new Error('assetId é obrigatório');
+    const asset = await repository.getAssetById({ userId, assetId });
+    if (!asset) throw new Error('Ativo não encontrado para este usuário');
+
+    const nowDate = new Date().toISOString().slice(0, 10);
+    const referenceDate = /^\d{4}-\d{2}-\d{2}$/.test(payload.referenceDate || '')
+      ? payload.referenceDate
+      : nowDate;
+
+    const latestPositions = await repository.listLatestPositionsByUser({
+      userId,
+      filters: {},
+      end: null,
+    });
+    const current = latestPositions.find((item) => item.assetId === assetId) || {
+      quantity: 0,
+      avgPrice: 0,
+      marketPrice: 0,
+      investedAmount: 0,
+      marketValue: 0,
+    };
+
+    let quantity = Number(current.quantity || 0);
+    let avgPrice = Number(current.avgPrice || 0);
+    let marketPrice = Number(current.marketPrice || avgPrice || 0);
+
+    if (operation === 'add_buy') {
+      const buyQuantity = Number(payload.quantity);
+      const buyPrice = Number(payload.price);
+      const fees = Number(payload.fees || 0);
+
+      if (!Number.isFinite(buyQuantity) || buyQuantity <= 0) {
+        throw new Error('Quantidade de compra/aporte inválida');
+      }
+      if (!Number.isFinite(buyPrice) || buyPrice < 0) {
+        throw new Error('Preço de compra/aporte inválido');
+      }
+      if (!Number.isFinite(fees) || fees < 0) {
+        throw new Error('Taxas inválidas na compra/aporte');
+      }
+
+      const previousInvested = quantity * avgPrice;
+      const buyInvested = (buyQuantity * buyPrice) + fees;
+      quantity += buyQuantity;
+      avgPrice = quantity > 0 ? (previousInvested + buyInvested) / quantity : 0;
+
+      if (Number.isFinite(Number(payload.marketPrice)) && Number(payload.marketPrice) >= 0) {
+        marketPrice = Number(payload.marketPrice);
+      }
+
+      await repository.insertInvestmentTransaction({
+        userId,
+        assetId,
+        referenceDate,
+        currency: asset.currency,
+        assetClass: asset.assetClass,
+        status: asset.status,
+        accountId: asset.accountId,
+        tags: asset.tags,
+        operation: 'manual_buy',
+        quantity: buyQuantity,
+        price: buyPrice,
+        grossAmount: buyInvested,
+        fees,
+        source: 'manual',
+      });
+    } else if (operation === 'add_sell') {
+      const soldQuantity = Number(payload.quantity);
+      const soldPrice = Number(payload.price);
+      const fees = Number(payload.fees || 0);
+
+      if (!Number.isFinite(soldQuantity) || soldQuantity <= 0) {
+        throw new Error('Quantidade de venda/resgate inválida');
+      }
+      if (!Number.isFinite(soldPrice) || soldPrice < 0) {
+        throw new Error('Preço de venda/resgate inválido');
+      }
+      if (!Number.isFinite(fees) || fees < 0) {
+        throw new Error('Taxas inválidas na venda/resgate');
+      }
+      if (soldQuantity > quantity) {
+        throw new Error('Quantidade de venda maior que posição atual');
+      }
+
+      quantity = Math.max(0, quantity - soldQuantity);
+      if (quantity === 0) {
+        avgPrice = 0;
+      }
+      marketPrice = soldPrice;
+
+      await repository.insertInvestmentTransaction({
+        userId,
+        assetId,
+        referenceDate,
+        currency: asset.currency,
+        assetClass: asset.assetClass,
+        status: asset.status,
+        accountId: asset.accountId,
+        tags: asset.tags,
+        operation: 'manual_sale',
+        quantity: soldQuantity,
+        price: soldPrice,
+        grossAmount: (soldQuantity * soldPrice) - fees,
+        fees,
+        source: 'manual',
+      });
+    } else if (operation === 'add_income') {
+      const grossAmount = Number(payload.grossAmount);
+      const incomeType = String(payload.incomeType || '').trim();
+
+      if (!Number.isFinite(grossAmount) || grossAmount <= 0) {
+        throw new Error('Valor de provento inválido');
+      }
+      if (!incomeType) {
+        throw new Error('Tipo de provento é obrigatório');
+      }
+
+      await repository.insertInvestmentTransaction({
+        userId,
+        assetId,
+        referenceDate,
+        currency: asset.currency,
+        assetClass: asset.assetClass,
+        status: asset.status,
+        accountId: asset.accountId,
+        tags: asset.tags,
+        operation: 'manual_income',
+        quantity: 0,
+        price: 0,
+        grossAmount,
+        metadata: { incomeType },
+        source: 'manual',
+      });
+    } else if (operation === 'update_balance') {
+      if (asset.assetClass !== 'fixed_income') {
+        throw new Error('Atualização de saldo disponível apenas para renda fixa');
+      }
+
+      const currentBalance = Number(payload.currentBalance);
+      if (!Number.isFinite(currentBalance) || currentBalance < 0) {
+        throw new Error('Saldo atual inválido');
+      }
+
+      const normalizedQuantity = quantity > 0 ? quantity : 1;
+      quantity = normalizedQuantity;
+      marketPrice = currentBalance / normalizedQuantity;
+
+      await repository.insertInvestmentTransaction({
+        userId,
+        assetId,
+        referenceDate,
+        currency: asset.currency,
+        assetClass: asset.assetClass,
+        status: asset.status,
+        accountId: asset.accountId,
+        tags: asset.tags,
+        operation: 'manual_balance_update',
+        quantity: 0,
+        price: marketPrice,
+        grossAmount: currentBalance,
+        metadata: {
+          previousMarketValue: Number(current.marketValue || 0),
+        },
+        source: 'manual',
+      });
+    } else if (operation === 'update_position') {
+      if (Number.isFinite(Number(payload.quantity))) quantity = Number(payload.quantity);
+      if (Number.isFinite(Number(payload.avgPrice))) avgPrice = Number(payload.avgPrice);
+      if (Number.isFinite(Number(payload.marketPrice))) marketPrice = Number(payload.marketPrice);
+    } else if (operation === 'register_sale') {
+      const soldQuantity = Number(payload.quantity);
+      const soldPrice = Number(payload.price);
+      if (!Number.isFinite(soldQuantity) || soldQuantity <= 0) {
+        throw new Error('Quantidade de venda inválida');
+      }
+      quantity = Math.max(0, quantity - soldQuantity);
+      if (Number.isFinite(soldPrice) && soldPrice >= 0) {
+        marketPrice = soldPrice;
+      }
+
+      await repository.insertInvestmentTransaction({
+        userId,
+        assetId,
+        referenceDate,
+        currency: asset.currency,
+        assetClass: asset.assetClass,
+        status: asset.status,
+        accountId: asset.accountId,
+        tags: asset.tags,
+        operation: 'manual_sale',
+        quantity: soldQuantity,
+        price: Number.isFinite(soldPrice) ? soldPrice : marketPrice,
+        grossAmount: soldQuantity * (Number.isFinite(soldPrice) ? soldPrice : marketPrice),
+        source: 'manual',
+      });
+    } else if (operation === 'adjust_quantity') {
+      const adjustedQuantity = Number(payload.quantity);
+      if (!Number.isFinite(adjustedQuantity) || adjustedQuantity < 0) {
+        throw new Error('Quantidade ajustada inválida');
+      }
+      quantity = adjustedQuantity;
+      if (Number.isFinite(Number(payload.avgPrice))) avgPrice = Number(payload.avgPrice);
+      if (Number.isFinite(Number(payload.marketPrice))) marketPrice = Number(payload.marketPrice);
+    } else {
+      throw new Error('Operação de edição inválida');
+    }
+
+    const position = await repository.insertPositionSnapshot({
+      userId,
+      assetId,
+      referenceDate,
+      currency: asset.currency,
+      assetClass: asset.assetClass,
+      status: asset.status,
+      accountId: asset.accountId,
+      tags: asset.tags,
+      quantity,
+      avgPrice,
+      marketPrice,
+      source: 'manual',
+      actionType: operation,
+    });
+
+    return {
+      success: true,
+      asset,
+      position,
+    };
   }
 
   /**

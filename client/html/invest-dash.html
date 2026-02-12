@@ -55,118 +55,140 @@
             </div>
 
             <div class="options-container">
+                <!-- Patrimônio -->
                 <div class="option-content active" id="m-opt1">
-                    <div class="dual-cards">
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Patrimônio Total Investido</button>
-                                <button class="card-opt">Resultado Financeiro</button>
+                    <div class="main-card-full">
+                        <div class="card-header">
+                            <button class="card-opt active">Patrimônio Total Investido</button>
+                            <button class="card-opt">Resultado Financeiro</button>
+                            <button class="card-opt">Alocação Real vs Planejada</button>
+                            <button class="card-opt">Rentabilidade Consolidada</button>
+                            <button class="manual-asset-trigger" id="manual-asset-trigger" aria-label="Lançar ativo manualmente">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                <div id="patrimonio-card-slot"></div>
+                            </div>
+                            <div class="card-side-grid">
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
                             </div>
                         </div>
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Alocação Real vs Planejada</button>
-                                <button class="card-opt">Rentabilidade Consolidada</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stats-row-5">
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
                     </div>
                 </div>
 
+                <!-- Rentabilidade -->
                 <div class="option-content" id="m-opt2">
-                    <div class="dual-cards">
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Rentabilidade no Mês</button>
-                                <button class="card-opt">Rentabilidade no Ano</button>
+                    <div class="main-card-full">
+                        <div class="card-header">
+                            <button class="card-opt active">Rentabilidade no Mês</button>
+                            <button class="card-opt">Rentabilidade no Ano</button>
+                            <button class="card-opt">Rentabilidade em 12 Meses</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                <!-- Conteúdo Principal -->
+                            </div>
+                            <div class="card-side-grid">
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
                             </div>
                         </div>
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Rentabilidade em 12 Meses</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stats-row-5">
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
                     </div>
                 </div>
 
+                <!-- Exposição -->
                 <div class="option-content" id="m-opt3">
-                    <div class="dual-cards">
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Exposição em Renda Variável</button>
-                                <button class="card-opt">Exposição em Renda Fixa</button>
+                    <div class="main-card-full">
+                        <div class="card-header">
+                            <button class="card-opt active">Exposição em Renda Variável</button>
+                            <button class="card-opt">Exposição em Renda Fixa</button>
+                            <button class="card-opt">Exposição Cambial</button>
+                            <button class="card-opt">Concentração Top 3</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                <!-- Conteúdo Principal -->
+                            </div>
+                            <div class="card-side-grid">
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
                             </div>
                         </div>
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Exposição Cambial</button>
-                                <button class="card-opt">Concentração Top 3</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stats-row-5">
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
                     </div>
                 </div>
 
+                <!-- Volatilidade -->
                 <div class="option-content" id="m-opt4">
-                    <div class="dual-cards">
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Volatilidade do Portfólio</button>
+                    <div class="main-card-full">
+                        <div class="card-header">
+                            <button class="card-opt active">Volatilidade do Portfólio</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                <!-- Conteúdo Principal -->
+                            </div>
+                            <div class="card-side-grid">
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
                             </div>
                         </div>
-                        <div class="main-card-50">
-                            <div class="card-header"></div>
-                        </div>
-                    </div>
-                    <div class="stats-row-5">
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
                     </div>
                 </div>
 
+                <!-- Eventos futuros -->
                 <div class="option-content" id="m-opt5">
-                    <div class="dual-cards">
-                        <div class="main-card-50">
-                            <div class="card-header">
-                                <button class="card-opt active">Próximos Vencimentos</button>
+                    <div class="main-card-full">
+                        <div class="card-header">
+                            <button class="card-opt active">Próximos Vencimentos</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-main-content">
+                                <!-- Conteúdo Principal -->
+                            </div>
+                            <div class="card-side-grid">
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
+                                <div class="mini-info-card"></div>
                             </div>
                         </div>
-                        <div class="main-card-50">
-                            <div class="card-header"></div>
-                        </div>
-                    </div>
-                    <div class="stats-row-5">
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
-                        <div class="stat-card-mini"></div>
                     </div>
                 </div>
             </div>
         </section>
+
+        <div class="manual-asset-modal-overlay" id="manual-asset-modal-overlay" aria-hidden="true">
+            <div class="manual-asset-modal" id="manual-asset-modal">
+                <div class="manual-modal-header">
+                    <h3>Lançamento Manual</h3>
+                    <button class="manual-modal-close" id="manual-asset-close" aria-label="Fechar modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="manual-modal-body" id="manual-asset-modal-body"></div>
+            </div>
+        </div>
 
         <!-- Fixed Activities Section -->
         <section class="fixed-activities">
