@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IR Provisionado - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --terracotta: #D97757;
+            --positive: #8BA888;
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 680px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* KPIs Grid */
+        .kpi-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-row-secondary {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .kpi-mini { flex: 1; }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .main-value {
+            font-size: 1.85rem;
+            font-weight: 300;
+            color: var(--terracotta); /* Destaque para imposto a pagar */
+            line-height: 1;
+        }
+
+        .sub-value {
+            font-size: 1.2rem;
+            color: var(--positive); /* Destaque para resultado líquido */
+            font-weight: 400;
+        }
+
+        .mini-value {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* Tabela Estruturada */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 16px;
+            flex-grow: 1;
+            /* Estilização da barra de rolagem */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+
+        .table-wrapper::-webkit-scrollbar { width: 4px; height: 4px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            min-width: 500px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 10px 12px;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+        }
+
+        .data-table th:first-child, .data-table td:first-child {
+            text-align: left;
+        }
+
+        .data-table tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .data-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .data-table td {
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .asset-name { font-weight: 600; color: var(--text-main); }
+        .asset-meta { font-size: 0.65rem; color: var(--text-muted); }
+        
+        .td-tax { color: var(--terracotta); font-weight: 600; }
+        .td-net { color: var(--positive); }
+        .td-rate { color: var(--text-muted); font-size: 0.75rem !important; }
+
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+            transition: transform 0.2s ease;
+        }
+
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animações */
+        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: translateY(-10px); }
+        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+
+        @media (max-width: 600px) {
+            .kpi-section { grid-template-columns: 1fr; }
+            .kpi-row-secondary { flex-wrap: wrap; gap: 12px;}
+            .kpi-mini { min-width: 45%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Imposto de Renda</h2>
+                <div class="subtitle" id="cardSubtitle">Provisão e Auditoria Fiscal (YTD)</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <button class="filter-btn">MTD</button>
+                    <button class="filter-btn active">YTD</button>
+                    <button class="filter-btn">12M</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">A Realizar</button>
+                    <button class="filter-btn">Realizado</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">Classes</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-section">
+            <div class="kpi-box">
+                <span class="label">IR Provisionado (Devido)</span>
+                <div class="main-value" id="mainValue">R$ 15.430,00</div>
+                <div class="subtitle" id="mainSub">Estimativa a pagar</div>
+            </div>
+            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                <span class="label">Resultado Líquido</span>
+                <div class="sub-value" id="subValue">R$ 82.500,00</div>
+                <div class="subtitle" id="benchSub">Após impostos</div>
+            </div>
+            
+            <div class="kpi-row-secondary">
+                <div class="kpi-mini">
+                    <span class="label">Base de Cálculo</span>
+                    <div class="mini-value" id="baseCalcValue">R$ 97.930,00</div>
+                </div>
+                <div class="kpi-mini">
+                    <span class="label">IR Já Pago</span>
+                    <div class="mini-value" id="paidValue">R$ 4.200,00</div>
+                </div>
+                <div class="kpi-mini">
+                    <span class="label">Alíquota Média</span>
+                    <div class="mini-value" id="rateValue">15,7%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Ativo / Classe</th>
+                        <th>Base de Cálculo</th>
+                        <th>Alíquota</th>
+                        <th>IR Estimado</th>
+                        <th>Res. Líquido</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STORE: Imposto de Renda ---
+        const viewStates = {
+            'total': {
+                title: 'Imposto de Renda',
+                subtitle: 'Provisão e Auditoria Fiscal (YTD)',
+                mainValue: 'R$ 15.430,00',
+                subValue: 'R$ 82.500,00',
+                baseCalc: 'R$ 97.930,00',
+                paid: 'R$ 4.200,00',
+                rate: '15,7%',
+                list: [
+                    { id: 'acoes-br', name: 'Ações Brasil (Swing)', meta: 'Tributação 15%', base: 'R$ 42.000,00', rate: '15,0%', tax: 'R$ 6.300,00', net: 'R$ 35.700,00' },
+                    { id: 'day-trade', name: 'Ações Brasil (Day Trade)', meta: 'Tributação 20%', base: 'R$ 15.500,00', rate: '20,0%', tax: 'R$ 3.100,00', net: 'R$ 12.400,00' },
+                    { id: 'fiis', name: 'Fundos Imobiliários', meta: 'Tributação 20% (Ganhos)', base: 'R$ 8.430,00', rate: '20,0%', tax: 'R$ 1.686,00', net: 'R$ 6.744,00' },
+                    { id: 'rf', name: 'Renda Fixa', meta: 'Tabela Regressiva', base: 'R$ 32.000,00', rate: '13,5%', tax: 'R$ 4.344,00', net: 'R$ 27.656,00' }
+                ]
+            },
+            'acoes-br': {
+                title: 'Ações Brasil (Swing Trade)',
+                subtitle: 'Detalhamento de Provisão',
+                mainValue: 'R$ 6.300,00',
+                subValue: 'R$ 35.700,00',
+                baseCalc: 'R$ 42.000,00',
+                paid: 'R$ 0,00',
+                rate: '15,0%',
+                list: [
+                    { name: 'PETR4', meta: 'Lucro Auferido', base: 'R$ 20.000,00', rate: '15,0%', tax: 'R$ 3.000,00', net: 'R$ 17.000,00' },
+                    { name: 'VALE3', meta: 'Lucro Auferido', base: 'R$ 15.000,00', rate: '15,0%', tax: 'R$ 2.250,00', net: 'R$ 12.750,00' },
+                    { name: 'WEGE3', meta: 'Lucro Auferido', base: 'R$ 7.000,00', rate: '15,0%', tax: 'R$ 1.050,00', net: 'R$ 5.950,00' }
+                ]
+            },
+            'rf': {
+                title: 'Renda Fixa',
+                subtitle: 'Retenção na Fonte Estimada',
+                mainValue: 'R$ 4.344,00',
+                subValue: 'R$ 27.656,00',
+                baseCalc: 'R$ 32.000,00',
+                paid: 'R$ 4.200,00', // Exemplo de já retido
+                rate: '13,5%',
+                list: [
+                    { name: 'Tesouro Selic 2027', meta: 'Venc. / +720 dias', base: 'R$ 12.000,00', rate: '15,0%', tax: 'R$ 1.800,00', net: 'R$ 10.200,00' },
+                    { name: 'CDB Banco ABC', meta: 'Resgate / 360-720 dias', base: 'R$ 20.000,00', rate: '17,5%', tax: 'R$ 3.500,00', net: 'R$ 16.500,00' },
+                    { name: 'Compensação IR', meta: 'Ajuste de carteira', base: '-', rate: '-', tax: '- R$ 956,00', net: '-' }
+                ]
+            },
+            'day-trade': {
+                title: 'Ações Brasil (Day Trade)',
+                subtitle: 'Apurado Mensalmente (20%)',
+                mainValue: 'R$ 3.100,00',
+                subValue: 'R$ 12.400,00',
+                baseCalc: 'R$ 15.500,00',
+                paid: 'R$ 0,00',
+                rate: '20,0%',
+                list: [
+                    { name: 'WINJ24', meta: 'Mini Índice', base: 'R$ 10.000,00', rate: '20,0%', tax: 'R$ 2.000,00', net: 'R$ 8.000,00' },
+                    { name: 'WDOJ24', meta: 'Mini Dólar', base: 'R$ 5.500,00', rate: '20,0%', tax: 'R$ 1.100,00', net: 'R$ 4.400,00' }
+                ]
+            },
+            'fiis': {
+                title: 'Fundos Imobiliários',
+                subtitle: 'Ganhos de Capital (Isento em Div.)',
+                mainValue: 'R$ 1.686,00',
+                subValue: 'R$ 6.744,00',
+                baseCalc: 'R$ 8.430,00',
+                paid: 'R$ 0,00',
+                rate: '20,0%',
+                list: [
+                    { name: 'HGLG11', meta: 'Venda de Cotas', base: 'R$ 5.000,00', rate: '20,0%', tax: 'R$ 1.000,00', net: 'R$ 4.000,00' },
+                    { name: 'XPML11', meta: 'Venda de Cotas', base: 'R$ 3.430,00', rate: '20,0%', tax: 'R$ 686,00', net: 'R$ 2.744,00' }
+                ]
+            }
+        };
+
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            subVal: document.getElementById('subValue'),
+            baseCalc: document.getElementById('baseCalcValue'),
+            paid: document.getElementById('paidValue'),
+            rate: document.getElementById('rateValue'),
+            tbody: document.getElementById('tableBody'),
+            back: document.getElementById('backNav')
+        };
+
+        let navHistory = ['total'];
+
+        // --- VIEW UPDATES ---
+        async function updateView(key, isBack = false) {
+            const data = viewStates[key];
+            if (!data) return;
+
+            if (!isBack && key !== 'total') navHistory.push(key);
+            
+            // Animate out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Populate KPIs
+            els.title.innerText = data.title;
+            els.sub.innerText = data.subtitle;
+            els.mainVal.innerText = data.mainValue;
+            els.subVal.innerText = data.subValue;
+            els.baseCalc.innerText = data.baseCalc;
+            els.paid.innerText = data.paid;
+            els.rate.innerText = data.rate;
+
+            els.back.style.display = key === 'total' ? 'none' : 'flex';
+
+            // Populate Table
+            els.tbody.innerHTML = data.list.map(item => `
+                <tr onclick="handleRowClick('${item.id || ''}')">
+                    <td>
+                        <div class="asset-name">${item.name}</div>
+                        <div class="asset-meta">${item.meta}</div>
+                    </td>
+                    <td>${item.base}</td>
+                    <td class="td-rate">${item.rate}</td>
+                    <td class="td-tax">${item.tax}</td>
+                    <td class="td-net">${item.net}</td>
+                </tr>
+            `).join('');
+
+            // Animate in
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; 
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        window.handleRowClick = (id) => {
+            if (id && viewStates[id]) updateView(id);
+        };
+
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Toggle Buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Initialize
+        updateView('total');
+    </script>
+</body>
+</html>

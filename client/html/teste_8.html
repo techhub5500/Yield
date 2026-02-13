@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Próximos Vencimentos - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --primary-glow: rgba(212, 175, 55, 0.3);
+            --terracotta: #D97757;
+            --positive: #8BA888;
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 680px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+            overflow: visible;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* KPIs */
+        .kpi-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .main-value {
+            font-size: 1.85rem;
+            font-weight: 300;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .sub-value {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            margin-top: 2px;
+        }
+
+        .highlight-pill {
+            display: inline-flex;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 6px;
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--primary-gold);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            width: fit-content;
+        }
+
+        /* Timeline Chart Area */
+        .chart-container {
+            width: 100%;
+            height: 150px;
+            position: relative;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* Timeline Specific SVG Styles */
+        .timeline-axis {
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 1;
+        }
+
+        .timeline-tick-line {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 1;
+            stroke-dasharray: 2;
+        }
+
+        .timeline-tick-text {
+            fill: var(--text-muted);
+            font-size: 0.6rem;
+            text-anchor: middle;
+        }
+
+        .event-circle {
+            fill: var(--primary-gold);
+            fill-opacity: 0.2;
+            stroke: var(--primary-gold);
+            stroke-width: 1.5;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            transform-origin: center;
+            transform-box: fill-box;
+        }
+
+        .event-circle:hover {
+            fill-opacity: 0.8;
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+            transform: scale(1.1); 
+        }
+
+        .event-stem {
+            stroke: var(--primary-gold);
+            stroke-width: 1;
+            stroke-dasharray: 3;
+            opacity: 0.4;
+        }
+
+        .event-circle.type-secondary {
+            stroke: var(--positive);
+            fill: var(--positive);
+        }
+        .event-stem.type-secondary { stroke: var(--positive); }
+
+        /* Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(25, 20, 18, 0.95);
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            white-space: nowrap;
+        }
+
+        /* Lista de Detalhes */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .details-grid::-webkit-scrollbar { width: 4px; }
+        .details-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .asset-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .asset-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--glass-border);
+        }
+
+        .asset-date-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            padding: 4px 8px;
+            border-radius: 6px;
+            margin-right: 12px;
+            min-width: 50px;
+        }
+        
+        .date-day { font-size: 0.9rem; font-weight: 700; color: var(--text-main); }
+        .date-month { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); }
+
+        .asset-info { display: flex; flex-direction: column; flex: 1; }
+        .asset-name { font-weight: 400; font-size: 0.85rem; color: var(--text-main); }
+        .asset-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 8px; align-items: center;}
+
+        .asset-value { text-align: right; }
+        .val-main { font-size: 0.9rem; font-weight: 600; color: var(--text-main); font-feature-settings: "tnum"; }
+        .val-sub { font-size: 0.7rem; color: var(--text-muted); }
+        .val-impact { color: var(--positive); font-size: 0.65rem; }
+
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+            transition: transform 0.2s ease;
+        }
+
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animações */
+        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: translateY(-10px); }
+        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Próximos Vencimentos</h2>
+                <div class="subtitle" id="cardSubtitle">Fluxo de caixa projetado e liquidez</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <button class="filter-btn active">6M</button>
+                    <button class="filter-btn">12M</button>
+                    <button class="filter-btn">24M</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">Classe</button>
+                    <button class="filter-btn">Emissor</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-section">
+            <div class="kpi-box">
+                <span class="label" id="mainLabel">Volume a Vencer (6M)</span>
+                <div class="main-value" id="mainValue">R$ 142.500</div>
+                <div class="highlight-pill" id="mainPill">
+                    Impacto Líquido: +8.5%
+                </div>
+            </div>
+            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                <span class="label">Próximo Fluxo Relevante</span>
+                <div class="sub-value" id="secValue">15 Mai 2026</div>
+                <div class="subtitle" id="secMeta">Tesouro IPCA+ 2026</div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer">
+            <div class="chart-tooltip" id="chartTooltip"></div>
+            <svg viewBox="0 0 800 150" preserveAspectRatio="none" id="chartSvg">
+                </svg>
+        </div>
+
+        <div class="details-grid" id="detailsGrid">
+            </div>
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        const viewStates = {
+            'total': {
+                title: 'Próximos Vencimentos',
+                subtitle: 'Fluxo de caixa projetado e liquidez',
+                mainValue: 'R$ 142.500',
+                mainPill: 'Impacto Líquido: +8.5%',
+                secValue: '15 Mai 2026',
+                secMeta: 'Tesouro IPCA+ 2026',
+                // Data Points: date (YYYY-MM-DD), value, label, type (1: primary, 2: secondary)
+                chartData: [
+                    { date: '2026-03-15', value: 5000, label: 'CDB Banco Master', type: 1 },
+                    { date: '2026-04-10', value: 2500, label: 'Div. VALE3', type: 2 },
+                    { date: '2026-05-15', value: 85000, label: 'Tesouro IPCA+ 26', type: 1 },
+                    { date: '2026-06-20', value: 12000, label: 'LCI Caixa', type: 1 },
+                    { date: '2026-08-15', value: 38000, label: 'Debênture VALE', type: 1 }
+                ],
+                list: [
+                    { id: 'ipca-26', date: '2026-05-15', d: '15', m: 'MAI', name: 'Tesouro IPCA+ 2026', meta: 'Vencimento Título', val: 'R$ 85.000', rate: 'IPCA + 5,5%', impact: '+5.1% no PL' },
+                    { id: 'deb-vale', date: '2026-08-15', d: '15', m: 'AGO', name: 'Debênture Vale S.A.', meta: 'Amortização Final', val: 'R$ 38.000', rate: 'CDI + 1,2%', impact: '+2.2% no PL' },
+                    { id: 'lci-cx', date: '2026-06-20', d: '20', m: 'JUN', name: 'LCI Caixa Econômica', meta: 'Vencimento', val: 'R$ 12.000', rate: '98% CDI', impact: 'Isento IR' },
+                    { id: 'cdb-mst', date: '2026-03-15', d: '15', m: 'MAR', name: 'CDB Banco Master', meta: 'Vencimento', val: 'R$ 5.000', rate: '14,5% a.a.', impact: 'Pré-fixado' },
+                    { id: 'div-vale', date: '2026-04-10', d: '10', m: 'ABR', name: 'Dividendos VALE3', meta: 'Provento', val: 'R$ 2.500', rate: '-', impact: 'Livre' }
+                ]
+            },
+            'ipca-26': {
+                title: 'Tesouro IPCA+ 2026',
+                subtitle: 'Cronograma do Ativo',
+                mainValue: 'R$ 85.000',
+                mainPill: 'Rentabilidade Total: 42%',
+                secValue: 'IPCA + 5,5%',
+                secMeta: 'Taxa Contratada',
+                chartData: [
+                    { date: '2026-05-15', value: 85000, label: 'Principal + Juros', type: 1 }
+                ],
+                list: [
+                    { date: '2026-05-15', d: '15', m: 'MAI', name: 'Resgate Total', meta: 'Vencimento', val: 'R$ 85.000', rate: 'Liquidação', impact: 'Disp. D+1' }
+                ]
+            },
+            'deb-vale': {
+                title: 'Debênture Vale S.A.',
+                subtitle: 'Fluxo de Pagamentos',
+                mainValue: 'R$ 38.000',
+                mainPill: 'Risco: AAA (br)',
+                secValue: 'CDI + 1,2%',
+                secMeta: 'Indexador',
+                chartData: [
+                    { date: '2026-02-15', value: 1500, label: 'Juros Semestral', type: 2 },
+                    { date: '2026-08-15', value: 38000, label: 'Amortização + Juros', type: 1 }
+                ],
+                list: [
+                    { date: '2026-02-15', d: '15', m: 'FEV', name: 'Pagamento Juros', meta: 'Cupom', val: 'R$ 1.500', rate: 'Semestral', impact: 'Caixa' },
+                    { date: '2026-08-15', d: '15', m: 'AGO', name: 'Amortização Final', meta: 'Principal + Juros', val: 'R$ 38.000', rate: 'Final', impact: 'Encerramento' }
+                ]
+            },
+            'lci-cx': {
+                title: 'LCI Caixa Econômica',
+                subtitle: 'Isenção de IR e Liquidez',
+                mainValue: 'R$ 12.000',
+                mainPill: 'Impacto: Isento de IR',
+                secValue: '98% CDI',
+                secMeta: 'Rentabilidade',
+                chartData: [
+                    { date: '2026-06-20', value: 12000, label: 'Resgate LCI', type: 1 }
+                ],
+                list: [
+                    { date: '2026-06-20', d: '20', m: 'JUN', name: 'Liquidação de Título', meta: 'Vencimento', val: 'R$ 12.000', rate: '98% CDI', impact: 'Disponível em conta' }
+                ]
+            },
+            'cdb-mst': {
+                title: 'CDB Banco Master',
+                subtitle: 'Título Privado Pré-fixado',
+                mainValue: 'R$ 5.000',
+                mainPill: 'Taxa: 14,5% a.a.',
+                secValue: 'R$ 5.000',
+                secMeta: 'Valor de Face',
+                chartData: [
+                    { date: '2026-03-15', value: 5000, label: 'Vencimento CDB', type: 1 }
+                ],
+                list: [
+                    { date: '2026-03-15', d: '15', m: 'MAR', name: 'Resgate CDB', meta: 'Vencimento', val: 'R$ 5.000', rate: '14,5% a.a.', impact: 'D+0' }
+                ]
+            },
+            'div-vale': {
+                title: 'Dividendos VALE3',
+                subtitle: 'Proventos Provisionados',
+                mainValue: 'R$ 2.500',
+                mainPill: 'Tipo: JCP/Dividendo',
+                secValue: '10 Abr 2026',
+                secMeta: 'Data de Pagamento',
+                chartData: [
+                    { date: '2026-04-10', value: 2500, label: 'Provento VALE3', type: 2 }
+                ],
+                list: [
+                    { date: '2026-04-10', d: '10', m: 'ABR', name: 'Crédito em Conta', meta: 'VALE3', val: 'R$ 2.500', rate: '-', impact: 'Líquido' }
+                ]
+            }
+        };
+
+        // --- ELEMENTS ---
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            pill: document.getElementById('mainPill'),
+            secVal: document.getElementById('secValue'),
+            secMeta: document.getElementById('secMeta'),
+            details: document.getElementById('detailsGrid'),
+            svg: document.getElementById('chartSvg'),
+            tooltip: document.getElementById('chartTooltip'),
+            back: document.getElementById('backNav')
+        };
+
+        let navHistory = ['total'];
+
+        // --- TIMELINE CHART LOGIC ---
+        function renderTimeline(data) {
+            els.svg.innerHTML = '';
+            
+            if (!data || data.length === 0) return;
+
+            // Sort dates
+            const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            // Define Range (Add buffer)
+            const minDate = new Date(sortedData[0].date);
+            const maxDate = new Date(sortedData[sortedData.length - 1].date);
+            
+            // Add padding of 15 days before and after
+            minDate.setDate(minDate.getDate() - 20);
+            maxDate.setDate(maxDate.getDate() + 20);
+
+            const totalTime = maxDate - minDate;
+            const width = 800;
+            const height = 150;
+            const margin = { left: 40, right: 40, top: 40, bottom: 40 };
+            const effectiveWidth = width - margin.left - margin.right;
+            const axisY = height - margin.bottom;
+
+            // Define Value Scale for Circle Radius
+            const maxVal = Math.max(...data.map(d => d.value));
+            const getRadius = (val) => {
+                const minR = 6;
+                const maxR = 25;
+                if (maxVal === 0) return minR;
+                return minR + ((val / maxVal) * (maxR - minR));
+            };
+
+            // 1. Draw Axis Line
+            const axisLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            axisLine.setAttribute("x1", margin.left);
+            axisLine.setAttribute("x2", width - margin.right);
+            axisLine.setAttribute("y1", axisY);
+            axisLine.setAttribute("y2", axisY);
+            axisLine.setAttribute("class", "timeline-axis");
+            els.svg.appendChild(axisLine);
+
+            // 2. Draw Events
+            sortedData.forEach(d => {
+                const dateObj = new Date(d.date);
+                const progress = (dateObj - minDate) / totalTime;
+                const cx = margin.left + (progress * effectiveWidth);
+                const r = getRadius(d.value);
+                const cy = axisY - r - 10; // Lift circle above axis
+
+                // Draw connector stem
+                const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                stem.setAttribute("x1", cx);
+                stem.setAttribute("x2", cx);
+                stem.setAttribute("y1", cy + r);
+                stem.setAttribute("y2", axisY);
+                stem.setAttribute("class", `event-stem ${d.type === 2 ? 'type-secondary' : ''}`);
+                els.svg.appendChild(stem);
+
+                // Draw Circle
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", cx);
+                circle.setAttribute("cy", cy);
+                circle.setAttribute("r", r);
+                circle.setAttribute("class", `event-circle ${d.type === 2 ? 'type-secondary' : ''}`);
+                
+                // Interaction
+                circle.addEventListener('mouseenter', (e) => showTooltip(e, d));
+                circle.addEventListener('mouseleave', hideTooltip);
+                
+                els.svg.appendChild(circle);
+
+                // Draw Date Tick below axis
+                const tickLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                tickLine.setAttribute("x1", cx); tickLine.setAttribute("x2", cx);
+                tickLine.setAttribute("y1", axisY); tickLine.setAttribute("y2", axisY + 5);
+                tickLine.setAttribute("class", "timeline-tick-line");
+                els.svg.appendChild(tickLine);
+
+                // Create simplified date string DD/MM
+                const day = dateObj.getDate().toString().padStart(2, '0');
+                const month = dateObj.toLocaleString('pt-BR', { month: 'short' }).replace('.', '').toUpperCase();
+                
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", cx);
+                text.setAttribute("y", axisY + 18);
+                text.setAttribute("class", "timeline-tick-text");
+                text.textContent = `${day}/${month}`;
+                els.svg.appendChild(text);
+            });
+        }
+
+        function showTooltip(e, data) {
+            const rect = els.svg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            els.tooltip.style.display = 'block';
+            els.tooltip.style.left = `${x}px`;
+            els.tooltip.style.top = `${y}px`;
+            
+            // Format Currency
+            const valStr = data.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+            
+            els.tooltip.innerHTML = `
+                <div style="color: var(--primary-gold); font-weight: 600; margin-bottom: 2px;">${data.label}</div>
+                <div style="color: var(--text-main); font-size: 0.9rem;">${valStr}</div>
+                <div style="color: var(--text-muted); font-size: 0.65rem;">${new Date(data.date).toLocaleDateString('pt-BR')}</div>
+            `;
+        }
+
+        function hideTooltip() {
+            els.tooltip.style.display = 'none';
+        }
+
+        // --- VIEW LOGIC ---
+        async function updateView(key, isBack = false) {
+            const data = viewStates[key] || viewStates['total']; // Fallback
+
+            if (!isBack && key !== 'total' && navHistory[navHistory.length -1] !== key) {
+                navHistory.push(key);
+            }
+            
+            // Animation Out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Update DOM
+            els.title.innerText = data.title;
+            els.sub.innerText = data.subtitle;
+            els.mainVal.innerText = data.mainValue;
+            els.pill.innerText = data.mainPill;
+            els.secVal.innerText = data.secValue;
+            els.secMeta.innerText = data.secMeta;
+
+            if (key === 'total') els.back.style.display = 'none';
+            else els.back.style.display = 'flex';
+
+            // Render Chart
+            renderTimeline(data.chartData);
+
+            // Render List
+            els.details.innerHTML = data.list.map(item => `
+                <div class="asset-row" onclick="handleRowClick('${item.id || ''}')">
+                    <div class="asset-date-box">
+                        <span class="date-day">${item.d}</span>
+                        <span class="date-month">${item.m}</span>
+                    </div>
+                    <div class="asset-info">
+                        <span class="asset-name">${item.name}</span>
+                        <div class="asset-meta">
+                            ${item.meta} • <span style="color: var(--text-muted);">${item.rate}</span>
+                        </div>
+                    </div>
+                    <div class="asset-value">
+                        <div class="val-main">${item.val}</div>
+                        <div class="val-sub val-impact">${item.impact}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Animation In
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; // Reflow
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        window.handleRowClick = (id) => {
+            if (id && viewStates[id]) updateView(id);
+        };
+
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Filter Toggle Logic
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Init
+        updateView('total');
+
+    </script>
+</body>
+</html>

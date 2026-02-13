@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volatilidade - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --primary-glow: rgba(212, 175, 55, 0.2);
+            --terracotta: #D97757;
+            --positive: #8BA888;
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+            --band-fill: rgba(212, 175, 55, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 640px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* KPIs Grid */
+        .kpi-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-row-secondary {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .kpi-mini { flex: 1; }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .main-value {
+            font-size: 1.85rem;
+            font-weight: 300;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .sub-value {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            font-weight: 400;
+        }
+
+        .mini-value {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .variation-pill {
+            display: inline-flex;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+        }
+
+        .variation-pill.negative {
+            background: rgba(217, 119, 87, 0.1);
+            color: var(--terracotta);
+        }
+
+        /* Chart Area - Linha com Banda de Desvio */
+        .chart-container {
+            width: 100%;
+            height: 160px;
+            position: relative;
+            margin-bottom: 24px;
+            cursor: crosshair;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .band-path {
+            fill: var(--band-fill);
+        }
+
+        .line-path {
+            fill: none;
+            stroke: var(--primary-gold);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px var(--primary-glow));
+        }
+
+        .bench-path {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.25);
+            stroke-width: 1.5;
+            stroke-dasharray: 4, 4;
+            stroke-linecap: round;
+        }
+
+        .interactive-line {
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-width: 1;
+            stroke-dasharray: 4;
+            display: none;
+        }
+
+        .chart-dot {
+            fill: var(--primary-gold);
+            stroke: var(--bg-deep);
+            stroke-width: 2;
+            display: none;
+        }
+
+        /* Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(25, 20, 18, 0.95);
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            white-space: nowrap;
+        }
+
+        /* Lista de Detalhes */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 16px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .details-grid::-webkit-scrollbar { width: 4px; }
+        .details-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .asset-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .asset-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--glass-border);
+        }
+
+        .asset-info { display: flex; flex-direction: column; }
+        .asset-name { font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+        .asset-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;}
+
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; background-color: var(--primary-gold); }
+
+        .asset-value { text-align: right; }
+        .val-main { font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
+        .val-sub { font-size: 0.7rem; color: var(--terracotta); }
+
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+            transition: transform 0.2s ease;
+        }
+
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animações */
+        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: translateY(-10px); }
+        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+
+        @media (max-width: 600px) {
+            .kpi-section { grid-template-columns: 1fr; }
+            .kpi-row-secondary { flex-direction: column; gap: 12px;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Volatilidade Anualizada</h2>
+                <div class="subtitle" id="cardSubtitle">Oscilação e Risco do Portfólio (12 Meses)</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <button class="filter-btn">MTD</button>
+                    <button class="filter-btn">YTD</button>
+                    <button class="filter-btn active">12M</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">Consol.</button>
+                    <button class="filter-btn">Classes</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">vs IBOV</button>
+                    <button class="filter-btn">vs CDI</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-section">
+            <div class="kpi-box">
+                <span class="label" id="mainLabel">Volatilidade (Portfólio)</span>
+                <div class="main-value" id="mainValue">14,2%</div>
+                <div class="subtitle" id="mainSub">Desvio Padrão Anual.</div>
+            </div>
+            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                <span class="label" id="secondaryLabel">Volatilidade (Benchmark)</span>
+                <div class="sub-value" id="benchValue">18,5%</div>
+                <div class="subtitle" id="benchSub">IBOV</div>
+            </div>
+            
+            <div class="kpi-row-secondary">
+                <div class="kpi-mini">
+                    <span class="label">Máximo Drawdown</span>
+                    <div class="mini-value" id="drawdownValue">-8,40% <span class="variation-pill negative">Risco Baixo</span></div>
+                </div>
+                <div class="kpi-mini">
+                    <span class="label">Índice Sharpe</span>
+                    <div class="mini-value" id="sharpeValue">1.35 <span class="variation-pill">Excedente</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer">
+            <div class="chart-tooltip" id="chartTooltip"></div>
+            <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                </svg>
+        </div>
+
+        <div class="details-grid" id="detailsGrid">
+            </div>
+    </div>
+
+    <script>
+        // --- DATA STORE: Volatilidade ---
+        const viewStates = {
+            'total': {
+                title: 'Volatilidade Anualizada',
+                subtitle: 'Oscilação e Risco do Portfólio',
+                mainValue: '14,2%',
+                benchValue: '18,5%',
+                benchLabel: 'IBOV',
+                drawdown: '-8,40%',
+                sharpe: '1.35',
+                // Mock de série temporal: valor central, desvio (+/- da banda) e benchmark
+                chartData: [
+                    { date: 'Jan', val: 100, dev: 2, bench: 98 }, { date: 'Fev', val: 102, dev: 2.5, bench: 97 },
+                    { date: 'Mar', val: 101, dev: 3.5, bench: 94 }, { date: 'Abr', val: 104, dev: 3, bench: 99 },
+                    { date: 'Mai', val: 106, dev: 2.8, bench: 102 }, { date: 'Jun', val: 105, dev: 3.2, bench: 100 },
+                    { date: 'Jul', val: 109, dev: 4, bench: 105 }, { date: 'Ago', val: 108, dev: 3.5, bench: 103 },
+                    { date: 'Set', val: 112, dev: 4.5, bench: 106 }, { date: 'Out', val: 110, dev: 4.2, bench: 102 },
+                    { date: 'Nov', val: 115, dev: 3.8, bench: 108 }, { date: 'Dez', val: 118, dev: 3.5, bench: 110 }
+                ],
+                list: [
+                    { id: 'acoes-br', name: 'Renda Variável', meta: 'Beta: 0.95', val: '22,4%', sub: 'Max DD: -15,2%' },
+                    { id: 'stocks', name: 'Stocks (EUA)', meta: 'Beta: 1.10', val: '25,1%', sub: 'Max DD: -18,5%' },
+                    { id: 'fiis', name: 'FIIs', meta: 'Beta: 0.40', val: '8,2%', sub: 'Max DD: -4,1%' },
+                    { id: 'rf', name: 'Renda Fixa', meta: 'Beta: 0.05', val: '2,1%', sub: 'Max DD: 0,0%' }
+                ]
+            },
+            'acoes-br': {
+                title: 'Risco: Renda Variável',
+                subtitle: 'Volatilidade Ações Brasil',
+                mainValue: '22,4%',
+                benchValue: '18,5%',
+                benchLabel: 'IBOV',
+                drawdown: '-15,20%',
+                sharpe: '0.85',
+                chartData: [
+                    { date: 'Jan', val: 100, dev: 4, bench: 98 }, { date: 'Fev', val: 104, dev: 5, bench: 97 },
+                    { date: 'Mar', val: 95, dev: 8, bench: 94 }, { date: 'Abr', val: 102, dev: 6, bench: 99 },
+                    { date: 'Mai', val: 108, dev: 7, bench: 102 }, { date: 'Jun', val: 104, dev: 6.5, bench: 100 },
+                    { date: 'Jul', val: 112, dev: 8.5, bench: 105 }, { date: 'Ago', val: 108, dev: 7, bench: 103 },
+                    { date: 'Set', val: 116, dev: 9, bench: 106 }, { date: 'Out', val: 110, dev: 8, bench: 102 },
+                    { date: 'Nov', val: 118, dev: 7.5, bench: 108 }, { date: 'Dez', val: 122, dev: 6, bench: 110 }
+                ],
+                list: [
+                    { name: 'VALE3', meta: 'Vol. Implícita: Alta', val: '28,5%', sub: 'Max DD: -22,0%' },
+                    { name: 'PETR4', meta: 'Vol. Implícita: Alta', val: '32,1%', sub: 'Max DD: -18,4%' },
+                    { name: 'ITUB4', meta: 'Vol. Implícita: Baixa', val: '19,0%', sub: 'Max DD: -10,2%' },
+                    { name: 'WEGE3', meta: 'Vol. Implícita: Média', val: '21,5%', sub: 'Max DD: -14,5%' }
+                ]
+            },
+            'rf': {
+                title: 'Risco: Renda Fixa',
+                subtitle: 'Marcação a Mercado',
+                mainValue: '2,1%',
+                benchValue: '0,5%',
+                benchLabel: 'CDI',
+                drawdown: '0,00%',
+                sharpe: '2.80',
+                chartData: [
+                    { date: 'Jan', val: 100, dev: 0.5, bench: 100 }, { date: 'Fev', val: 100.8, dev: 0.5, bench: 100.8 },
+                    { date: 'Mar', val: 101.5, dev: 0.6, bench: 101.6 }, { date: 'Abr', val: 102.4, dev: 0.5, bench: 102.4 },
+                    { date: 'Mai', val: 103.1, dev: 0.8, bench: 103.2 }, { date: 'Jun', val: 104.0, dev: 0.7, bench: 104.0 },
+                    { date: 'Jul', val: 104.8, dev: 1.0, bench: 104.8 }, { date: 'Ago', val: 105.5, dev: 0.9, bench: 105.6 },
+                    { date: 'Set', val: 106.4, dev: 1.2, bench: 106.4 }, { date: 'Out', val: 107.2, dev: 1.0, bench: 107.2 },
+                    { date: 'Nov', val: 108.1, dev: 0.8, bench: 108.0 }, { date: 'Dez', val: 109.0, dev: 0.5, bench: 108.8 }
+                ],
+                list: [
+                    { name: 'Tesouro IPCA+ 2035', meta: 'Duration: Alta', val: '4,5%', sub: 'Max DD: -2,1%' },
+                    { name: 'CDB Liquidez', meta: 'Duration: Nula', val: '0,1%', sub: 'Max DD: 0,0%' }
+                ]
+            },
+            'stocks': {
+                title: 'Risco: Stocks (EUA)',
+                subtitle: 'Volatilidade Mercado Americano',
+                mainValue: '25,1%',
+                benchValue: '15,2%',
+                benchLabel: 'S&P 500',
+                drawdown: '-18,50%',
+                sharpe: '1.10',
+                chartData: [
+                    { date: 'Jan', val: 100, dev: 5, bench: 99 }, { date: 'Fev', val: 105, dev: 6, bench: 101 },
+                    { date: 'Mar', val: 103, dev: 7, bench: 98 }, { date: 'Abr', val: 108, dev: 6, bench: 102 },
+                    { date: 'Mai', val: 112, dev: 5, bench: 105 }, { date: 'Jun', val: 110, dev: 7, bench: 103 },
+                    { date: 'Jul', val: 115, dev: 8, bench: 108 }, { date: 'Ago', val: 113, dev: 6, bench: 106 },
+                    { date: 'Set', val: 118, dev: 9, bench: 110 }, { date: 'Out', val: 114, dev: 8, bench: 105 },
+                    { date: 'Nov', val: 120, dev: 7, bench: 112 }, { date: 'Dez', val: 125, dev: 6, bench: 115 }
+                ],
+                list: [
+                    { name: 'NVDA', meta: 'Vol. Implícita: Extrema', val: '45,2%', sub: 'Max DD: -25,0%' },
+                    { name: 'AAPL', meta: 'Vol. Implícita: Baixa', val: '18,5%', sub: 'Max DD: -12,4%' },
+                    { name: 'MSFT', meta: 'Vol. Implícita: Média', val: '20,1%', sub: 'Max DD: -14,2%' }
+                ]
+            },
+            'fiis': {
+                title: 'Risco: Fundos Imobiliários',
+                subtitle: 'Volatilidade Setorial IFIX',
+                mainValue: '8,2%',
+                benchValue: '6,5%',
+                benchLabel: 'IFIX',
+                drawdown: '-4,10%',
+                sharpe: '1.85',
+                chartData: [
+                    { date: 'Jan', val: 100, dev: 1, bench: 100 }, { date: 'Fev', val: 101, dev: 1.2, bench: 100.5 },
+                    { date: 'Mar', val: 100.5, dev: 1.5, bench: 99.8 }, { date: 'Abr', val: 102, dev: 1.3, bench: 101.2 },
+                    { date: 'Mai', val: 102.5, dev: 1.1, bench: 102.0 }, { date: 'Jun', val: 101.8, dev: 1.4, bench: 101.5 },
+                    { date: 'Jul', val: 103, dev: 1.6, bench: 102.8 }, { date: 'Ago', val: 102.6, dev: 1.3, bench: 102.4 },
+                    { date: 'Set', val: 104, dev: 1.8, bench: 103.5 }, { date: 'Out', val: 103.5, dev: 1.5, bench: 103.0 },
+                    { date: 'Nov', val: 105, dev: 1.2, bench: 104.2 }, { date: 'Dez', val: 106, dev: 1.0, bench: 105.5 }
+                ],
+                list: [
+                    { name: 'HGLG11', meta: 'Logística', val: '7,5%', sub: 'Max DD: -3,5%' },
+                    { name: 'XPML11', meta: 'Shopping', val: '9,2%', sub: 'Max DD: -5,1%' },
+                    { name: 'KNIP11', meta: 'Papel', val: '6,1%', sub: 'Max DD: -1,5%' }
+                ]
+            }
+        };
+
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            benchVal: document.getElementById('benchValue'),
+            benchSub: document.getElementById('benchSub'),
+            drawdown: document.getElementById('drawdownValue'),
+            sharpe: document.getElementById('sharpeValue'),
+            details: document.getElementById('detailsGrid'),
+            svg: document.getElementById('chartSvg'),
+            tooltip: document.getElementById('chartTooltip'),
+            container: document.getElementById('chartContainer'),
+            back: document.getElementById('backNav')
+        };
+
+        let navHistory = ['total'];
+        let currentChartData = [];
+
+        // --- DRAW VOLATILITY CHART (Band + Line) ---
+        function renderVolatilityChart(data) {
+            currentChartData = data;
+            els.svg.innerHTML = '';
+
+            const width = 800;
+            const height = 200;
+            
+            // Determinar min e max dinamicamente considerando a banda de desvio
+            const maxVal = Math.max(...data.map(d => Math.max(d.val + d.dev, d.bench)));
+            const minVal = Math.min(...data.map(d => Math.min(d.val - d.dev, d.bench)));
+            const range = (maxVal - minVal) || 1;
+            
+            // Paddings visuais (10%)
+            const paddedMin = minVal - (range * 0.1);
+            const paddedMax = maxVal + (range * 0.1);
+            const finalRange = paddedMax - paddedMin;
+
+            const scaleY = y => height - ((y - paddedMin) / finalRange) * height;
+            const stepX = width / (data.length - 1);
+
+            // 1. Construir Banda (Desvio Padrão)
+            let pathBand = `M 0,${scaleY(data[0].val + data[0].dev)} `;
+            // Upper bound
+            for(let i = 1; i < data.length; i++) {
+                pathBand += `L ${i * stepX},${scaleY(data[i].val + data[i].dev)} `;
+            }
+            // Lower bound (de volta)
+            for(let i = data.length - 1; i >= 0; i--) {
+                pathBand += `L ${i * stepX},${scaleY(data[i].val - data[i].dev)} `;
+            }
+            pathBand += 'Z';
+
+            // 2. Construir Linha Central (Portfolio)
+            let pathLine = `M 0,${scaleY(data[0].val)} `;
+            for(let i = 1; i < data.length; i++) {
+                pathLine += `L ${i * stepX},${scaleY(data[i].val)} `;
+            }
+
+            // 3. Construir Linha Benchmark
+            let pathBench = `M 0,${scaleY(data[0].bench)} `;
+            for(let i = 1; i < data.length; i++) {
+                pathBench += `L ${i * stepX},${scaleY(data[i].bench)} `;
+            }
+
+            // Inserir paths no SVG
+            els.svg.innerHTML = `
+                <path class="band-path" d="${pathBand}"></path>
+                <path class="bench-path" d="${pathBench}"></path>
+                <path class="line-path" d="${pathLine}"></path>
+                <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine" />
+                <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot" />
+            `;
+        }
+
+        // --- INTERAÇÃO DO GRÁFICO ---
+        els.container.addEventListener('mousemove', (e) => {
+            if(!currentChartData.length) return;
+            
+            const rect = els.svg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            
+            // Encontrar o index mais próximo
+            const stepWidth = rect.width / (currentChartData.length - 1);
+            let hoverIndex = Math.round(x / stepWidth);
+            if (hoverIndex < 0) hoverIndex = 0;
+            if (hoverIndex >= currentChartData.length) hoverIndex = currentChartData.length - 1;
+
+            const d = currentChartData[hoverIndex];
+            const svgX = (hoverIndex / (currentChartData.length - 1)) * 800;
+
+            // Recalcular Y real da linha para posicionar o ponto
+            const vLine = document.getElementById('vLine');
+            const dot = document.getElementById('chartDot');
+            
+            // Encontrar Y re-escalando o valor (igual na renderização)
+            const maxVal = Math.max(...currentChartData.map(c => Math.max(c.val + c.dev, c.bench)));
+            const minVal = Math.min(...currentChartData.map(c => Math.min(c.val - c.dev, c.bench)));
+            const range = (maxVal - minVal) || 1;
+            const paddedMin = minVal - (range * 0.1);
+            const finalRange = (maxVal + (range * 0.1)) - paddedMin;
+            const svgY = 200 - ((d.val - paddedMin) / finalRange) * 200;
+
+            vLine.setAttribute('x1', svgX); vLine.setAttribute('x2', svgX);
+            vLine.style.display = 'block';
+            dot.setAttribute('cx', svgX); dot.setAttribute('cy', svgY);
+            dot.style.display = 'block';
+
+            // Tooltip
+            els.tooltip.style.display = 'block';
+            els.tooltip.style.left = `${x}px`;
+            els.tooltip.style.top = `${(svgY / 200) * rect.height}px`;
+            
+            els.tooltip.innerHTML = `
+                <div style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 4px;">${d.date}</div>
+                <div style="font-weight: 700; color: var(--primary-gold);">Portfólio: ${d.val.toFixed(1)}</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">Banda: ±${d.dev.toFixed(1)}</div>
+                <div style="font-size: 0.7rem; color: rgba(255,255,255,0.5); margin-top: 2px;">Bench: ${d.bench.toFixed(1)}</div>
+            `;
+        });
+
+        els.container.addEventListener('mouseleave', () => {
+            const vLine = document.getElementById('vLine');
+            const dot = document.getElementById('chartDot');
+            if(vLine) vLine.style.display = 'none';
+            if(dot) dot.style.display = 'none';
+            els.tooltip.style.display = 'none';
+        });
+
+        // --- VIEW UPDATES ---
+        async function updateView(key, isBack = false) {
+            const data = viewStates[key];
+            if (!data) return;
+
+            if (!isBack && key !== 'total') navHistory.push(key);
+            
+            // Animate out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Populate Text
+            els.title.innerText = data.title;
+            els.sub.innerText = data.subtitle;
+            els.mainVal.innerText = data.mainValue;
+            els.benchVal.innerText = data.benchValue;
+            els.benchSub.innerText = data.benchLabel;
+            
+            // Populate Mini KPIs
+            els.drawdown.innerHTML = `${data.drawdown} <span class="variation-pill ${data.drawdown.replace('%','') < -10 ? 'negative' : ''}">Máximo Acum.</span>`;
+            els.sharpe.innerHTML = `${data.sharpe} <span class="variation-pill">Risco/Retorno</span>`;
+
+            els.back.style.display = key === 'total' ? 'none' : 'flex';
+
+            // Render Chart
+            renderVolatilityChart(data.chartData);
+
+            // Render Detail List
+            els.details.innerHTML = data.list.map(item => `
+                <div class="asset-row" onclick="handleRowClick('${item.id || ''}')">
+                    <div class="asset-info">
+                        <span class="asset-name">${item.name}</span>
+                        <div class="asset-meta">
+                            <span class="status-dot"></span>
+                            ${item.meta}
+                        </div>
+                    </div>
+                    <div class="asset-value">
+                        <div class="val-main">${item.val}</div>
+                        <div class="val-sub">${item.sub}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Animate in
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; 
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        window.handleRowClick = (id) => {
+            if (id && viewStates[id]) updateView(id);
+        };
+
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Toggle Buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Initialize
+        updateView('total');
+    </script>
+</body>
+</html>

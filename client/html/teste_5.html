@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concentração Top 3 - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --primary-glow: rgba(212, 175, 55, 0.2);
+            --terracotta: #D97757; /* Alerta/Risco */
+            --positive: #8BA888;
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 640px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* KPIs Section */
+        .kpi-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .kpi-block { display: flex; flex-direction: column; }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .main-value {
+            font-size: 2.2rem;
+            font-weight: 300;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .alert-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(217, 119, 87, 0.15);
+            color: var(--terracotta);
+            margin-top: 8px;
+            border: 1px solid rgba(217, 119, 87, 0.2);
+        }
+
+        .safe-pill {
+            background: rgba(139, 168, 136, 0.15);
+            color: var(--positive);
+            border: 1px solid rgba(139, 168, 136, 0.2);
+        }
+
+        /* Chart Area (Bar Chart) */
+        .chart-container {
+            width: 100%;
+            height: 180px;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .bar-rect {
+            transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), fill 0.3s;
+            cursor: pointer;
+            rx: 4px;
+        }
+        
+        .bar-rect:hover { opacity: 0.8; }
+        .bar-rect.safe { fill: var(--primary-gold); }
+        .bar-rect.danger { fill: var(--terracotta); }
+
+        .limit-line {
+            stroke: rgba(255, 255, 255, 0.3);
+            stroke-width: 1;
+            stroke-dasharray: 4, 4;
+        }
+
+        .limit-label {
+            fill: var(--text-muted);
+            font-size: 0.65rem;
+            text-anchor: end;
+        }
+
+        .axis-label {
+            fill: var(--text-muted);
+            font-size: 0.65rem;
+            text-anchor: middle;
+        }
+
+        /* Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(25, 20, 18, 0.95);
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            white-space: nowrap;
+        }
+
+        /* List Details */
+        .details-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .details-list::-webkit-scrollbar { width: 4px; }
+        .details-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .asset-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .asset-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--glass-border);
+        }
+
+        .row-left { display: flex; flex-direction: column; }
+        .asset-name { font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+        .asset-type { font-size: 0.7rem; color: var(--text-muted); }
+
+        .row-right { text-align: right; }
+        .asset-percent { font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+        .limit-info { font-size: 0.7rem; color: var(--text-muted); }
+        
+        .text-danger { color: var(--terracotta); }
+        .text-safe { color: var(--primary-gold); }
+
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+        }
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animation Classes */
+        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: translateY(-10px); }
+        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Concentração Top 3</h2>
+                <div class="subtitle" id="cardSubtitle">Risco e diversificação</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group" id="topFilterGroup">
+                    <button class="filter-btn active" data-view="top3">Top 3</button>
+                    <button class="filter-btn" data-view="top5">Top 5</button>
+                    <button class="filter-btn" data-view="top10">Top 10</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">Carteira</button>
+                    <button class="filter-btn">Classe</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-section">
+            <div class="kpi-block">
+                <span class="label">Concentração Total</span>
+                <div class="main-value" id="mainValue">38,5%</div>
+                <div class="subtitle">do patrimônio nestes ativos</div>
+            </div>
+            <div class="kpi-block" style="align-items: flex-end;">
+                <span class="label">Status de Risco</span>
+                <div id="statusPill" class="alert-pill alert-pill">Atenção: Alta Concentração</div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer">
+            <div class="chart-tooltip" id="chartTooltip"></div>
+            <svg viewBox="0 0 600 180" preserveAspectRatio="none" id="chartSvg">
+                </svg>
+        </div>
+
+        <div class="details-list" id="detailsList">
+            </div>
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        const viewStates = {
+            'top3': {
+                title: 'Concentração Top 3',
+                subtitle: 'Risco e diversificação',
+                mainValue: '38,5%',
+                status: 'danger',
+                statusText: 'Atenção: Teto excedido',
+                limit: 15, // Teto recomendado em %
+                data: [
+                    { id: 'nvda', label: 'NVDA', value: 18.2, type: 'Stocks', risk: 'Alto' },
+                    { id: 'vale3', label: 'VALE3', value: 11.5, type: 'Ações BR', risk: 'Médio' },
+                    { id: 'hglg11', label: 'HGLG11', value: 8.8, type: 'FIIs', risk: 'Baixo' }
+                ]
+            },
+            'top5': {
+                title: 'Concentração Top 5',
+                subtitle: 'Visão ampliada de risco',
+                mainValue: '49,2%',
+                status: 'safe',
+                statusText: 'Dentro do esperado',
+                limit: 15, 
+                data: [
+                    { id: 'nvda', label: 'NVDA', value: 18.2, type: 'Stocks', risk: 'Alto' },
+                    { id: 'vale3', label: 'VALE3', value: 11.5, type: 'Ações BR', risk: 'Médio' },
+                    { id: 'hglg11', label: 'HGLG11', value: 8.8, type: 'FIIs', risk: 'Baixo' },
+                    { id: 'petr4', label: 'PETR4', value: 6.2, type: 'Ações BR', risk: 'Alto' },
+                    { id: 'btc', label: 'BTC', value: 4.5, type: 'Cripto', risk: 'Muito Alto' }
+                ]
+            },
+            'top10': {
+                title: 'Concentração Top 10',
+                subtitle: 'Cauda longa do portfólio',
+                mainValue: '62,0%',
+                status: 'safe',
+                statusText: 'Diversificação saudável',
+                limit: 15,
+                data: [
+                    { id: 'nvda', label: 'NVDA', value: 18.2, type: 'Stocks' },
+                    { id: 'vale3', label: 'VALE3', value: 11.5, type: 'Ações BR' },
+                    { id: 'hglg11', label: 'HGLG11', value: 8.8, type: 'FIIs' },
+                    { id: 'petr4', label: 'PETR4', value: 6.2, type: 'Ações BR' },
+                    { id: 'btc', label: 'BTC', value: 4.5, type: 'Cripto' },
+                    { id: 'aapl', label: 'AAPL', value: 3.5, type: 'Stocks' },
+                    { id: 'msft', label: 'MSFT', value: 3.1, type: 'Stocks' },
+                    { id: 'xpml11', label: 'XPML11', value: 2.8, type: 'FIIs' },
+                    { id: 'ivvb11', label: 'IVVB11', value: 2.2, type: 'ETF' },
+                    { id: 'knip11', label: 'KNIP11', value: 1.2, type: 'FIIs' }
+                ]
+            },
+            // Drill Down Example
+            'nvda': {
+                title: 'Detalhe: NVDA',
+                subtitle: 'Análise de concentração individual',
+                mainValue: '18,2%',
+                status: 'danger',
+                statusText: 'Acima do teto (15%)',
+                limit: 15,
+                isDetail: true,
+                data: [
+                    { label: 'Peso Atual', value: 18.2, limit: 15 },
+                    { label: 'Teto Sugerido', value: 15.0, limit: 15 }
+                ],
+                meta: {
+                    recommendation: "Rebalancear: Vender 3.2%",
+                    reason: "Alta expressiva recente (IA Boom)"
+                }
+            },
+            'vale3': {
+                title: 'Detalhe: VALE3',
+                subtitle: 'Análise de concentração individual',
+                mainValue: '11,5%',
+                status: 'safe',
+                statusText: 'Dentro do teto (15%)',
+                limit: 15,
+                isDetail: true,
+                data: [
+                    { label: 'Peso Atual', value: 11.5, limit: 15 },
+                    { label: 'Teto Sugerido', value: 15.0, limit: 15 }
+                ],
+                meta: {
+                    recommendation: "Manter Posição",
+                    reason: "Boa geração de dividendos e valuation atrativo"
+                }
+            },
+            'hglg11': {
+                title: 'Detalhe: HGLG11',
+                subtitle: 'Análise de concentração individual',
+                mainValue: '8,8%',
+                status: 'safe',
+                statusText: 'Dentro do teto (15%)',
+                limit: 15,
+                isDetail: true,
+                data: [
+                    { label: 'Peso Atual', value: 8.8, limit: 15 },
+                    { label: 'Teto Sugerido', value: 15.0, limit: 15 }
+                ],
+                meta: {
+                    recommendation: "Oportunidade de Aporte",
+                    reason: "Fundo resiliente com vacância controlada"
+                }
+            }
+        };
+
+        // --- ELEMENTS ---
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            statusPill: document.getElementById('statusPill'),
+            svg: document.getElementById('chartSvg'),
+            list: document.getElementById('detailsList'),
+            tooltip: document.getElementById('chartTooltip'),
+            back: document.getElementById('backNav'),
+            filterGroup: document.getElementById('topFilterGroup')
+        };
+
+        let navHistory = ['top3'];
+
+        // --- RENDER FUNCTIONS ---
+
+        function renderBarChart(data, limit) {
+            els.svg.innerHTML = '';
+            
+            const svgWidth = 600;
+            const svgHeight = 180;
+            const padding = { top: 20, bottom: 30, left: 10, right: 10 };
+            
+            // Determinar escala Y
+            const maxVal = Math.max(...data.map(d => d.value), limit) * 1.2;
+            
+            // Configurar largura das barras
+            const availableWidth = svgWidth - padding.left - padding.right;
+            const barWidth = Math.min(60, (availableWidth / data.length) * 0.6);
+            const gap = (availableWidth - (barWidth * data.length)) / (data.length + 1);
+
+            // 1. Desenhar Linha de Limite
+            const limitY = svgHeight - padding.bottom - ((limit / maxVal) * (svgHeight - padding.top - padding.bottom));
+            
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", 0);
+            line.setAttribute("x2", svgWidth);
+            line.setAttribute("y1", limitY);
+            line.setAttribute("y2", limitY);
+            line.setAttribute("class", "limit-line");
+            els.svg.appendChild(line);
+
+            // Label da Linha
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", svgWidth - 10);
+            text.setAttribute("y", limitY - 5);
+            text.setAttribute("class", "limit-label");
+            text.textContent = `Teto: ${limit}%`;
+            els.svg.appendChild(text);
+
+            // 2. Desenhar Barras
+            data.forEach((d, i) => {
+                const height = (d.value / maxVal) * (svgHeight - padding.top - padding.bottom);
+                const x = padding.left + gap + (i * (barWidth + gap));
+                const y = svgHeight - padding.bottom - height;
+                
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", x);
+                rect.setAttribute("y", y);
+                rect.setAttribute("width", barWidth);
+                rect.setAttribute("height", height);
+                // Define cor baseada no limite
+                rect.setAttribute("class", `bar-rect ${d.value > limit ? 'danger' : 'safe'}`);
+                
+                // Interatividade
+                rect.addEventListener('mouseenter', (e) => showTooltip(e, d));
+                rect.addEventListener('mouseleave', hideTooltip);
+                if(d.id && !d.limit) rect.addEventListener('click', () => updateView(d.id)); // Só clica se não for tela de detalhe
+
+                els.svg.appendChild(rect);
+
+                // Label Eixo X
+                const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                label.setAttribute("x", x + barWidth/2);
+                label.setAttribute("y", svgHeight - 10);
+                label.setAttribute("class", "axis-label");
+                label.textContent = d.label;
+                els.svg.appendChild(label);
+            });
+        }
+
+        function showTooltip(e, d) {
+            const rect = els.svg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            els.tooltip.style.display = 'block';
+            els.tooltip.style.left = `${x}px`;
+            els.tooltip.style.top = `${y}px`;
+            
+            const color = d.value > (d.limit || 15) ? 'var(--terracotta)' : 'var(--positive)';
+            
+            els.tooltip.innerHTML = `
+                <div style="font-weight: 700; color: var(--text-main);">${d.label}</div>
+                <div style="color: ${color}; font-size: 0.85rem;">${d.value}%</div>
+                <div style="color: var(--text-muted); font-size: 0.65rem;">${d.type || 'Concentração'}</div>
+            `;
+        }
+
+        function hideTooltip() {
+            els.tooltip.style.display = 'none';
+        }
+
+        function renderList(state) {
+            if (state.isDetail) {
+                // Renderização especial para Detalhe
+                els.list.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.02); padding: 15px; border-radius: 8px;">
+                        <span class="label">Recomendação do Sistema</span>
+                        <div style="font-size: 0.9rem; color: var(--text-main); margin-bottom: 4px;">${state.meta.recommendation}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Motivo: ${state.meta.reason}</div>
+                    </div>
+                `;
+            } else {
+                // Lista Padrão
+                els.list.innerHTML = state.data.map(item => {
+                    const isDanger = item.value > state.limit;
+                    return `
+                    <div class="asset-row" onclick="updateView('${item.id}')">
+                        <div class="row-left">
+                            <span class="asset-name">${item.label}</span>
+                            <span class="asset-type">${item.type}</span>
+                        </div>
+                        <div class="row-right">
+                            <span class="asset-percent ${isDanger ? 'text-danger' : 'text-safe'}">${item.value}%</span>
+                            <div class="limit-info">${isDanger ? `Excede ${state.limit}%` : 'Dentro do teto'}</div>
+                        </div>
+                    </div>
+                `}).join('');
+            }
+        }
+
+        // --- VIEW CONTROLLER ---
+        async function updateView(key, isBack = false) {
+            const state = viewStates[key];
+            if (!state) return;
+
+            if (!isBack && key.includes('top')) {
+                // Se mudou de top3 para top5, atualiza histórico base
+                navHistory = [key]; 
+                updateFilterButtons(key);
+            } else if (!isBack) {
+                navHistory.push(key);
+            }
+
+            // Animate Out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Update DOM
+            els.title.innerText = state.title;
+            els.sub.innerText = state.subtitle;
+            els.mainVal.innerText = state.mainValue;
+            
+            // Status Pill Logic
+            els.statusPill.innerText = state.statusText;
+            if (state.status === 'safe') {
+                els.statusPill.className = 'alert-pill safe-pill';
+            } else {
+                els.statusPill.className = 'alert-pill';
+            }
+
+            els.back.style.display = state.isDetail ? 'flex' : 'none';
+            els.filterGroup.style.display = state.isDetail ? 'none' : 'flex';
+
+            renderBarChart(state.data, state.limit);
+            renderList(state);
+
+            // Animate In
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; 
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        function updateFilterButtons(viewId) {
+            document.querySelectorAll('#topFilterGroup .filter-btn').forEach(btn => {
+                if (btn.dataset.view === viewId) btn.classList.add('active');
+                else btn.classList.remove('active');
+            });
+        }
+
+        // Back Navigation
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Top Filter Listeners
+        document.querySelectorAll('#topFilterGroup .filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const view = e.target.dataset.view;
+                updateView(view);
+            });
+        });
+
+        // Init
+        updateView('top3');
+
+    </script>
+</body>
+</html>

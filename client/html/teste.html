@@ -474,11 +474,161 @@
                 secondaryValue: '20,00%',
                 details: {
                     left: [
-                        { name: 'NVDA', value: '+65,0%', meta: 'Contrib: 1,5%', varText: '' }
+                        { id: 'nvda', name: 'NVDA', value: '+65,0%', meta: 'Contrib: 1,5%', varText: '' }
                     ],
                     right: [
-                        { name: 'MSFT', value: '+12,0%', meta: 'Contrib: 0,8%', varText: '' }
+                        { id: 'msft', name: 'MSFT', value: '+12,0%', meta: 'Contrib: 0,8%', varText: '' }
                     ]
+                }
+            },
+            'fiis': {
+                title: 'FIIs',
+                subtitle: 'Carteira de Fundos Imobiliários',
+                label: 'Rentabilidade',
+                value: '10,50%',
+                variation: 'Alfa: +1,2 p.p.',
+                secondaryLabel: 'IFIX',
+                secondaryValue: '9,30%',
+                details: {
+                    left: [
+                        { id: 'hglg11', name: 'HGLG11', value: '+12,4%', meta: 'Contrib: 0,5%', varText: '' },
+                        { id: 'knip11', name: 'KNIP11', value: '+9,8%', meta: 'Contrib: 0,4%', varText: '' }
+                    ],
+                    right: [
+                        { id: 'xpml11', name: 'XPML11', value: '+15,2%', meta: 'Contrib: 0,6%', varText: '' }
+                    ]
+                }
+            },
+            'br-equity': {
+                title: 'Ações Brasil',
+                subtitle: 'Performance vs Ibovespa',
+                label: 'Rentabilidade',
+                value: '18,20%',
+                variation: 'Alfa: +4,2 p.p.',
+                secondaryLabel: 'Benchmark (IBOV)',
+                secondaryValue: '14,00%',
+                details: {
+                    left: [
+                        { id: 'vale3', name: 'VALE3', value: '+15,0%', meta: 'Contrib: 1,2%', varText: '' },
+                        { id: 'petr4', name: 'PETR4', value: '+22,5%', meta: 'Contrib: 1,8%', varText: '' }
+                    ],
+                    right: [
+                        { id: 'itub4', name: 'ITUB4', value: '+12,0%', meta: 'Contrib: 0,9%', varText: '' }
+                    ]
+                }
+            },
+            // NÍVEL 4: Detalhe do Ativo (Exemplos)
+            'hglg11': {
+                title: 'HGLG11',
+                subtitle: 'CGHG Logística FII',
+                label: 'Retorno Total',
+                value: '12,40%',
+                variation: 'Dividend Yield: 9,2%',
+                secondaryLabel: 'Preço Médio',
+                secondaryValue: 'R$ 162,40',
+                details: {
+                    left: [
+                        { name: 'Rendimento Mensal', value: 'R$ 1,10', meta: 'Data-com: 30/01', varText: 'Por cota' },
+                        { name: 'Variação Cota', value: '+3,2%', meta: 'No período', varText: '' }
+                    ],
+                    right: [
+                        { name: 'Patrimonial', value: 'R$ 158,00', meta: 'P/VP: 1,03', varText: '' }
+                    ]
+                }
+            },
+            'knip11': {
+                title: 'KNIP11',
+                subtitle: 'Kinea Índice de Preços',
+                label: 'Retorno Total',
+                value: '9,80%',
+                variation: 'Dividend Yield: 10,5%',
+                secondaryLabel: 'Preço Médio',
+                secondaryValue: 'R$ 95,20',
+                details: {
+                    left: [{ name: 'Rendimento', value: 'R$ 0,95', meta: 'IPCA + 7%', varText: '' }],
+                    right: [{ name: 'P/VP', value: '1.00', meta: 'Par de mercado', varText: '' }]
+                }
+            },
+            'xpml11': {
+                title: 'XPML11',
+                subtitle: 'XP Malls FII',
+                label: 'Retorno Total',
+                value: '15,20%',
+                variation: 'Dividend Yield: 8,1%',
+                secondaryLabel: 'Preço Médio',
+                secondaryValue: 'R$ 112,00',
+                details: {
+                    left: [{ name: 'Rendimento', value: 'R$ 0,85', meta: 'Shoppings', varText: '' }],
+                    right: [{ name: 'Variação Cota', value: '+7,1%', meta: 'Recuperação', varText: '' }]
+                }
+            },
+            'vale3': {
+                title: 'VALE3',
+                subtitle: 'Vale S.A.',
+                label: 'Retorno Total',
+                value: '15,00%',
+                variation: 'Alfa: +1,0 p.p.',
+                secondaryLabel: 'Preço Atual',
+                secondaryValue: 'R$ 68,50',
+                details: {
+                    left: [
+                        { name: 'Dividendos', value: 'R$ 2,40', meta: 'DY: 4,5%', varText: 'Recebido' }
+                    ],
+                    right: [
+                        { name: 'Volatilidade', value: '28%', meta: 'Beta: 1.1', varText: '' }
+                    ]
+                }
+            },
+            'petr4': {
+                title: 'PETR4',
+                subtitle: 'Petrobras PN',
+                label: 'Retorno Total',
+                value: '22,50%',
+                variation: 'Dividend Yield: 18%',
+                secondaryLabel: 'Preço Médio',
+                secondaryValue: 'R$ 34,20',
+                details: {
+                    left: [{ name: 'Variação Cota', value: '+12%', meta: 'Ano', varText: '' }],
+                    right: [{ name: 'Petróleo Bruto', value: 'US$ 82', meta: 'Brent', varText: '' }]
+                }
+            },
+            'itub4': {
+                title: 'ITUB4',
+                subtitle: 'Itaú Unibanco PN',
+                label: 'Retorno Total',
+                value: '12,00%',
+                variation: 'ROE: 21%',
+                secondaryLabel: 'P/L',
+                secondaryValue: '8.4',
+                details: {
+                    left: [{ name: 'Dividendos', value: 'R$ 0,45', meta: 'Trimestral', varText: '' }],
+                    right: [{ name: 'Eficiência', value: '39%', meta: 'Operacional', varText: '' }]
+                }
+            },
+            'nvda': {
+                title: 'NVDA',
+                subtitle: 'NVIDIA Corporation',
+                label: 'Retorno Total',
+                value: '65,00%',
+                variation: 'Alfa: +45 p.p.',
+                secondaryLabel: 'Market Cap',
+                secondaryValue: '2.5T',
+                details: {
+                    left: [{ name: 'Crescimento', value: '+260%', meta: 'Receita DataCenter', varText: '' }],
+                    right: [{ name: 'Margem Bruta', value: '76%', meta: 'Liderança IA', varText: '' }]
+                }
+            },
+            'msft': {
+                title: 'MSFT',
+                subtitle: 'Microsoft Corp',
+                label: 'Retorno Total',
+                value: '12,00%',
+                variation: 'Azure: +30%',
+                secondaryLabel: 'Preço Atual',
+                secondaryValue: 'US$ 415',
+                details: {
+                    left: [{ name: 'Cloud', value: 'US$ 33B', meta: 'Receita Q', varText: '' }],
+                    right: [{ name: 'AI/OpenAI', value: 'Parceria', meta: 'Estratégico', varText: '' }]
                 }
             }
         };

@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exposição RV - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --primary-glow: rgba(212, 175, 55, 0.2);
+            --terracotta: #D97757;
+            --positive: #8BA888;
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+
+            /* Cores para o Gráfico de Pizza (Harmonia Golden Hour) */
+            --chart-c1: #D4AF37; /* Gold */
+            --chart-c2: #8BA888; /* Green/Sage */
+            --chart-c3: #D97757; /* Terracotta */
+            --chart-c4: #5C4D44; /* Brown/Grey */
+            --chart-c5: #9A908A; /* Muted */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 640px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Content Layout: KPI + Chart Side by Side */
+        .content-split {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 20px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+
+        /* KPIs */
+        .kpi-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .main-value {
+            font-size: 2rem;
+            font-weight: 300;
+            color: var(--text-main);
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .sub-metric {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .metric-pill {
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--primary-gold);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Chart Area (Donut) */
+        .chart-container {
+            width: 100%;
+            height: 200px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg#donutSvg {
+            width: 200px;
+            height: 200px;
+            overflow: visible;
+        }
+
+        .donut-segment {
+            fill: none;
+            stroke-width: 25;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            transform-origin: center;
+        }
+
+        .donut-segment:hover {
+            stroke-width: 30;
+            opacity: 1 !important;
+            filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
+        }
+
+        /* Classe auxiliar para quando um segmento está ativo (hover) e os outros diminuem */
+        .dimmed {
+            opacity: 0.4;
+        }
+
+        .chart-center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .center-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .center-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        /* Lista de Detalhes */
+        .details-grid {
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .details-grid::-webkit-scrollbar { width: 4px; }
+        .details-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .asset-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 6px;
+        }
+
+        .asset-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--glass-border);
+            transform: translateX(4px);
+        }
+
+        .asset-info { display: flex; align-items: center; gap: 12px; }
+        
+        .color-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .info-text { display: flex; flex-direction: column; }
+        .asset-name { font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+        .asset-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+        .asset-values { text-align: right; }
+        .val-main { font-size: 0.9rem; font-weight: 600; }
+        .val-sub { font-size: 0.7rem; color: var(--text-muted); }
+
+        /* Navegação */
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+            transition: transform 0.2s ease;
+        }
+
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animações de Transição */
+        .fade-exit { opacity: 0; transform: scale(0.98); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: scale(1.02); }
+        .fade-active { opacity: 1; transform: scale(1); transition: opacity 0.3s, transform 0.3s; }
+
+        @media (max-width: 600px) {
+            .content-split { grid-template-columns: 1fr; }
+            .chart-container { height: 160px; margin-bottom: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Exposição em Renda Variável</h2>
+                <div class="subtitle" id="cardSubtitle">Alocação por classe e ativo</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <button class="filter-btn active">Subclasse</button>
+                    <button class="filter-btn">Geografia</button>
+                    <button class="filter-btn">Moeda</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-split">
+            <div class="kpi-wrapper">
+                <div>
+                    <span class="label">Total Alocado em RV</span>
+                    <div class="main-value" id="mainValue">R$ 142.500</div>
+                    <div class="sub-metric">
+                        <span class="metric-pill" id="percentPill">42,5%</span>
+                        <span style="color: var(--text-muted); font-size: 0.7rem;">do Portfólio Total</span>
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px solid var(--glass-border); padding-top: 12px;">
+                    <span class="label">Maior Concentração</span>
+                    <div style="font-size: 1rem; color: var(--text-main);" id="concentrationLabel">Stocks (EUA)</div>
+                    <div class="subtitle" id="concentrationValue">45% da categoria</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <svg viewBox="0 0 200 200" id="donutSvg">
+                    </svg>
+                <div class="chart-center-text">
+                    <div class="center-label" id="centerLabel">Total</div>
+                    <div class="center-value" id="centerValue">100%</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="details-grid" id="detailsGrid">
+            </div>
+    </div>
+
+    <script>
+        // --- CORES ---
+        const colors = {
+            c1: getComputedStyle(document.documentElement).getPropertyValue('--chart-c1').trim(),
+            c2: getComputedStyle(document.documentElement).getPropertyValue('--chart-c2').trim(),
+            c3: getComputedStyle(document.documentElement).getPropertyValue('--chart-c3').trim(),
+            c4: getComputedStyle(document.documentElement).getPropertyValue('--chart-c4').trim(),
+            c5: getComputedStyle(document.documentElement).getPropertyValue('--chart-c5').trim(),
+        };
+
+        // --- DATA STORE ---
+        const viewStates = {
+            'total': {
+                title: 'Exposição em Renda Variável',
+                subtitle: 'Alocação por classe de ativo',
+                mainValue: 'R$ 142.500',
+                percent: '42,5%',
+                concentrationLabel: 'Stocks (EUA)',
+                concentrationVal: '45% da categoria',
+                chartData: [
+                    { label: 'Stocks (EUA)', value: 64125, percent: 45, color: colors.c1, id: 'stocks' },
+                    { label: 'Ações Brasil', value: 42750, percent: 30, color: colors.c2, id: 'acoes-br' },
+                    { label: 'FIIs', value: 21375, percent: 15, color: colors.c3, id: 'fiis' },
+                    { label: 'Cripto', value: 7125, percent: 5, color: colors.c4, id: 'cripto' },
+                    { label: 'ETFs Globais', value: 7125, percent: 5, color: colors.c5, id: 'etfs' }
+                ]
+            },
+            'stocks': {
+                title: 'Stocks (EUA)',
+                subtitle: 'Detalhamento por Ativo',
+                mainValue: 'R$ 64.125',
+                percent: '19,1%', // do total geral
+                concentrationLabel: 'Tecnologia',
+                concentrationVal: '60% da classe',
+                chartData: [
+                    { label: 'NVDA', value: 25650, percent: 40, color: colors.c1 },
+                    { label: 'MSFT', value: 12825, percent: 20, color: colors.c2 },
+                    { label: 'AAPL', value: 9618, percent: 15, color: colors.c3 },
+                    { label: 'GOOGL', value: 6412, percent: 10, color: colors.c4 },
+                    { label: 'Outros', value: 9620, percent: 15, color: colors.c5 }
+                ]
+            },
+            'acoes-br': {
+                title: 'Ações Brasil',
+                subtitle: 'Detalhamento por Ativo',
+                mainValue: 'R$ 42.750',
+                percent: '12,7%',
+                concentrationLabel: 'Commodities',
+                concentrationVal: '55% da classe',
+                chartData: [
+                    { label: 'VALE3', value: 14962, percent: 35, color: colors.c1 },
+                    { label: 'PETR4', value: 10687, percent: 25, color: colors.c2 },
+                    { label: 'WEGE3', value: 6412, percent: 15, color: colors.c3 },
+                    { label: 'ITUB4', value: 4275, percent: 10, color: colors.c4 },
+                    { label: 'Outros', value: 6414, percent: 15, color: colors.c5 }
+                ]
+            },
+            'fiis': {
+                title: 'Fundos Imobiliários',
+                subtitle: 'Detalhamento por Ativo',
+                mainValue: 'R$ 21.375',
+                percent: '6,3%',
+                concentrationLabel: 'Logística',
+                concentrationVal: '40% da classe',
+                chartData: [
+                    { label: 'HGLG11', value: 8550, percent: 40, color: colors.c1 },
+                    { label: 'KNIP11', value: 6412, percent: 30, color: colors.c2 },
+                    { label: 'XPML11', value: 4275, percent: 20, color: colors.c3 },
+                    { label: 'Outros', value: 2138, percent: 10, color: colors.c4 }
+                ]
+            },
+            'cripto': {
+                title: 'Criptoativos',
+                subtitle: 'Detalhamento por Ativo',
+                mainValue: 'R$ 7.125',
+                percent: '2,1%',
+                concentrationLabel: 'Bitcoin',
+                concentrationVal: '70% da classe',
+                chartData: [
+                    { label: 'Bitcoin', value: 4987, percent: 70, color: colors.c1 },
+                    { label: 'Ethereum', value: 1425, percent: 20, color: colors.c2 },
+                    { label: 'Solana', value: 713, percent: 10, color: colors.c3 }
+                ]
+            },
+            'etfs': {
+                title: 'ETFs Globais',
+                subtitle: 'Exposição Internacional',
+                mainValue: 'R$ 7.125',
+                percent: '2,1%',
+                concentrationLabel: 'S&P 500',
+                concentrationVal: '100% da classe',
+                chartData: [
+                    { label: 'IVVB11', value: 4275, percent: 60, color: colors.c1 },
+                    { label: 'NASD11', value: 2850, percent: 40, color: colors.c2 }
+                ]
+            }
+        };
+
+        // --- ELEMENTS ---
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            percentPill: document.getElementById('percentPill'),
+            concLabel: document.getElementById('concentrationLabel'),
+            concVal: document.getElementById('concentrationValue'),
+            svg: document.getElementById('donutSvg'),
+            list: document.getElementById('detailsGrid'),
+            back: document.getElementById('backNav'),
+            centerLabel: document.getElementById('centerLabel'),
+            centerValue: document.getElementById('centerValue')
+        };
+
+        let navHistory = ['total'];
+
+        // --- RENDER FUNCTIONS ---
+        
+        function renderDonut(data) {
+            els.svg.innerHTML = '';
+            const radius = 70;
+            const center = 100;
+            const circumference = 2 * Math.PI * radius;
+            let offset = 0;
+
+            // Ordenar por valor (opcional, mas fica mais bonito)
+            // data.sort((a, b) => b.value - a.value);
+
+            data.forEach((item, index) => {
+                const segmentLength = (item.percent / 100) * circumference;
+                // Deixa um pequeno gap visual subtraindo um pouco do dasharray
+                const dashArray = `${segmentLength - 2} ${circumference}`; 
+                
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", center);
+                circle.setAttribute("cy", center);
+                circle.setAttribute("r", radius);
+                circle.setAttribute("fill", "none");
+                circle.setAttribute("stroke", item.color);
+                circle.setAttribute("stroke-dasharray", dashArray);
+                circle.setAttribute("stroke-dashoffset", -offset);
+                circle.setAttribute("class", "donut-segment");
+                
+                // Rotacionar -90deg para começar do topo (precisa ajustar transform-origin no CSS ou aqui)
+                circle.setAttribute("transform", "rotate(-90 100 100)");
+
+                // Events
+                circle.addEventListener('mouseenter', () => highlightSegment(circle, item));
+                circle.addEventListener('mouseleave', resetHighlight);
+                
+                if (item.id) {
+                    circle.addEventListener('click', () => updateView(item.id));
+                }
+
+                els.svg.appendChild(circle);
+                offset += segmentLength;
+            });
+        }
+
+        function highlightSegment(element, item) {
+            // Dim all segments
+            document.querySelectorAll('.donut-segment').forEach(el => el.classList.add('dimmed'));
+            // Highlight current
+            element.classList.remove('dimmed');
+            
+            // Update center text
+            els.centerLabel.innerText = item.label;
+            els.centerLabel.style.color = item.color;
+            els.centerValue.innerText = `${item.percent}%`;
+        }
+
+        function resetHighlight() {
+            document.querySelectorAll('.donut-segment').forEach(el => el.classList.remove('dimmed'));
+            els.centerLabel.innerText = "Total";
+            els.centerLabel.style.color = "var(--text-muted)";
+            els.centerValue.innerText = "100%";
+        }
+
+        function renderList(data) {
+            els.list.innerHTML = data.map(item => `
+                <div class="asset-row" onclick="${item.id ? `updateView('${item.id}')` : ''}">
+                    <div class="asset-info">
+                        <div class="color-dot" style="background-color: ${item.color}"></div>
+                        <div class="info-text">
+                            <span class="asset-name">${item.label}</span>
+                            <span class="asset-meta">${item.percent}% da carteira</span>
+                        </div>
+                    </div>
+                    <div class="asset-values">
+                        <div class="val-main">R$ ${item.value.toLocaleString()}</div>
+                        <div class="val-sub">Peso: ${((item.value/parseMoney(viewStates['total'].mainValue))*100).toFixed(1)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Helper simples para parsear o string monetário do exemplo
+        function parseMoney(str) {
+            return parseInt(str.replace(/[^0-9]/g, ''));
+        }
+
+        // --- VIEW CONTROLLER ---
+        async function updateView(key, isBack = false) {
+            const state = viewStates[key];
+            if (!state) return;
+
+            if (!isBack && key !== 'total') navHistory.push(key);
+
+            // Animate Out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Update DOM
+            els.title.innerText = state.title;
+            els.sub.innerText = state.subtitle;
+            els.mainVal.innerText = state.mainValue;
+            els.percentPill.innerText = state.percent;
+            els.concLabel.innerText = state.concentrationLabel;
+            els.concVal.innerText = state.concentrationVal;
+            
+            els.back.style.display = key === 'total' ? 'none' : 'flex';
+
+            renderDonut(state.chartData);
+            renderList(state.chartData);
+            resetHighlight();
+
+            // Animate In
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; 
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        // Back Navigation
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Filter Buttons Interaction
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Init
+        updateView('total');
+
+    </script>
+</body>
+</html>

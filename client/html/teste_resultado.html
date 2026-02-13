@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado Financeiro - Golden Hour UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* Paleta Crepuscular & Rocha */
+            --bg-deep: #12100E;
+            --bg-ambient: #2A211D;
+            --glass-surface: rgba(40, 35, 30, 0.4);
+            --glass-border: rgba(255, 230, 200, 0.08);
+            --glass-shine: rgba(255, 255, 255, 0.03);
+            
+            /* Cores de Acento */
+            --primary-gold: #D4AF37;
+            --primary-glow: rgba(212, 175, 55, 0.2);
+            --terracotta: #D97757; /* Perda */
+            --positive: #8BA888;   /* Ganho */
+            --text-main: #EAE5E0;
+            --text-muted: #9A908A;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            font-family: 'Manrope', sans-serif;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .widget-card {
+            width: 100%;
+            max-width: 640px; 
+            background: var(--glass-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 
+                0 20px 40px rgba(0,0,0,0.4),
+                inset 0 1px 0 var(--glass-shine);
+            padding: 24px;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 1.2rem;
+            letter-spacing: 0.02em;
+            color: var(--text-main);
+            margin-bottom: 2px;
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            background: rgba(0,0,0,0.2);
+            padding: 2px;
+            border-radius: 10px;
+            display: flex;
+            border: 1px solid var(--glass-border);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+        }
+
+        .filter-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-gold);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* KPIs Grid - Layout mais complexo para Resultado */
+        .kpi-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .kpi-row-secondary {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 16px;
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .kpi-mini {
+            flex: 1;
+        }
+
+        .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .main-value {
+            font-size: 1.85rem;
+            font-weight: 300;
+            color: var(--text-main);
+            line-height: 1;
+        }
+
+        .sub-value {
+            font-size: 1.2rem;
+            color: var(--text-main);
+            font-weight: 400;
+        }
+
+        .mini-value {
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .variation-pill {
+            display: inline-flex;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+        }
+
+        /* Waterfall Chart Area */
+        .chart-container {
+            width: 100%;
+            height: 160px;
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* Classes para o Waterfall SVG */
+        .bar-positive { fill: var(--positive); opacity: 0.8; transition: opacity 0.2s; }
+        .bar-negative { fill: var(--terracotta); opacity: 0.8; transition: opacity 0.2s; }
+        .bar-total { fill: var(--primary-gold); opacity: 0.9; }
+        
+        .bar-positive:hover, .bar-negative:hover, .bar-total:hover { opacity: 1; cursor: pointer; }
+
+        .connector-line {
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 1;
+            stroke-dasharray: 2;
+        }
+
+        .axis-label {
+            font-size: 0.6rem;
+            fill: var(--text-muted);
+            text-anchor: middle;
+        }
+
+        .value-label {
+            font-size: 0.65rem;
+            fill: var(--text-main);
+            text-anchor: middle;
+            font-weight: 600;
+        }
+
+        /* Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(25, 20, 18, 0.95);
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+
+        /* Lista de Detalhes */
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr; /* Coluna única para melhor leitura de eventos */
+            gap: 8px;
+            border-top: 1px solid var(--glass-border);
+            padding-top: 16px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar customizada */
+        .details-grid::-webkit-scrollbar { width: 4px; }
+        .details-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .asset-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .asset-row:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--glass-border);
+        }
+
+        .asset-info { display: flex; flex-direction: column; }
+        .asset-name { font-weight: 600; font-size: 0.85rem; color: var(--text-main); }
+        .asset-meta { font-size: 0.7rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px;}
+
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        .dot-green { background-color: var(--positive); }
+        .dot-red { background-color: var(--terracotta); }
+
+        .asset-value { text-align: right; }
+        .val-main { font-size: 0.9rem; font-weight: 600; }
+        .val-sub { font-size: 0.7rem; color: var(--text-muted); }
+
+        .text-pos { color: var(--positive); }
+        .text-neg { color: var(--terracotta); }
+
+        #backNav {
+            display: none;
+            cursor: pointer;
+            color: var(--primary-gold);
+            margin-bottom: 4px;
+            font-size: 1.4rem;
+            align-items: center;
+            font-weight: 300;
+            width: fit-content;
+            transition: transform 0.2s ease;
+        }
+
+        #backNav:hover { transform: translateX(-4px); }
+
+        /* Animações */
+        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
+        .fade-enter { opacity: 0; transform: translateY(-10px); }
+        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+
+        @media (max-width: 600px) {
+            .kpi-section { grid-template-columns: 1fr; }
+            .kpi-row-secondary { flex-direction: column; gap: 12px;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="widget-card">
+        <div class="header">
+            <div>
+                <div id="backNav">←</div>
+                <h2 id="cardTitle">Resultado Financeiro</h2>
+                <div class="subtitle" id="cardSubtitle">Geração de valor no período</div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <button class="filter-btn active">MTD</button>
+                    <button class="filter-btn">YTD</button>
+                    <button class="filter-btn">12M</button>
+                </div>
+                <div class="filter-group">
+                    <button class="filter-btn active">Ambos</button>
+                    <button class="filter-btn">Realizado</button>
+                    <button class="filter-btn">Não Realizado</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="kpi-section">
+            <div class="kpi-box">
+                <span class="label" id="mainLabel">Resultado Bruto</span>
+                <div class="main-value text-pos" id="mainValue">R$ 45.200</div>
+                <div class="subtitle">ROI: 3.5%</div>
+            </div>
+            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                <span class="label">Resultado Líquido (Est.)</span>
+                <div class="sub-value" id="netValue">R$ 38.420</div>
+                <div class="subtitle">Após impostos e taxas</div>
+            </div>
+            
+            <div class="kpi-row-secondary">
+                <div class="kpi-mini">
+                    <span class="label">Realizado (Caixa)</span>
+                    <div class="mini-value" id="realizedValue">R$ 12.100 <span class="variation-pill">26%</span></div>
+                </div>
+                <div class="kpi-mini">
+                    <span class="label">Não Realizado (Papel)</span>
+                    <div class="mini-value" id="unrealizedValue">R$ 33.100 <span class="variation-pill">74%</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer">
+            <div class="chart-tooltip" id="chartTooltip"></div>
+            <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                </svg>
+        </div>
+
+        <div class="details-grid" id="detailsGrid">
+            </div>
+    </div>
+
+    <script>
+        // --- DATA STORE ---
+        const viewStates = {
+            'total': {
+                title: 'Resultado Financeiro',
+                subtitle: 'Geração de valor no período (Consolidado)',
+                mainValue: 'R$ 45.200',
+                mainClass: 'text-pos',
+                netValue: 'R$ 38.420',
+                realizedValue: 'R$ 12.100',
+                unrealizedValue: 'R$ 33.100',
+                chartData: [
+                    { label: 'Ações BR', value: 15000, type: 'gain' },
+                    { label: 'Stocks', value: 22000, type: 'gain' },
+                    { label: 'FIIs', value: 3500, type: 'gain' },
+                    { label: 'Cripto', value: -4000, type: 'loss' },
+                    { label: 'Renda Fixa', value: 8700, type: 'gain' }
+                ],
+                list: [
+                    { id: 'acoes-br', name: 'Ações Brasil', meta: 'Contribuição: 33%', val: 'R$ 15.000', sub: 'Realizado: R$ 2k', isPos: true },
+                    { id: 'stocks', name: 'Stocks (EUA)', meta: 'Contribuição: 48%', val: 'R$ 22.000', sub: 'Realizado: R$ 0', isPos: true },
+                    { id: 'fiis', name: 'Fundos Imobiliários', meta: 'Contribuição: 7%', val: 'R$ 3.500', sub: 'Isento de IR', isPos: true },
+                    { id: 'cripto', name: 'Criptoativos', meta: 'Contribuição: -9%', val: '-R$ 4.000', sub: 'Queda Bitcoin', isPos: false },
+                    { id: 'rf', name: 'Renda Fixa', meta: 'Contribuição: 19%', val: 'R$ 8.700', sub: 'Juros', isPos: true }
+                ]
+            },
+            'acoes-br': {
+                title: 'Resultado: Ações Brasil',
+                subtitle: 'Detalhamento por Ativo',
+                mainValue: 'R$ 15.000',
+                mainClass: 'text-pos',
+                netValue: 'R$ 12.750', // 15% tax sim
+                realizedValue: 'R$ 2.000',
+                unrealizedValue: 'R$ 13.000',
+                chartData: [
+                    { label: 'VALE3', value: 8000, type: 'gain' },
+                    { label: 'PETR4', value: 9500, type: 'gain' },
+                    { label: 'WEGE3', value: -1500, type: 'loss' },
+                    { label: 'ITUB4', value: 2000, type: 'gain' },
+                    { label: 'Outros', value: -3000, type: 'loss' }
+                ],
+                list: [
+                    { id: 'vale3-res', name: 'VALE3', meta: 'Alta minério', val: 'R$ 8.000', sub: 'Não realizado', isPos: true },
+                    { id: 'petr4-res', name: 'PETR4', meta: 'Dividendos + Alta', val: 'R$ 9.500', sub: 'R$ 2k proventos', isPos: true },
+                    { id: 'wege3-res', name: 'WEGE3', meta: 'Correção preço', val: '-R$ 1.500', sub: 'Não realizado', isPos: false },
+                    { name: 'Outros (Small Caps)', meta: 'Cenário macro', val: '-R$ 3.000', sub: 'Realizado Parcial', isPos: false }
+                ]
+            },
+            'stocks': {
+                title: 'Resultado: Stocks (EUA)',
+                subtitle: 'Performance em Dólar e Câmbio',
+                mainValue: 'R$ 22.000',
+                mainClass: 'text-pos',
+                netValue: 'R$ 18.700',
+                realizedValue: 'R$ 0',
+                unrealizedValue: 'R$ 22.000',
+                chartData: [
+                    { label: 'NVDA', value: 12000, type: 'gain' },
+                    { label: 'MSFT', value: 5000, type: 'gain' },
+                    { label: 'AAPL', value: 3000, type: 'gain' },
+                    { label: 'Câmbio', value: 2000, type: 'gain' }
+                ],
+                list: [
+                    { id: 'nvda-res', name: 'NVDA', meta: 'IA Boom', val: 'R$ 12.000', sub: 'Não realizado', isPos: true },
+                    { id: 'msft-res', name: 'MSFT', meta: 'Cloud Growth', val: 'R$ 5.000', sub: 'Não realizado', isPos: true },
+                    { name: 'Câmbio (USD/BRL)', meta: 'Variação cambial', val: 'R$ 2.000', sub: 'Impacto na carteira', isPos: true }
+                ]
+            },
+            'fiis': {
+                title: 'Resultado: FIIs',
+                subtitle: 'Dividendos e Valorização de Cotas',
+                mainValue: 'R$ 3.500',
+                mainClass: 'text-pos',
+                netValue: 'R$ 3.500',
+                realizedValue: 'R$ 1.200',
+                unrealizedValue: 'R$ 2.300',
+                chartData: [
+                    { label: 'HGLG11', value: 1200, type: 'gain' },
+                    { label: 'KNIP11', value: 800, type: 'gain' },
+                    { label: 'XPML11', value: 1500, type: 'gain' }
+                ],
+                list: [
+                    { id: 'hglg11-res', name: 'HGLG11', meta: 'Logística', val: 'R$ 1.200', sub: 'Dividendos', isPos: true },
+                    { id: 'xpml11-res', name: 'XPML11', meta: 'Shoppings', val: 'R$ 1.500', sub: 'Ganho de capital', isPos: true }
+                ]
+            },
+            'cripto': {
+                title: 'Resultado: Criptoativos',
+                subtitle: 'Volatilidade e Ajuste de Mercado',
+                mainValue: '-R$ 4.000',
+                mainClass: 'text-neg',
+                netValue: '-R$ 4.000',
+                realizedValue: 'R$ 0',
+                unrealizedValue: '-R$ 4.000',
+                chartData: [
+                    { label: 'BTC', value: -3000, type: 'loss' },
+                    { label: 'ETH', value: -1000, type: 'loss' }
+                ],
+                list: [
+                    { id: 'btc-res', name: 'Bitcoin (BTC)', meta: 'Correção técnica', val: '-R$ 3.000', sub: 'Não realizado', isPos: false },
+                    { id: 'eth-res', name: 'Ethereum (ETH)', meta: 'Mercado altcoins', val: '-R$ 1.000', sub: 'Não realizado', isPos: false }
+                ]
+            },
+            'rf': {
+                title: 'Resultado: Renda Fixa',
+                subtitle: 'Acúmulo de Juros e Marcação a Mercado',
+                mainValue: 'R$ 8.700',
+                mainClass: 'text-pos',
+                netValue: 'R$ 7.395',
+                realizedValue: 'R$ 8.700',
+                unrealizedValue: 'R$ 0',
+                chartData: [
+                    { label: 'Tesouro IPCA', value: 4500, type: 'gain' },
+                    { label: 'CDBs', value: 3200, type: 'gain' },
+                    { label: 'LCI/LCA', value: 1000, type: 'gain' }
+                ],
+                list: [
+                    { id: 'ipca-res', name: 'Tesouro IPCA+', meta: 'Inflação + Juros', val: 'R$ 4.500', sub: 'Acumulado', isPos: true },
+                    { id: 'cdb-res', name: 'Crédito Privado', meta: 'Spread bancário', val: 'R$ 3.200', sub: 'Realizado', isPos: true }
+                ]
+            },
+            // NÍVEL 3: Detalhes do Ativo
+            'vale3-res': {
+                title: 'Resultado: VALE3',
+                subtitle: 'Geração de Valor Individual',
+                mainValue: 'R$ 8.000',
+                mainClass: 'text-pos',
+                netValue: 'R$ 6.800',
+                realizedValue: 'R$ 0',
+                unrealizedValue: 'R$ 8.000',
+                chartData: [
+                    { label: 'Valorização', value: 7500, type: 'gain' },
+                    { label: 'Taxas/Emol.', value: -500, type: 'loss' }
+                ],
+                list: [
+                    { name: 'Ganho Bruto', meta: 'Variação da cota', val: 'R$ 7.500', sub: 'Ativo', isPos: true },
+                    { name: 'Custos', meta: 'Corretagem', val: '-R$ 500', sub: 'Realizado', isPos: false }
+                ]
+            },
+            'petr4-res': {
+                title: 'Resultado: PETR4',
+                subtitle: 'Geração de Valor Individual',
+                mainValue: 'R$ 9.500',
+                mainClass: 'text-pos',
+                netValue: 'R$ 8.075',
+                realizedValue: 'R$ 2.000',
+                unrealizedValue: 'R$ 7.500',
+                chartData: [
+                    { label: 'Valorização', value: 7500, type: 'gain' },
+                    { label: 'Dividendos', value: 2000, type: 'gain' }
+                ],
+                list: [
+                    { name: 'Ganho Bruto', meta: 'Variação da cota', val: 'R$ 7.500', sub: 'Papel', isPos: true },
+                    { name: 'Proventos', meta: 'Dividendos/JCP', val: 'R$ 2.000', sub: 'Caixa', isPos: true }
+                ]
+            },
+            'nvda-res': {
+                title: 'Resultado: NVDA',
+                subtitle: 'Offshore Performance',
+                mainValue: 'R$ 12.000',
+                mainClass: 'text-pos',
+                netValue: 'R$ 10.200',
+                realizedValue: 'R$ 0',
+                unrealizedValue: 'R$ 12.000',
+                chartData: [
+                    { label: 'Preço USD', value: 10000, type: 'gain' },
+                    { label: 'Câmbio', value: 2000, type: 'gain' }
+                ],
+                list: [
+                    { name: 'Variação USD', meta: 'Preço NASDAQ', val: 'R$ 10.000', sub: 'Performance', isPos: true },
+                    { name: 'Variação Cambial', meta: 'BRL/USD', val: 'R$ 2.000', sub: 'Moeda', isPos: true }
+                ]
+            },
+            'hglg11-res': {
+                title: 'Resultado: HGLG11',
+                subtitle: 'Logística FII',
+                mainValue: 'R$ 1.200',
+                mainClass: 'text-pos',
+                netValue: 'R$ 1.200',
+                realizedValue: 'R$ 1.200',
+                unrealizedValue: 'R$ 0',
+                chartData: [
+                    { label: 'Cupons', value: 1100, type: 'gain' },
+                    { label: 'Ganho Cota', value: 100, type: 'gain' }
+                ],
+                list: [
+                    { name: 'Prov. Recebidos', meta: 'Isento', val: 'R$ 1.100', sub: 'Caixa', isPos: true },
+                    { name: 'Variação', meta: 'Mkt', val: 'R$ 100', sub: 'Papel', isPos: true }
+                ]
+            },
+            'xpml11-res': {
+                title: 'Resultado: XPML11',
+                subtitle: 'Varejo e Shoppings',
+                mainValue: 'R$ 1.500',
+                mainClass: 'text-pos',
+                netValue: 'R$ 1.500',
+                realizedValue: 'R$ 500',
+                unrealizedValue: 'R$ 1.000',
+                chartData: [
+                    { label: 'Aluguéis', value: 500, type: 'gain' },
+                    { label: 'Valor Valorização', value: 1000, type: 'gain' }
+                ],
+                list: [
+                    { name: 'Aluguéis', meta: 'Isento', val: 'R$ 500', sub: 'Caixa', isPos: true },
+                    { name: 'Valorização', meta: 'Alta do mercado', val: 'R$ 1.000', sub: 'Não Realizado', isPos: true }
+                ]
+            },
+            'btc-res': {
+                title: 'Resultado: BTC',
+                subtitle: 'Exposição Direta',
+                mainValue: '-R$ 3.000',
+                mainClass: 'text-neg',
+                netValue: '-R$ 3.000',
+                realizedValue: 'R$ 0',
+                unrealizedValue: '-R$ 3.000',
+                chartData: [
+                    { label: 'Variação Cota', value: -3000, type: 'loss' }
+                ],
+                list: [
+                    { name: 'Variação BTC', meta: 'Preço mercado', val: '-R$ 3.000', sub: 'Digital', isPos: false }
+                ]
+            },
+            'ipca-res': {
+                title: 'Resultado: Tesouro IPCA+',
+                subtitle: 'Marcação a Mercado',
+                mainValue: 'R$ 4.500',
+                mainClass: 'text-pos',
+                netValue: 'R$ 3.825',
+                realizedValue: 'R$ 0',
+                unrealizedValue: 'R$ 4.500',
+                chartData: [
+                    { label: 'IPCA Acumulado', value: 3000, type: 'gain' },
+                    { label: 'Juros Reais', value: 1500, type: 'gain' }
+                ],
+                list: [
+                    { name: 'Corr. Monetária', meta: 'Inflação', val: 'R$ 3.000', sub: 'IPCA', isPos: true },
+                    { name: 'Cupom Juros', meta: 'Marcação', val: 'R$ 1.500', sub: 'Real', isPos: true }
+                ]
+            },
+            'wege3-res': {
+                title: 'Resultado: WEGE3',
+                subtitle: 'Eficiência Energética',
+                mainValue: '-R$ 1.500',
+                mainClass: 'text-neg',
+                netValue: '-R$ 1.500',
+                realizedValue: 'R$ 0',
+                unrealizedValue: '-R$ 1.500',
+                chartData: [ { label: 'Mercado', value: -1500, type: 'loss' } ],
+                list: [ { name: 'Variação', meta: 'WEG', val: '-R$ 1.500', sub: 'Papel', isPos: false } ]
+            },
+            'msft-res': {
+                title: 'Resultado: MSFT',
+                subtitle: 'Tech Global',
+                mainValue: 'R$ 5.000',
+                mainClass: 'text-pos',
+                netValue: 'R$ 4.250',
+                realizedValue: 'R$ 0',
+                unrealizedValue: 'R$ 5.000',
+                chartData: [ { label: 'Growth', value: 5000, type: 'gain' } ],
+                list: [ { name: 'Variação', meta: 'Microsoft', val: 'R$ 5.000', sub: 'Offshore', isPos: true } ]
+            },
+            'eth-res': {
+                title: 'Resultado: ETH',
+                subtitle: 'Smart Contracts',
+                mainValue: '-R$ 1.000',
+                mainClass: 'text-neg',
+                netValue: '-R$ 1.000',
+                realizedValue: 'R$ 0',
+                unrealizedValue: '-R$ 1.000',
+                chartData: [ { label: 'Ethereum', value: -1000, type: 'loss' } ],
+                list: [ { name: 'Variação', meta: 'ETH', val: '-R$ 1.000', sub: 'Digital', isPos: false } ]
+            },
+            'cdb-res': {
+                title: 'Resultado: CDB',
+                subtitle: 'Crédito Privado',
+                mainValue: 'R$ 3.200',
+                mainClass: 'text-pos',
+                netValue: 'R$ 2.720',
+                realizedValue: 'R$ 3.200',
+                unrealizedValue: 'R$ 0',
+                chartData: [ { label: 'Juros', value: 3200, type: 'gain' } ],
+                list: [ { name: 'Rendimento', meta: 'CDI', val: 'R$ 3.200', sub: 'Caixa', isPos: true } ]
+            }
+        };
+
+        // --- ELEMENTS ---
+        const els = {
+            card: document.querySelector('.widget-card'),
+            title: document.getElementById('cardTitle'),
+            sub: document.getElementById('cardSubtitle'),
+            mainVal: document.getElementById('mainValue'),
+            netVal: document.getElementById('netValue'),
+            realVal: document.getElementById('realizedValue'),
+            unrealVal: document.getElementById('unrealizedValue'),
+            details: document.getElementById('detailsGrid'),
+            svg: document.getElementById('chartSvg'),
+            tooltip: document.getElementById('chartTooltip'),
+            back: document.getElementById('backNav')
+        };
+
+        let navHistory = ['total'];
+
+        // --- WATERFALL CHART LOGIC ---
+        function renderWaterfall(data) {
+            const svgWidth = 800;
+            const svgHeight = 200;
+            const margin = { top: 30, bottom: 30, left: 20, right: 20 };
+            const effectiveWidth = svgWidth - margin.left - margin.right;
+            const barWidth = effectiveWidth / (data.length + 1) * 0.6; // +1 for total
+            const gap = effectiveWidth / (data.length + 1) * 0.4;
+            
+            // Calculate Totals and Max for Scale
+            let currentSum = 0;
+            let maxVal = 0;
+            let minVal = 0;
+            
+            // First pass to find range
+            data.forEach(d => {
+                currentSum += d.value;
+                if(currentSum > maxVal) maxVal = currentSum;
+                if(currentSum < minVal) minVal = currentSum;
+            });
+            if(currentSum > maxVal) maxVal = currentSum; // Check final total
+
+            // Add buffer to scale
+            const range = maxVal - minVal;
+            const zeroY = margin.top + (maxVal / range) * (svgHeight - margin.top - margin.bottom);
+            const scaleY = (val) => (val / range) * (svgHeight - margin.top - margin.bottom);
+
+            // Clear SVG
+            els.svg.innerHTML = '';
+            
+            // Draw Zero Line
+            const zeroLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            zeroLine.setAttribute("x1", 0); zeroLine.setAttribute("x2", svgWidth);
+            zeroLine.setAttribute("y1", zeroY); zeroLine.setAttribute("y2", zeroY);
+            zeroLine.setAttribute("stroke", "rgba(255,255,255,0.1)");
+            zeroLine.setAttribute("stroke-width", "1");
+            els.svg.appendChild(zeroLine);
+
+            let runningTotal = 0;
+            let xPos = margin.left;
+
+            // Render Steps
+            data.forEach((d, i) => {
+                const valHeight = Math.abs(scaleY(d.value));
+                let yPos;
+                
+                // Logic for floating bars
+                if (d.value >= 0) {
+                    yPos = zeroY - scaleY(runningTotal) - valHeight;
+                } else {
+                    yPos = zeroY - scaleY(runningTotal);
+                }
+
+                // Create Bar
+                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rect.setAttribute("x", xPos);
+                rect.setAttribute("y", yPos);
+                rect.setAttribute("width", barWidth);
+                rect.setAttribute("height", valHeight);
+                rect.setAttribute("class", d.value >= 0 ? "bar-positive" : "bar-negative");
+                rect.setAttribute("rx", 4);
+                
+                // Tooltip Events
+                rect.addEventListener('mouseenter', (e) => showTooltip(e, d.label, d.value));
+                rect.addEventListener('mouseleave', hideTooltip);
+
+                els.svg.appendChild(rect);
+
+                // Connector Line
+                if (i < data.length) {
+                    const lineY = d.value >= 0 ? yPos : yPos + valHeight;
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", xPos + barWidth);
+                    line.setAttribute("x2", xPos + barWidth + gap);
+                    line.setAttribute("y1", lineY);
+                    line.setAttribute("y2", lineY);
+                    line.setAttribute("class", "connector-line");
+                    els.svg.appendChild(line);
+                }
+
+                // Labels
+                addLabel(xPos + barWidth/2, d.value >= 0 ? yPos - 10 : yPos + valHeight + 15, d.label);
+
+                runningTotal += d.value;
+                xPos += barWidth + gap;
+            });
+
+            // Render Final Total Bar
+            const totalHeight = Math.abs(scaleY(runningTotal));
+            const totalY = runningTotal >= 0 ? zeroY - totalHeight : zeroY;
+            
+            const totalRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            totalRect.setAttribute("x", xPos);
+            totalRect.setAttribute("y", totalY);
+            totalRect.setAttribute("width", barWidth);
+            totalRect.setAttribute("height", totalHeight);
+            totalRect.setAttribute("class", "bar-total");
+            totalRect.setAttribute("rx", 4);
+            
+            totalRect.addEventListener('mouseenter', (e) => showTooltip(e, "Total", runningTotal));
+            totalRect.addEventListener('mouseleave', hideTooltip);
+            
+            els.svg.appendChild(totalRect);
+            addLabel(xPos + barWidth/2, runningTotal >= 0 ? totalY - 10 : totalY + totalHeight + 15, "Total");
+        }
+
+        function addLabel(x, y, text) {
+            const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            txt.setAttribute("x", x);
+            txt.setAttribute("y", y);
+            txt.setAttribute("class", "axis-label");
+            txt.textContent = text;
+            els.svg.appendChild(txt);
+        }
+
+        function showTooltip(e, label, val) {
+            const rect = els.svg.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            els.tooltip.style.display = 'block';
+            els.tooltip.style.left = `${x}px`;
+            els.tooltip.style.top = `${y}px`;
+            
+            const color = val >= 0 ? 'var(--positive)' : 'var(--terracotta)';
+            els.tooltip.innerHTML = `
+                <div style="color: var(--text-muted); font-size: 0.7rem;">${label}</div>
+                <div style="color: ${color}; font-weight: 700;">R$ ${Math.abs(val).toLocaleString()}</div>
+            `;
+        }
+
+        function hideTooltip() {
+            els.tooltip.style.display = 'none';
+        }
+
+        // --- VIEW LOGIC ---
+        async function updateView(key, isBack = false) {
+            const data = viewStates[key];
+            if (!data) return;
+
+            if (!isBack && key !== 'total') navHistory.push(key);
+            
+            // Animation Out
+            els.card.classList.add('fade-exit');
+            await new Promise(r => setTimeout(r, 200));
+
+            // Update DOM
+            els.title.innerText = data.title;
+            els.sub.innerText = data.subtitle;
+            els.mainVal.innerText = data.mainValue;
+            els.mainVal.className = `main-value ${data.mainClass}`;
+            els.netVal.innerText = data.netValue;
+            els.realVal.innerHTML = data.realizedValue; // Keep pills if any
+            els.unrealVal.innerHTML = data.unrealizedValue;
+
+            if (key === 'total') els.back.style.display = 'none';
+            else els.back.style.display = 'flex';
+
+            // Render Chart
+            renderWaterfall(data.chartData);
+
+            // Render List
+            els.details.innerHTML = data.list.map(item => `
+                <div class="asset-row" onclick="handleRowClick('${item.id || ''}')">
+                    <div class="asset-info">
+                        <span class="asset-name">${item.name}</span>
+                        <div class="asset-meta">
+                            <span class="status-dot ${item.isPos ? 'dot-green' : 'dot-red'}"></span>
+                            ${item.meta}
+                        </div>
+                    </div>
+                    <div class="asset-value">
+                        <div class="val-main ${item.isPos ? 'text-pos' : 'text-neg'}">${item.val}</div>
+                        <div class="val-sub">${item.sub}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Animation In
+            els.card.classList.remove('fade-exit');
+            els.card.classList.add('fade-enter');
+            void els.card.offsetWidth; // Reflow
+            els.card.classList.add('fade-active');
+            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
+        }
+
+        window.handleRowClick = (id) => {
+            if (id && viewStates[id]) updateView(id);
+        };
+
+        els.back.addEventListener('click', () => {
+            if (navHistory.length > 1) {
+                navHistory.pop();
+                updateView(navHistory[navHistory.length - 1], true);
+            }
+        });
+
+        // Filter Logic
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Init
+        updateView('total');
+
+    </script>
+</body>
+</html>
