@@ -19,6 +19,8 @@
                 variation: '—',
                 secondaryLabel: 'Capital investido',
                 secondaryValue: '—',
+                tertiaryLabel: 'Realizado (Em caixa)',
+                tertiaryValue: '—',
                 details: {
                     left: [],
                     right: [],
@@ -71,6 +73,8 @@
                 variation: view?.variation || '—',
                 secondaryLabel: view?.secondaryLabel || '—',
                 secondaryValue: view?.secondaryValue || '—',
+                tertiaryLabel: view?.tertiaryLabel || '—',
+                tertiaryValue: view?.tertiaryValue || '—',
                 details: normalizeDetails(view?.details),
             };
         });
@@ -190,7 +194,7 @@
 
                 .kpi-section {
                     display: grid;
-                    grid-template-columns: 1.5fr 1fr;
+                    grid-template-columns: 1.25fr 0.9fr 0.9fr;
                     gap: 16px;
                     margin-bottom: 20px;
                     flex-shrink: 0;
@@ -198,6 +202,7 @@
 
                 .kpi-box { display: flex; flex-direction: column; justify-content: center; }
                 .kpi-box.secondary { border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px; }
+                .kpi-box.tertiary { border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px; }
 
                 .label {
                     font-size: 0.65rem;
@@ -393,6 +398,10 @@
                         <span class="label" id="secondaryLabel">Capital investido</span>
                         <div class="sub-value" id="secondaryValue">—</div>
                     </div>
+                    <div class="kpi-box tertiary">
+                        <span class="label" id="tertiaryLabel">Realizado (Em caixa)</span>
+                        <div class="sub-value" id="tertiaryValue">—</div>
+                    </div>
                 </div>
 
                 <div class="chart-container" id="chartContainer">
@@ -459,6 +468,8 @@
         const mainVariation = shadowRoot.getElementById('mainVariation');
         const secondaryLabel = shadowRoot.getElementById('secondaryLabel');
         const secondaryValue = shadowRoot.getElementById('secondaryValue');
+        const tertiaryLabel = shadowRoot.getElementById('tertiaryLabel');
+        const tertiaryValue = shadowRoot.getElementById('tertiaryValue');
         const detailsGrid = shadowRoot.getElementById('detailsGrid');
         const chartContainer = shadowRoot.getElementById('chartContainer');
         const chartTooltip = shadowRoot.getElementById('chartTooltip');
@@ -620,6 +631,8 @@
             mainVariation.textContent = viewData.variation;
             secondaryLabel.textContent = viewData.secondaryLabel;
             secondaryValue.textContent = viewData.secondaryValue;
+            tertiaryLabel.textContent = viewData.tertiaryLabel;
+            tertiaryValue.textContent = viewData.tertiaryValue;
             backNav.style.display = viewId === 'total' ? 'none' : 'flex';
 
             renderDetails(viewData);

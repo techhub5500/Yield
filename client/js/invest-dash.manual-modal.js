@@ -32,6 +32,7 @@
                 { id: 'operationDate', label: 'Data da operação', type: 'date', help: 'Data da nota de corretagem.', required: true },
                 { id: 'quantity', label: 'Quantidade', type: 'number', min: '0', step: '0.0001', help: 'Quantidade de cotas/ações negociadas.', required: true },
                 { id: 'unitPrice', label: 'Preço unitário', type: 'number', min: '0', step: '0.0001', help: 'Preço pago por unidade na operação.', required: true },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 15', help: 'Quanto você planeja ter deste ativo na carteira.' },
                 { id: 'fees', label: 'Taxas (opcional)', type: 'number', min: '0', step: '0.0001', help: 'Corretagem e emolumentos para preço médio real.' },
                 { id: 'broker', label: 'Corretora (opcional)', placeholder: 'Ex.: XP, NuInvest', help: 'Ajuda a lembrar onde o ativo está custodiado.' },
             ],
@@ -43,6 +44,7 @@
                 { id: 'applicationDate', label: 'Data de aplicação', type: 'date', help: 'Dia em que o dinheiro saiu da conta.', required: true },
                 { id: 'maturityDate', label: 'Data de vencimento', type: 'date', help: 'Data em que o valor retorna para sua conta.', required: true },
                 { id: 'liquidity', label: 'Liquidez', type: 'select', options: ['No Vencimento', 'Diária'], help: 'Informa se o resgate é livre ou só no vencimento.', required: true },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 25', help: 'Quanto você planeja ter deste ativo na carteira.' },
                 { id: 'broker', label: 'Instituição (opcional)', placeholder: 'Ex.: Banco Inter', help: 'Onde o título foi contratado.' },
             ],
             funds: [
@@ -51,6 +53,7 @@
                 { id: 'shares', label: 'Quantidade de cotas (opcional)', type: 'number', min: '0', step: '0.00000001', help: 'Se souber, melhora a precisão do histórico.' },
                 { id: 'quotationDate', label: 'Data da cotização', type: 'date', help: 'Data em que o aporte/resgate foi processado.', required: true },
                 { id: 'transactionType', label: 'Tipo', type: 'select', options: ['Aplicação', 'Resgate'], help: 'Selecione se entrou ou saiu dinheiro do fundo.', required: true },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 20', help: 'Quanto você planeja ter deste ativo na carteira.' },
             ],
             crypto: [
                 { id: 'ticker', label: 'Ativo', placeholder: 'Ex.: BTC, ETH, SOL', help: 'Sigla da criptomoeda negociada.', required: true },
@@ -58,6 +61,7 @@
                 { id: 'quantity', label: 'Quantidade', type: 'number', min: '0', step: '0.00000001', help: 'Aceita até 8 casas decimais.', required: true },
                 { id: 'purchaseCurrency', label: 'Moeda de compra', type: 'select', options: ['BRL', 'USD'], help: 'Moeda usada na negociação.', required: true },
                 { id: 'unitPrice', label: 'Preço unitário', type: 'number', min: '0', step: '0.00000001', help: 'Preço por unidade no momento da operação.', required: true },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 10', help: 'Quanto você planeja ter deste ativo na carteira.' },
                 { id: 'exchangeFee', label: 'Taxa da exchange (opcional)', type: 'number', min: '0', step: '0.00000001', help: 'Custo cobrado pela corretora de cripto.' },
                 { id: 'exchange', label: 'Exchange (opcional)', placeholder: 'Ex.: Binance', help: 'Onde a operação foi feita.' },
             ],
@@ -418,9 +422,13 @@
             const assetClass = state.addPayload.assetClass;
             const category = state.addPayload.category;
             const fields = state.addPayload.fields;
+            const allocationTargetPct = parseNumber(fields.allocationTargetPct);
 
             if (!assetClass) throw new Error('Selecione a classe do ativo.');
             if (!category) throw new Error('Selecione o tipo/subtipo do ativo.');
+            if (allocationTargetPct !== null && (allocationTargetPct < 0 || allocationTargetPct > 100)) {
+                throw new Error('Alocação Meta (%) deve estar entre 0 e 100.');
+            }
 
             if (assetClass === 'equity') {
                 const quantity = parseNumber(fields.quantity);
@@ -442,6 +450,7 @@
                         operationType: fields.operationType,
                         unitPrice,
                         fees,
+                        allocationTargetPct,
                         broker: fields.broker || null,
                     },
                 };
@@ -467,6 +476,7 @@
                         rate,
                         maturityDate: fields.maturityDate,
                         liquidity: fields.liquidity,
+                        allocationTargetPct,
                         broker: fields.broker || null,
                     },
                 };
@@ -493,6 +503,7 @@
                         transactionType: fields.transactionType,
                         transactionValue,
                         shares: shares || null,
+                        allocationTargetPct,
                     },
                 };
             }
@@ -516,6 +527,7 @@
                     metadata: {
                         unitPrice,
                         exchangeFee,
+                        allocationTargetPct,
                         exchange: fields.exchange || null,
                     },
                 };

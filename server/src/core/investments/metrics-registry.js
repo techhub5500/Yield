@@ -35,7 +35,24 @@ function buildChartPoints(periodWindows, positions) {
   });
 }
 
-function buildWidgetModelFromPositions(positions, periodWindows) {
+function computeRealizedCashFromTransactions(transactions) {
+  if (!Array.isArray(transactions) || !transactions.length) return 0;
+
+  return transactions.reduce((acc, item) => {
+    const operation = String(item.operation || '');
+    const grossAmount = Number(item.grossAmount || 0);
+
+    if (!Number.isFinite(grossAmount)) return acc;
+
+    if (operation === 'manual_sale' || operation === 'manual_income') {
+      return acc + grossAmount;
+    }
+
+    return acc;
+  }, 0);
+}
+
+function buildWidgetModelFromPositions(positions, periodWindows, realizedCash = 0) {
   const totalMarketValue = positions.reduce((acc, item) => acc + Number(item.marketValue || 0), 0);
   const totalInvested = positions.reduce((acc, item) => acc + Number(item.investedAmount || 0), 0);
   const pnl = totalMarketValue - totalInvested;
@@ -97,6 +114,8 @@ function buildWidgetModelFromPositions(positions, periodWindows) {
         variation: `${pnl >= 0 ? '+' : ''}${formatCurrencyBRL(pnl)} (${pnlPct.toFixed(2)}%)`,
         secondaryLabel: 'Capital investido',
         secondaryValue: formatCurrencyBRL(totalInvested),
+        tertiaryLabel: 'Realizado (Em caixa)',
+        tertiaryValue: formatCurrencyBRL(realizedCash),
         details: {
           left: [
             buildClassRows('rv', 'Renda Variável'),
@@ -160,11 +179,18 @@ function ensureInvestmentsMetricsRegistered() {
         end: filters.asOf || null,
       });
 
+      const transactions = await context.repository.listTransactions({
+        userId: context.userId,
+        filters,
+        end: filters.asOf || null,
+      });
+      const realizedCash = computeRealizedCashFromTransactions(transactions);
+
       if (!positions.length) {
         return {
           status: 'empty',
           data: {
-            widget: buildWidgetModelFromPositions([], periodWindows),
+            widget: buildWidgetModelFromPositions([], periodWindows, realizedCash),
           },
         };
       }
@@ -172,7 +198,7 @@ function ensureInvestmentsMetricsRegistered() {
       return {
         status: 'ok',
         data: {
-          widget: buildWidgetModelFromPositions(positions, periodWindows),
+          widget: buildWidgetModelFromPositions(positions, periodWindows, realizedCash),
         },
       };
     },
