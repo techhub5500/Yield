@@ -86,6 +86,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'DELETE',
             });
         },
+
+        getBrapiQuoteByTicker(ticker, date) {
+            const params = new URLSearchParams({ ticker: String(ticker || '') });
+            if (date) params.set('date', String(date));
+            return this._request(`/api/investments/brapi/quote?${params.toString()}`);
+        },
+
+        getBrapiQuoteByAsset(assetId, date) {
+            const params = new URLSearchParams();
+            if (date) params.set('date', String(date));
+            const query = params.toString();
+            const suffix = query ? `?${query}` : '';
+            return this._request(`/api/investments/assets/${encodeURIComponent(assetId)}/quote${suffix}`);
+        },
     };
 
     function collectSlots() {

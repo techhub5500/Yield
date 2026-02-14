@@ -45,8 +45,11 @@
         }
 
         .widget-card {
+            display: flex;
+            flex-direction: row;
             width: 100%;
-            max-width: 680px; 
+            max-width: 880px; /* Increased from 640px */
+            height: 430px; /* Maintain a consistent height */
             background: var(--glass-surface);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -55,9 +58,26 @@
             box-shadow: 
                 0 20px 40px rgba(0,0,0,0.4),
                 inset 0 1px 0 var(--glass-shine);
-            padding: 24px;
+            padding: 0;
             position: relative;
-            overflow: visible;
+            overflow: hidden;
+        }
+
+        .left-side {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .right-side {
+            width: 280px;
+            border-left: 1px solid rgba(212, 175, 55, 0.4); /* Gold color separator */
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Header */
@@ -248,12 +268,13 @@
 
         /* Lista de Detalhes */
         .details-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 4px;
-            max-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
             overflow-y: auto;
-            padding-right: 4px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-gold) transparent;
         }
 
         .details-grid::-webkit-scrollbar { width: 4px; }
@@ -322,49 +343,49 @@
 <body>
 
     <div class="widget-card">
-        <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Próximos Vencimentos</h2>
-                <div class="subtitle" id="cardSubtitle">Fluxo de caixa projetado e liquidez</div>
+        <div class="left-side">
+            <div class="header">
+                <div>
+                    <div id="backNav">←</div>
+                    <h2 id="cardTitle">Próximos Vencimentos</h2>
+                    <div class="subtitle" id="cardSubtitle">Fluxo de caixa projetado e liquidez</div>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <button class="filter-btn active">6M</button>
+                        <button class="filter-btn">12M</button>
+                        <button class="filter-btn">24M</button>
+                    </div>
+                </div>
             </div>
-            
-            <div class="filters">
-                <div class="filter-group">
-                    <button class="filter-btn active">6M</button>
-                    <button class="filter-btn">12M</button>
-                    <button class="filter-btn">24M</button>
+
+            <div class="kpi-section">
+                <div class="kpi-box">
+                    <span class="label" id="mainLabel">Volume a Vencer (6M)</span>
+                    <div class="main-value" id="mainValue">R$ 142.500</div>
+                    <div class="highlight-pill" id="mainPill">
+                        Impacto Líquido: +8.5%
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <button class="filter-btn active">Classe</button>
-                    <button class="filter-btn">Emissor</button>
+                <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                    <span class="label">Próximo Fluxo Relevante</span>
+                    <div class="sub-value" id="secValue">15 Mai 2026</div>
+                    <div class="subtitle" id="secMeta">Tesouro IPCA+ 2026</div>
                 </div>
+            </div>
+
+            <div class="chart-container" id="chartContainer">
+                <div class="chart-tooltip" id="chartTooltip"></div>
+                <svg viewBox="0 0 800 150" preserveAspectRatio="none" id="chartSvg">
+                    </svg>
             </div>
         </div>
 
-        <div class="kpi-section">
-            <div class="kpi-box">
-                <span class="label" id="mainLabel">Volume a Vencer (6M)</span>
-                <div class="main-value" id="mainValue">R$ 142.500</div>
-                <div class="highlight-pill" id="mainPill">
-                    Impacto Líquido: +8.5%
+        <div class="right-side">
+            <div class="details-grid" id="detailsGrid">
                 </div>
-            </div>
-            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
-                <span class="label">Próximo Fluxo Relevante</span>
-                <div class="sub-value" id="secValue">15 Mai 2026</div>
-                <div class="subtitle" id="secMeta">Tesouro IPCA+ 2026</div>
-            </div>
         </div>
-
-        <div class="chart-container" id="chartContainer">
-            <div class="chart-tooltip" id="chartTooltip"></div>
-            <svg viewBox="0 0 800 150" preserveAspectRatio="none" id="chartSvg">
-                </svg>
-        </div>
-
-        <div class="details-grid" id="detailsGrid">
-            </div>
     </div>
 
     <script>

@@ -52,8 +52,11 @@
         }
 
         .widget-card {
+            display: flex;
+            flex-direction: row;
             width: 100%;
-            max-width: 640px; 
+            max-width: 880px; /* Increased from 640px */
+            height: 430px; /* Maintain a consistent height */
             background: var(--glass-surface);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -62,10 +65,26 @@
             box-shadow: 
                 0 20px 40px rgba(0,0,0,0.4),
                 inset 0 1px 0 var(--glass-shine);
-            padding: 24px;
+            padding: 0;
             position: relative;
+            overflow: hidden;
+        }
+
+        .left-side {
+            flex: 1;
+            padding: 24px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+        }
+
+        .right-side {
+            width: 280px;
+            border-left:  0.5px solid rgba(212, 175, 55, 0.107); /* Gold color separator */
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Header */
@@ -237,10 +256,11 @@
         .details-grid {
             display: flex;
             flex-direction: column;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 16px;
-            max-height: 200px;
+            gap: 12px;
+            flex: 1;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-gold) transparent;
         }
 
         .details-grid::-webkit-scrollbar { width: 4px; }
@@ -311,52 +331,56 @@
 <body>
 
     <div class="widget-card">
-        <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Exposição em Renda Fixa</h2>
-                <div class="subtitle" id="cardSubtitle">Alocação por classe de ativo</div>
-            </div>
-            
-            <div class="filters">
-                <div class="filter-group">
-                    <button class="filter-btn active">Subclasse</button>
-                    <button class="filter-btn">Vencimento</button>
-                    <button class="filter-btn">Indexador</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-split">
-            <div class="kpi-wrapper">
+        <div class="left-side">
+            <div class="header">
                 <div>
-                    <span class="label">Total Alocado em RF</span>
-                    <div class="main-value" id="mainValue">R$ 215.000</div>
-                    <div class="sub-metric">
-                        <span class="metric-pill" id="percentPill">57,5%</span>
-                        <span style="color: var(--text-muted); font-size: 0.7rem;">do Portfólio Total</span>
-                    </div>
+                    <div id="backNav">←</div>
+                    <h2 id="cardTitle">Exposição em Renda Fixa</h2>
+                    <div class="subtitle" id="cardSubtitle">Alocação por classe de ativo</div>
                 </div>
                 
-                <div style="border-top: 1px solid var(--glass-border); padding-top: 12px;">
-                    <span class="label">Maior Concentração</span>
-                    <div style="font-size: 1rem; color: var(--text-main);" id="concentrationLabel">Tesouro Direto</div>
-                    <div class="subtitle" id="concentrationValue">40% da categoria</div>
+                <div class="filters">
+                    <div class="filter-group">
+                        <button class="filter-btn active">Subclasse</button>
+                        <button class="filter-btn">Vencimento</button>
+                        <button class="filter-btn">Indexador</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="chart-container">
-                <svg viewBox="0 0 200 200" id="donutSvg">
-                    </svg>
-                <div class="chart-center-text">
-                    <div class="center-label" id="centerLabel">Total</div>
-                    <div class="center-value" id="centerValue">100%</div>
+            <div class="content-split">
+                <div class="kpi-wrapper">
+                    <div>
+                        <span class="label">Total Alocado em RF</span>
+                        <div class="main-value" id="mainValue">R$ 215.000</div>
+                        <div class="sub-metric">
+                            <span class="metric-pill" id="percentPill">57,5%</span>
+                            <span style="color: var(--text-muted); font-size: 0.7rem;">do Portfólio Total</span>
+                        </div>
+                    </div>
+                    
+                    <div style="border-top: 1px solid var(--glass-border); padding-top: 12px;">
+                        <span class="label">Maior Concentração</span>
+                        <div style="font-size: 1rem; color: var(--text-main);" id="concentrationLabel">Tesouro Direto</div>
+                        <div class="subtitle" id="concentrationValue">40% da categoria</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <svg viewBox="0 0 200 200" id="donutSvg">
+                        </svg>
+                    <div class="chart-center-text">
+                        <div class="center-label" id="centerLabel">Total</div>
+                        <div class="center-value" id="centerValue">100%</div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="details-grid" id="detailsGrid">
-            </div>
+        <div class="right-side">
+            <div class="details-grid" id="detailsGrid">
+                </div>
+        </div>
     </div>
 
     <script>

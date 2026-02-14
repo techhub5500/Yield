@@ -135,6 +135,13 @@
                 assetClass: '',
                 category: '',
                 fields: {},
+                brapi: {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    confirmed: false,
+                    lookupKey: '',
+                },
             },
             edit: {
                 query: '',
@@ -143,6 +150,12 @@
                 operation: '',
                 fields: {
                     referenceDate: today(),
+                },
+                brapi: {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    lookupKey: '',
                 },
             },
         };
@@ -160,6 +173,91 @@
             const normalized = String(rawValue).replace(',', '.');
             const parsed = Number(normalized);
             return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function formatCurrency(value, currency = 'BRL') {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: currency || 'BRL',
+            }).format(Number(value || 0));
+        }
+
+        function shouldUseBrapiByAssetClass(assetClass) {
+            return assetClass === 'equity' || assetClass === 'crypto';
+        }
+
+        function isTickerLike(value) {
+            return /^[A-Z]{3,6}\d{0,2}$/.test(String(value || '').trim().toUpperCase());
+        }
+
+        function buildAddLookupKey() {
+            const ticker = String(state.addPayload.fields.ticker || '').trim().toUpperCase();
+            const date = String(state.addPayload.fields.operationDate || today()).trim();
+            return `${ticker}|${date}`;
+        }
+
+        function buildEditLookupKey() {
+            const assetId = state.edit.selectedAsset?.assetId || '';
+            const date = String(state.edit.fields.referenceDate || today()).trim();
+            return `${assetId}|${date}|${state.edit.operation}`;
+        }
+
+        function renderAddBrapiPreview() {
+            if (!shouldUseBrapiByAssetClass(state.addPayload.assetClass)) return '';
+
+            const brapi = state.addPayload.brapi;
+            const ticker = String(state.addPayload.fields.ticker || '').trim().toUpperCase();
+
+            if (!ticker) {
+                return '<div class="manual-field-help">Informe o ticker para buscar dados da Brapi.</div>';
+            }
+
+            if (brapi.loading) {
+                return '<div class="manual-field-help">Consultando ticker na Brapi...</div>';
+            }
+
+            if (brapi.error) {
+                return `<div class="manual-error-msg">${escapeHtml(brapi.error)}</div>`;
+            }
+
+            if (!brapi.quote) {
+                return '<div class="manual-field-help">Aguardando consulta de preço pela Brapi.</div>';
+            }
+
+            return `
+                <div class="manual-field-help">
+                    <strong>${escapeHtml(brapi.quote.ticker || ticker)}</strong> · ${escapeHtml(brapi.quote.shortName || brapi.quote.longName || 'Ativo')}
+                    <br />Preço na data (${escapeHtml(brapi.quote.sourceDate || brapi.quote.referenceDate)}):
+                    <strong>${escapeHtml(formatCurrency(brapi.quote.priceOnReferenceDate, brapi.quote.currency))}</strong>
+                    <br />
+                    ${brapi.confirmed
+                        ? '<span class="manual-success-msg">Ativo confirmado. Preço unitário carregado automaticamente.</span>'
+                        : '<button class="manual-submit-btn" data-action="confirm-add-brapi" type="button">Confirmar ativo e aplicar preço</button>'}
+                </div>
+            `;
+        }
+
+        function renderEditBrapiHint() {
+            if (!['add_buy', 'add_sell'].includes(state.edit.operation)) return '';
+
+            const brapi = state.edit.brapi;
+
+            if (brapi.loading) {
+                return '<div class="manual-field-help">Consultando preço da data na Brapi...</div>';
+            }
+
+            if (brapi.error) {
+                return `<div class="manual-error-msg">${escapeHtml(brapi.error)}</div>`;
+            }
+
+            if (!brapi.quote) return '';
+
+            return `
+                <div class="manual-field-help">
+                    Preço sugerido pela Brapi em ${escapeHtml(brapi.quote.sourceDate || brapi.quote.referenceDate)}:
+                    <strong>${escapeHtml(formatCurrency(brapi.quote.priceOnReferenceDate, brapi.quote.currency))}</strong>
+                </div>
+            `;
         }
 
         function getAddFields() {
@@ -200,6 +298,20 @@
                 selectedAsset: null,
                 operation: '',
                 fields: { referenceDate: today() },
+                brapi: {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    lookupKey: '',
+                },
+            };
+
+            state.addPayload.brapi = {
+                loading: false,
+                error: '',
+                quote: null,
+                confirmed: false,
+                lookupKey: '',
             };
         }
 
@@ -309,6 +421,7 @@
                 <div class="manual-form-grid">
                     ${fields.map((field) => renderField(field, state.addPayload.fields[field.id], 'manual-add')).join('')}
                 </div>
+                ${renderAddBrapiPreview()}
                 <div class="manual-row-actions">
                     <button class="manual-back-btn" data-action="back">Voltar</button>
                     <button class="manual-submit-btn" data-action="submit-add" ${state.loading ? 'disabled' : ''}>${state.loading ? 'Salvando...' : 'Salvar ativo'}</button>
@@ -371,6 +484,7 @@
                 <div class="manual-form-grid">
                     ${fields.map((field) => renderField(field, state.edit.fields[field.id], 'manual-edit')).join('')}
                 </div>
+                ${renderEditBrapiHint()}
                 <div class="manual-row-actions">
                     <button class="manual-back-btn" data-action="back">Voltar</button>
                     <button class="manual-submit-btn ${isDelete ? 'danger' : ''}" data-action="submit-edit" ${state.loading ? 'disabled' : ''}>
@@ -434,13 +548,19 @@
                 const quantity = parseNumber(fields.quantity);
                 const unitPrice = parseNumber(fields.unitPrice);
                 const fees = parseNumber(fields.fees) || 0;
+                const ticker = String(fields.ticker || '').toUpperCase();
+
+                if (!state.addPayload.brapi.confirmed) {
+                    throw new Error('Confirme o ativo retornado pela Brapi antes de salvar.');
+                }
                 if (!quantity || quantity <= 0) throw new Error('Quantidade inválida para renda variável.');
                 if (unitPrice === null || unitPrice < 0) throw new Error('Preço unitário inválido para renda variável.');
 
                 return {
                     assetClass,
                     category,
-                    name: String(fields.ticker || '').toUpperCase(),
+                    name: ticker,
+                    ticker,
                     quantity,
                     avgPrice: unitPrice + (fees / quantity),
                     referenceDate: fields.operationDate,
@@ -512,13 +632,19 @@
                 const quantity = parseNumber(fields.quantity);
                 const unitPrice = parseNumber(fields.unitPrice);
                 const exchangeFee = parseNumber(fields.exchangeFee) || 0;
+                const ticker = String(fields.ticker || '').toUpperCase();
+
+                if (!state.addPayload.brapi.confirmed) {
+                    throw new Error('Confirme o ativo retornado pela Brapi antes de salvar.');
+                }
                 if (!quantity || quantity <= 0) throw new Error('Quantidade inválida para criptoativo.');
                 if (unitPrice === null || unitPrice < 0) throw new Error('Preço unitário inválido para criptoativo.');
 
                 return {
                     assetClass,
                     category,
-                    name: String(fields.ticker || '').toUpperCase(),
+                    name: ticker,
+                    ticker,
                     quantity,
                     avgPrice: unitPrice + (exchangeFee / quantity),
                     referenceDate: fields.operationDate,
@@ -565,6 +691,93 @@
             }
 
             return payload;
+        }
+
+        async function requestBrapiForAdd() {
+            if (state.flow !== 'add' || state.step !== 3) return;
+            if (!shouldUseBrapiByAssetClass(state.addPayload.assetClass)) return;
+
+            const ticker = String(state.addPayload.fields.ticker || '').trim().toUpperCase();
+            const date = String(state.addPayload.fields.operationDate || today()).trim();
+
+            if (!isTickerLike(ticker) || !date) {
+                state.addPayload.brapi = {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    confirmed: false,
+                    lookupKey: '',
+                };
+                render();
+                return;
+            }
+
+            const lookupKey = buildAddLookupKey();
+            if (state.addPayload.brapi.lookupKey === lookupKey && state.addPayload.brapi.quote) {
+                return;
+            }
+
+            state.addPayload.brapi.loading = true;
+            state.addPayload.brapi.error = '';
+            state.addPayload.brapi.lookupKey = lookupKey;
+            state.addPayload.brapi.confirmed = false;
+            render();
+
+            try {
+                const quote = await window.YieldInvestments.api.getBrapiQuoteByTicker(ticker, date);
+
+                if (state.addPayload.brapi.lookupKey !== lookupKey) return;
+
+                state.addPayload.brapi.loading = false;
+                state.addPayload.brapi.quote = quote;
+                state.addPayload.brapi.error = '';
+                state.addPayload.brapi.confirmed = false;
+                render();
+            } catch (error) {
+                if (state.addPayload.brapi.lookupKey !== lookupKey) return;
+                state.addPayload.brapi.loading = false;
+                state.addPayload.brapi.quote = null;
+                state.addPayload.brapi.error = error.message || 'Falha ao consultar ticker na Brapi';
+                state.addPayload.brapi.confirmed = false;
+                render();
+            }
+        }
+
+        async function requestBrapiForEdit() {
+            if (state.flow !== 'edit' || state.step !== 3) return;
+            if (!state.edit.selectedAsset || !['add_buy', 'add_sell'].includes(state.edit.operation)) return;
+
+            const lookupKey = buildEditLookupKey();
+            if (state.edit.brapi.lookupKey === lookupKey && state.edit.brapi.quote) {
+                return;
+            }
+
+            state.edit.brapi.loading = true;
+            state.edit.brapi.error = '';
+            state.edit.brapi.lookupKey = lookupKey;
+            render();
+
+            try {
+                const quote = await window.YieldInvestments.api.getBrapiQuoteByAsset(
+                    state.edit.selectedAsset.assetId,
+                    state.edit.fields.referenceDate || today()
+                );
+
+                if (state.edit.brapi.lookupKey !== lookupKey) return;
+
+                state.edit.brapi.loading = false;
+                state.edit.brapi.error = '';
+                state.edit.brapi.quote = quote;
+                state.edit.fields.price = String(quote.priceOnReferenceDate || '');
+                render();
+            } catch (error) {
+                if (state.edit.brapi.lookupKey !== lookupKey) return;
+
+                state.edit.brapi.loading = false;
+                state.edit.brapi.quote = null;
+                state.edit.brapi.error = error.message || 'Falha ao consultar preço na Brapi';
+                render();
+            }
         }
 
         async function handleSearchAssets() {
@@ -696,6 +909,13 @@
                 state.addPayload.assetClass = target.getAttribute('data-class') || '';
                 state.addPayload.category = '';
                 state.addPayload.fields = { operationDate: today(), applicationDate: today(), quotationDate: today() };
+                state.addPayload.brapi = {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    confirmed: false,
+                    lookupKey: '',
+                };
                 state.step = 2;
                 setError('');
                 render();
@@ -707,11 +927,27 @@
                 state.step = 3;
                 setError('');
                 render();
+                requestBrapiForAdd();
                 return;
             }
 
             if (action === 'submit-add') {
                 handleSubmitAdd();
+                return;
+            }
+
+            if (action === 'confirm-add-brapi') {
+                const quote = state.addPayload.brapi.quote;
+                if (!quote || !Number.isFinite(Number(quote.priceOnReferenceDate))) {
+                    setError('Não foi possível confirmar: preço da Brapi indisponível.');
+                    render();
+                    return;
+                }
+
+                state.addPayload.brapi.confirmed = true;
+                state.addPayload.fields.unitPrice = String(quote.priceOnReferenceDate);
+                setError('');
+                render();
                 return;
             }
 
@@ -726,6 +962,12 @@
                 state.edit.selectedAsset = state.edit.results.find((item) => item.assetId === assetId) || null;
                 state.edit.operation = '';
                 state.edit.fields = { referenceDate: today() };
+                state.edit.brapi = {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    lookupKey: '',
+                };
                 render();
                 return;
             }
@@ -733,6 +975,12 @@
             if (action === 'select-edit-operation') {
                 state.edit.operation = target.getAttribute('data-operation') || '';
                 state.edit.fields = { referenceDate: today() };
+                state.edit.brapi = {
+                    loading: false,
+                    error: '',
+                    quote: null,
+                    lookupKey: '',
+                };
                 render();
                 return;
             }
@@ -742,12 +990,66 @@
                     state.step += 1;
                     setError('');
                     render();
+
+                    if (state.step === 3) {
+                        requestBrapiForEdit();
+                    }
                 }
                 return;
             }
 
             if (action === 'submit-edit') {
                 handleSubmitEdit();
+            }
+        });
+
+        body.addEventListener('input', (event) => {
+            const field = event.target.closest('[data-field-id]');
+            if (!field) return;
+
+            const fieldId = field.getAttribute('data-field-id');
+            const rawValue = field.value;
+
+            if (state.flow === 'add' && state.step === 3) {
+                state.addPayload.fields[fieldId] = rawValue;
+
+                if (fieldId === 'ticker' || fieldId === 'operationDate') {
+                    state.addPayload.brapi.confirmed = false;
+                    requestBrapiForAdd();
+                }
+                return;
+            }
+
+            if (state.flow === 'edit' && state.step === 3) {
+                state.edit.fields[fieldId] = rawValue;
+                if (fieldId === 'referenceDate' && ['add_buy', 'add_sell'].includes(state.edit.operation)) {
+                    requestBrapiForEdit();
+                }
+            }
+        });
+
+        body.addEventListener('change', (event) => {
+            const field = event.target.closest('[data-field-id]');
+            if (!field) return;
+
+            const fieldId = field.getAttribute('data-field-id');
+            const rawValue = field.value;
+
+            if (state.flow === 'add' && state.step === 3) {
+                state.addPayload.fields[fieldId] = rawValue;
+
+                if (fieldId === 'ticker' || fieldId === 'operationDate') {
+                    state.addPayload.brapi.confirmed = false;
+                    requestBrapiForAdd();
+                }
+                return;
+            }
+
+            if (state.flow === 'edit' && state.step === 3) {
+                state.edit.fields[fieldId] = rawValue;
+                if (fieldId === 'referenceDate' && ['add_buy', 'add_sell'].includes(state.edit.operation)) {
+                    requestBrapiForEdit();
+                }
             }
         });
 

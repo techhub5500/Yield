@@ -155,6 +155,7 @@ if (require.main === module) {
     responseAgent,
     externalCallManager,
     financeBridge,
+    searchManager,
   };
 
   const app = createServer(dependencies);

@@ -330,42 +330,14 @@ body:has(.sidebar.collapsed) .content-wrapper {
 }
 
 .card-main-content {
-    flex: 0 0 70%;
+    flex: 0 0 100%;
     padding: 20px 30px;
     position: relative;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    border-right: none; /* Sem borda conforme solicitado */
-}
-
-.card-side-grid {
-    flex: 0 0 30%;
-    padding: 20px 30px;
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    grid-template-rows: repeat(3, 1fr); /* Adicionada mais uma linha */
-    gap: 15px;
-}
-
-.mini-info-card {
-    background: rgba(201, 201, 201, 0.004); /* 80% mais transparente */
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-md);
-    transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 15px;
-    height: 100px; /* Redução de 30% na altura (base 100px) */
-}
-
-.mini-info-card:hover {
-    background: rgba(197, 197, 197, 0.041); /* 60% transparente no hover */
-    border-color: rgba(166, 94, 68, 0.25);
-    transform: translateY(-2px);
+    border-right: none;
 }
 
 .card-opt {
@@ -729,7 +701,7 @@ body:has(.sidebar.collapsed) .content-wrapper {
     .card-body {
         flex-direction: column;
     }
-    .card-main-content, .card-side-grid {
+    .card-main-content {
         flex: 0 0 100%;
     }
 

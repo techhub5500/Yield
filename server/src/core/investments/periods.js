@@ -6,6 +6,14 @@
  */
 
 const DEFAULT_WINDOWS = [2, 3, 6, 12];
+const DAY_SPAN_BY_MONTH_WINDOW = {
+  1: 30,
+  2: 60,
+  3: 89,
+  6: 182,
+  12: 365,
+  24: 730,
+};
 
 /**
  * Converte Date para YYYY-MM-DD.
@@ -42,11 +50,8 @@ function buildPeriodWindows(months, asOf) {
   const endDate = asOf ? new Date(`${asOf}T00:00:00.000Z`) : new Date();
 
   return normalized.map((windowMonths) => {
-    const startDate = new Date(Date.UTC(
-      endDate.getUTCFullYear(),
-      endDate.getUTCMonth() - (windowMonths - 1),
-      1
-    ));
+    const daysSpan = DAY_SPAN_BY_MONTH_WINDOW[windowMonths] || Math.round(windowMonths * 30.4);
+    const startDate = new Date(endDate.getTime() - ((daysSpan - 1) * 86400000));
 
     return {
       months: windowMonths,

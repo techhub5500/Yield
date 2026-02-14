@@ -45,8 +45,11 @@
         }
 
         .widget-card {
+            display: flex;
+            flex-direction: row;
             width: 100%;
-            max-width: 640px; 
+            max-width: 880px; /* Increased from 640px */
+            height: 480px; /* Maintain a consistent height */
             background: var(--glass-surface);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -55,8 +58,26 @@
             box-shadow: 
                 0 20px 40px rgba(0,0,0,0.4),
                 inset 0 1px 0 var(--glass-shine);
-            padding: 24px;
+            padding: 0;
             position: relative;
+            overflow: hidden;
+        }
+
+        .left-side {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .right-side {
+            width: 280px;
+            border-left: 0.5px solid rgba(212, 175, 55, 0.107); /* Gold color separator */
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Header */
@@ -234,13 +255,13 @@
 
         /* Lista de Detalhes */
         .details-grid {
-            display: grid;
-            grid-template-columns: 1fr; /* Coluna única para melhor leitura de eventos */
-            gap: 8px;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 16px;
-            max-height: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-gold) transparent;
         }
 
         /* Scrollbar customizada */
@@ -307,59 +328,63 @@
 <body>
 
     <div class="widget-card">
-        <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Resultado Financeiro</h2>
-                <div class="subtitle" id="cardSubtitle">Geração de valor no período</div>
+        <div class="left-side">
+            <div class="header">
+                <div>
+                    <div id="backNav">←</div>
+                    <h2 id="cardTitle">Resultado Financeiro</h2>
+                    <div class="subtitle" id="cardSubtitle">Geração de valor no período</div>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <button class="filter-btn active">MTD</button>
+                        <button class="filter-btn">YTD</button>
+                        <button class="filter-btn">12M</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active">Ambos</button>
+                        <button class="filter-btn">Realizado</button>
+                        <button class="filter-btn">Não Realizado</button>
+                    </div>
+                </div>
             </div>
-            
-            <div class="filters">
-                <div class="filter-group">
-                    <button class="filter-btn active">MTD</button>
-                    <button class="filter-btn">YTD</button>
-                    <button class="filter-btn">12M</button>
+
+            <div class="kpi-section">
+                <div class="kpi-box">
+                    <span class="label" id="mainLabel">Resultado Bruto</span>
+                    <div class="main-value text-pos" id="mainValue">R$ 45.200</div>
+                    <div class="subtitle">ROI: 3.5%</div>
                 </div>
-                <div class="filter-group">
-                    <button class="filter-btn active">Ambos</button>
-                    <button class="filter-btn">Realizado</button>
-                    <button class="filter-btn">Não Realizado</button>
+                <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                    <span class="label">Resultado Líquido (Est.)</span>
+                    <div class="sub-value" id="netValue">R$ 38.420</div>
+                    <div class="subtitle">Após impostos e taxas</div>
                 </div>
+                
+                <div class="kpi-row-secondary">
+                    <div class="kpi-mini">
+                        <span class="label">Realizado (Caixa)</span>
+                        <div class="mini-value" id="realizedValue">R$ 12.100 <span class="variation-pill">26%</span></div>
+                    </div>
+                    <div class="kpi-mini">
+                        <span class="label">Não Realizado (Papel)</span>
+                        <div class="mini-value" id="unrealizedValue">R$ 33.100 <span class="variation-pill">74%</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container" id="chartContainer">
+                <div class="chart-tooltip" id="chartTooltip"></div>
+                <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                    </svg>
             </div>
         </div>
 
-        <div class="kpi-section">
-            <div class="kpi-box">
-                <span class="label" id="mainLabel">Resultado Bruto</span>
-                <div class="main-value text-pos" id="mainValue">R$ 45.200</div>
-                <div class="subtitle">ROI: 3.5%</div>
-            </div>
-            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
-                <span class="label">Resultado Líquido (Est.)</span>
-                <div class="sub-value" id="netValue">R$ 38.420</div>
-                <div class="subtitle">Após impostos e taxas</div>
-            </div>
-            
-            <div class="kpi-row-secondary">
-                <div class="kpi-mini">
-                    <span class="label">Realizado (Caixa)</span>
-                    <div class="mini-value" id="realizedValue">R$ 12.100 <span class="variation-pill">26%</span></div>
+        <div class="right-side">
+            <div class="details-grid" id="detailsGrid">
                 </div>
-                <div class="kpi-mini">
-                    <span class="label">Não Realizado (Papel)</span>
-                    <div class="mini-value" id="unrealizedValue">R$ 33.100 <span class="variation-pill">74%</span></div>
-                </div>
-            </div>
         </div>
-
-        <div class="chart-container" id="chartContainer">
-            <div class="chart-tooltip" id="chartTooltip"></div>
-            <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
-                </svg>
-        </div>
-
-        <div class="details-grid" id="detailsGrid">
-            </div>
     </div>
 
     <script>

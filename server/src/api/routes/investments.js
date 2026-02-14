@@ -25,6 +25,8 @@ function createInvestmentsRouter(deps = {}) {
 
   const service = deps.investmentsService || new InvestmentsMetricsService({
     financeBridge: deps.financeBridge,
+    searchManager: deps.searchManager,
+    brapiClient: deps.searchManager?.brapi,
   });
 
   // Todas as rotas requerem autenticação
@@ -171,6 +173,63 @@ function createInvestmentsRouter(deps = {}) {
       });
     } catch (error) {
       logger.error('InvestmentsRoute', 'system', `Falha em assets/manual: ${error.message}`, {
+        traceId,
+        userId,
+      });
+      next(error);
+    }
+  });
+
+  /**
+   * GET /api/investments/brapi/quote?ticker=PETR4&date=YYYY-MM-DD
+   * Consulta preço de referência por ticker diretamente na Brapi.
+   */
+  router.get('/brapi/quote', async (req, res, next) => {
+    const traceId = crypto.randomUUID();
+    const userId = req.user.userId;
+
+    try {
+      const result = await service.getBrapiQuoteByTicker({
+        ticker: req.query.ticker,
+        referenceDate: req.query.date,
+      });
+
+      return res.json({
+        success: true,
+        traceId,
+        ...result,
+      });
+    } catch (error) {
+      logger.error('InvestmentsRoute', 'system', `Falha em brapi/quote: ${error.message}`, {
+        traceId,
+        userId,
+      });
+      next(error);
+    }
+  });
+
+  /**
+   * GET /api/investments/assets/:assetId/quote?date=YYYY-MM-DD
+   * Consulta preço de referência para ativo já cadastrado.
+   */
+  router.get('/assets/:assetId/quote', async (req, res, next) => {
+    const traceId = crypto.randomUUID();
+    const userId = req.user.userId;
+
+    try {
+      const result = await service.getBrapiQuoteByAsset({
+        userId,
+        assetId: req.params.assetId,
+        referenceDate: req.query.date,
+      });
+
+      return res.json({
+        success: true,
+        traceId,
+        ...result,
+      });
+    } catch (error) {
+      logger.error('InvestmentsRoute', 'system', `Falha em assets/:assetId/quote: ${error.message}`, {
         traceId,
         userId,
       });

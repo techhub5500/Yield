@@ -122,7 +122,7 @@
                 }
 
                 .widget-card {
-                    width: 640px;
+                    width: 880px;
                     height: 430px;
                     background: rgba(40, 35, 30, 0.4);
                     backdrop-filter: blur(16px);
@@ -130,11 +130,26 @@
                     border: 1px solid rgba(255, 230, 200, 0.08);
                     border-radius: 20px;
                     box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    padding: 24px;
                     position: relative;
                     overflow: hidden;
                     box-sizing: border-box;
                     color: #EAE5E0;
+                    display: flex;
+                    flex-direction: row;
+                }
+
+                .left-side {
+                    flex: 1;
+                    padding: 24px;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                }
+
+                .right-side {
+                    width: 260px;
+                    border-left: 0.5px solid rgba(212, 175, 55, 0.12);
+                    padding: 24px 20px;
                     display: flex;
                     flex-direction: column;
                 }
@@ -144,8 +159,6 @@
                     justify-content: space-between;
                     align-items: flex-start;
                     margin-bottom: 20px;
-                    flex-wrap: wrap;
-                    gap: 16px;
                     flex-shrink: 0;
                 }
 
@@ -194,15 +207,15 @@
 
                 .kpi-section {
                     display: grid;
-                    grid-template-columns: 1.25fr 0.9fr 0.9fr;
+                    grid-template-columns: 1fr 0.8fr 0.8fr;
                     gap: 16px;
                     margin-bottom: 20px;
                     flex-shrink: 0;
                 }
 
                 .kpi-box { display: flex; flex-direction: column; justify-content: center; }
-                .kpi-box.secondary { border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px; }
-                .kpi-box.tertiary { border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px; }
+                .kpi-box.secondary { border-left: 1px solid rgba(212, 175, 55, 0.4); padding-left: 15px; }
+                .kpi-box.tertiary { border-left: 1px solid rgba(212, 175, 55, 0.4); padding-left: 15px; }
 
                 .label {
                     font-size: 0.65rem;
@@ -212,13 +225,13 @@
                     margin-bottom: 4px;
                 }
 
-                .main-value { font-size: 1.85rem; font-weight: 300; color: #EAE5E0; line-height: 1; }
-                .sub-value { font-size: 1.3rem; color: #EAE5E0; margin-top: 2px; }
+                .main-value { font-size: 1.8rem; font-weight: 300; color: #EAE5E0; line-height: 1; }
+                .sub-value { font-size: 1.25rem; color: #EAE5E0; margin-top: 2px; }
 
                 .variation {
                     display: inline-flex;
                     align-items: center;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
                     font-weight: 600;
                     margin-top: 6px;
                     padding: 3px 8px;
@@ -230,11 +243,10 @@
 
                 .chart-container {
                     width: 100%;
-                    height: 110px;
+                    height: 140px;
                     position: relative;
-                    margin-bottom: 20px;
                     cursor: crosshair;
-                    flex-shrink: 0;
+                    flex: 1;
                 }
 
                 svg { width: 100%; height: 100%; overflow: visible; }
@@ -266,15 +278,14 @@
                 }
 
                 .details-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    border-top: 1px solid rgba(255, 230, 200, 0.08);
-                    padding-top: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
                     flex: 1;
                     overflow-y: auto;
                     scrollbar-width: thin;
                     scrollbar-color: rgba(212, 175, 55, 0.3) transparent;
+                    padding-right: 4px;
                 }
 
                 .details-grid::-webkit-scrollbar { width: 4px; }
@@ -365,65 +376,66 @@
             </style>
 
             <div class="widget-card">
-                <div class="header">
-                    <div>
-                        <div id="backNav">←</div>
-                        <h2 id="cardTitle">Patrimônio Total</h2>
-                        <div class="subtitle" id="cardSubtitle">Posições ativas marcadas a mercado</div>
+                <div class="left-side">
+                    <div class="header">
+                        <div>
+                            <div id="backNav">←</div>
+                            <h2 id="cardTitle">Patrimônio Total</h2>
+                            <div class="subtitle" id="cardSubtitle">Posições ativas marcadas a mercado</div>
+                        </div>
+
+                        <div class="filters">
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-currency="BRL">R$</button>
+                                <button class="filter-btn" data-currency="USD">US$</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-class="all">Todas</button>
+                                <button class="filter-btn" data-class="RV">RV</button>
+                                <button class="filter-btn" data-class="RF">RF</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn" id="timeFilterBtn">Período</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="filters">
-                        <div class="filter-group">
-                            <button class="filter-btn active" data-currency="BRL">R$</button>
-                            <button class="filter-btn" data-currency="USD">US$</button>
+                    <div class="kpi-section">
+                        <div class="kpi-box">
+                            <span class="label" id="mainLabel">Valor Atual</span>
+                            <div class="main-value" id="mainValue">—</div>
+                            <div class="variation" id="mainVariation">—</div>
                         </div>
-                        <div class="filter-group">
-                            <button class="filter-btn active" data-class="all">Todas</button>
-                            <button class="filter-btn" data-class="RV">RV</button>
-                            <button class="filter-btn" data-class="RF">RF</button>
+                        <div class="kpi-box secondary">
+                            <span class="label" id="secondaryLabel">Capital investido</span>
+                            <div class="sub-value" id="secondaryValue">—</div>
                         </div>
-                        <div class="filter-group">
-                            <button class="filter-btn" id="timeFilterBtn">Período</button>
+                        <div class="kpi-box tertiary">
+                            <span class="label" id="tertiaryLabel">Realizado (Em caixa)</span>
+                            <div class="sub-value" id="tertiaryValue">—</div>
                         </div>
+                    </div>
+
+                    <div class="chart-container" id="chartContainer">
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                            <defs>
+                                <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.4"></stop>
+                                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
+                                </linearGradient>
+                            </defs>
+
+                            <path class="chart-area" id="chartArea"></path>
+                            <path class="chart-line" id="chartLine"></path>
+                            <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
+                            <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
+                        </svg>
                     </div>
                 </div>
 
-                <div class="kpi-section">
-                    <div class="kpi-box">
-                        <span class="label" id="mainLabel">Valor Atual</span>
-                        <div class="main-value" id="mainValue">—</div>
-                        <div class="variation" id="mainVariation">—</div>
-                    </div>
-                    <div class="kpi-box secondary">
-                        <span class="label" id="secondaryLabel">Capital investido</span>
-                        <div class="sub-value" id="secondaryValue">—</div>
-                    </div>
-                    <div class="kpi-box tertiary">
-                        <span class="label" id="tertiaryLabel">Realizado (Em caixa)</span>
-                        <div class="sub-value" id="tertiaryValue">—</div>
-                    </div>
-                </div>
-
-                <div class="chart-container" id="chartContainer">
-                    <div class="chart-tooltip" id="chartTooltip"></div>
-                    <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
-                        <defs>
-                            <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
-                                <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.4"></stop>
-                                <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
-                            </linearGradient>
-                        </defs>
-
-                        <path class="chart-area" id="chartArea"></path>
-                        <path class="chart-line" id="chartLine"></path>
-                        <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
-                        <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
-                    </svg>
-                </div>
-
-                <div class="details-grid" id="detailsGrid">
-                    <div><span class="label" style="opacity:0.7;">Ativos</span></div>
-                    <div><span class="label" style="opacity:0.7;">Detalhes</span></div>
+                <div class="right-side">
+                    <div class="details-grid" id="detailsGrid"></div>
                 </div>
 
                 <div class="modal-overlay" id="timeModal">
@@ -446,7 +458,7 @@
     function createPatrimonioCardController(slotElement) {
         if (!slotElement) return null;
 
-        const BASE_WIDTH = 640;
+        const BASE_WIDTH = 880;
         const BASE_HEIGHT = 430;
         const shell = document.createElement('div');
         shell.className = 'patrimonio-widget-shell';
@@ -490,7 +502,6 @@
             snapshotBeforeSimulation: null,
             activeFilters: {
                 currencies: ['BRL'],
-                periodsMonths: [2, 3, 6, 12],
                 groupBy: 'month',
             },
         };
@@ -507,8 +518,12 @@
             opt.addEventListener('click', () => {
                 const months = parseInt(opt.getAttribute('data-months'), 10);
                 timeModal.style.display = 'none';
-                const periods = months > 0 ? [months] : [2, 3, 6, 12];
-                fetchAndRenderLiveData({ periodsMonths: periods }).catch(() => {});
+                if (months > 0) {
+                    fetchAndRenderLiveData({ periodsMonths: [months] }).catch(() => {});
+                    return;
+                }
+
+                fetchAndRenderLiveData({ periodsMonths: undefined }).catch(() => {});
             });
         });
 
@@ -578,10 +593,8 @@
 
         function renderDetails(viewData) {
             const details = normalizeDetails(viewData.details);
-            const buildColumn = (items, title) => {
-                if (!items.length) {
-                    return `<div><span class="label" style="opacity:0.7;">${title}</span></div>`;
-                }
+            const buildSection = (items, title) => {
+                if (!items.length) return '';
                 const rows = items.map((item) => `
                     <div class="asset-row" data-view="${item.id || ''}">
                         <div class="asset-info">
@@ -594,10 +607,10 @@
                         </div>
                     </div>
                 `).join('');
-                return `<div><span class="label" style="opacity:0.7;">${title}</span>${rows}</div>`;
+                return `<div style="margin-bottom: 20px;"><span class="label" style="opacity:0.7; display: block; margin-bottom: 8px;">${title}</span>${rows}</div>`;
             };
 
-            detailsGrid.innerHTML = `${buildColumn(details.left, 'Ativos')}${buildColumn(details.right, 'Detalhes')}`;
+            detailsGrid.innerHTML = `${buildSection(details.left, 'Ativos')}${buildSection(details.right, 'Detalhes')}`;
         }
 
         function attachRowListeners() {
@@ -761,6 +774,10 @@
 
             if (!mergedFilters.assetClasses || mergedFilters.assetClasses.length === 0) {
                 delete mergedFilters.assetClasses;
+            }
+
+            if (!mergedFilters.periodsMonths || mergedFilters.periodsMonths.length === 0) {
+                delete mergedFilters.periodsMonths;
             }
 
             state.activeFilters = mergedFilters;

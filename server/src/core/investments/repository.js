@@ -189,6 +189,7 @@ async function upsertAsset(payload) {
     userId: payload.userId,
     assetId,
     name: payload.name,
+    ticker: payload.ticker || null,
     assetClass: payload.assetClass,
     category: payload.category,
     currency: payload.currency,

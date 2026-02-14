@@ -28,10 +28,35 @@ class BrapiClient {
   /**
    * Obtém cotação de um ativo.
    * @param {string} ticker - Ticker do ativo (ex: PETR4, VALE3)
+   * @param {Object} [options]
    * @returns {Promise<Object>} Dados de cotação
    */
-  async getQuote(ticker) {
-    return await this._request(`/quote/${encodeURIComponent(ticker)}`, { ticker });
+  async getQuote(ticker, options = {}) {
+    return await this._request(`/quote/${encodeURIComponent(ticker)}`, {
+      ticker,
+      ...options,
+    });
+  }
+
+  /**
+   * Obtém histórico diário de um ativo.
+   * @param {string} ticker
+   * @param {Object} [options]
+   * @returns {Promise<Object>}
+   */
+  async getQuoteHistory(ticker, options = {}) {
+    const params = {
+      ticker,
+      interval: options.interval || '1d',
+      range: options.range || 'max',
+      ...options,
+    };
+
+    try {
+      return await this._request(`/quote/${encodeURIComponent(ticker)}`, params);
+    } catch (_error) {
+      return await this._request(`/v2/quote/${encodeURIComponent(ticker)}`, params);
+    }
   }
 
   /**

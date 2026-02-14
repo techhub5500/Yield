@@ -12,6 +12,15 @@ const { normalizeInvestmentsFilters } = require('./filters');
 const { buildPeriodWindows } = require('./periods');
 const repository = require('./repository');
 const { ensureInvestmentsMetricsRegistered } = require('./metrics-registry');
+const {
+  isIsoDate,
+  normalizeTicker,
+  isTickerLike,
+  adjustWeekendDate,
+  extractDailyHistory,
+  pickPriceForDate,
+  toIsoDate,
+} = require('./brapi-utils');
 
 const ALLOWED_ASSET_CLASSES = ['fixed_income', 'equity', 'funds', 'crypto', 'cash'];
 
@@ -26,7 +35,119 @@ class InvestmentsMetricsService {
    */
   constructor(deps = {}) {
     this.financeBridge = deps.financeBridge || null;
+    this.brapiClient = deps.brapiClient || deps.searchManager?.brapi || null;
     ensureInvestmentsMetricsRegistered();
+  }
+
+  /**
+   * @returns {void}
+   */
+  assertBrapiClient() {
+    if (!this.brapiClient) {
+      throw new Error('Cliente Brapi não configurado para investimentos');
+    }
+  }
+
+  /**
+   * Resolve ticker a partir de payload/metadata/nome.
+   * @param {Object} payload
+   * @returns {string|null}
+   */
+  resolveTickerFromPayload(payload = {}) {
+    const candidate = normalizeTicker(
+      payload.ticker
+      || payload.metadata?.ticker
+      || payload.name
+    );
+
+    if (!isTickerLike(candidate)) return null;
+    return candidate;
+  }
+
+  /**
+   * Consulta Brapi para ticker e data de referência.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async getBrapiQuoteByTicker(input) {
+    this.assertBrapiClient();
+
+    const ticker = normalizeTicker(input?.ticker);
+    const requestedDate = isIsoDate(input?.referenceDate)
+      ? input.referenceDate
+      : toIsoDate(new Date());
+
+    if (!isTickerLike(ticker)) {
+      throw new Error('Ticker inválido para consulta na Brapi');
+    }
+
+    const adjustedReferenceDate = adjustWeekendDate(requestedDate);
+
+    let response;
+    try {
+      response = await this.brapiClient.getQuoteHistory(ticker, {
+        interval: '1d',
+        range: 'max',
+      });
+    } catch (_error) {
+      response = await this.brapiClient.search(ticker);
+    }
+
+    const firstResult = response?.results?.[0]
+      || response?.coins?.[0]
+      || response?.currencies?.[0]
+      || response
+      || {};
+    const regularMarketPrice = Number(firstResult.regularMarketPrice || 0);
+    const history = extractDailyHistory(response);
+    const matched = pickPriceForDate(history, adjustedReferenceDate);
+    const priceOnReferenceDate = Number.isFinite(Number(matched?.price))
+      ? Number(matched.price)
+      : (Number.isFinite(regularMarketPrice) ? regularMarketPrice : 0);
+
+    return {
+      success: true,
+      ticker,
+      shortName: firstResult.shortName || ticker,
+      longName: firstResult.longName || firstResult.shortName || ticker,
+      currency: firstResult.currency || 'BRL',
+      regularMarketPrice: Number.isFinite(regularMarketPrice) ? regularMarketPrice : 0,
+      referenceDate: requestedDate,
+      adjustedReferenceDate,
+      priceOnReferenceDate,
+      sourceDate: matched?.date || adjustedReferenceDate,
+      hasHistory: history.length > 0,
+    };
+  }
+
+  /**
+   * Consulta preço para ativo já cadastrado.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async getBrapiQuoteByAsset(input) {
+    const { userId, assetId, referenceDate } = input;
+    this.assertUserId(userId);
+    if (!assetId) throw new Error('assetId é obrigatório');
+
+    const asset = await repository.getAssetById({ userId, assetId });
+    if (!asset) throw new Error('Ativo não encontrado para este usuário');
+
+    const tickerCandidate = normalizeTicker(asset.ticker || asset.metadata?.ticker || asset.name);
+    if (!isTickerLike(tickerCandidate)) {
+      throw new Error('Ativo não possui ticker válido para consulta na Brapi');
+    }
+
+    const quote = await this.getBrapiQuoteByTicker({
+      ticker: tickerCandidate,
+      referenceDate,
+    });
+
+    return {
+      ...quote,
+      assetId,
+      assetName: asset.name,
+    };
   }
 
   /**
@@ -66,17 +187,24 @@ class InvestmentsMetricsService {
     const currency = String(payload.currency || 'BRL').trim() || 'BRL';
     const status = String(payload.status || 'open').trim() || 'open';
     const tags = Array.isArray(payload.tags) ? payload.tags : [];
+    const ticker = this.resolveTickerFromPayload(payload);
+
+    const metadata = {
+      ...(payload.metadata || {}),
+      ...(ticker ? { ticker } : {}),
+    };
 
     const createdAsset = await repository.upsertAsset({
       userId,
       name,
+      ticker,
       assetClass,
       category,
       currency,
       status,
       accountId: payload.accountId || null,
       tags,
-      metadata: payload.metadata || {},
+      metadata,
     });
 
     const position = await repository.insertPositionSnapshot({
@@ -449,6 +577,7 @@ class InvestmentsMetricsService {
         userId,
         repository,
         financeBridge: this.financeBridge,
+        brapiClient: this.brapiClient,
       },
     });
 

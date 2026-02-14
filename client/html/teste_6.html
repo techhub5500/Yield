@@ -46,8 +46,11 @@
         }
 
         .widget-card {
+            display: flex;
+            flex-direction: row;
             width: 100%;
-            max-width: 640px; 
+            max-width: 880px; /* Increased from 640px */
+            height: 430px; /* Maintain a consistent height */
             background: var(--glass-surface);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -56,8 +59,26 @@
             box-shadow: 
                 0 20px 40px rgba(0,0,0,0.4),
                 inset 0 1px 0 var(--glass-shine);
-            padding: 24px;
+            padding: 0;
             position: relative;
+            overflow: hidden;
+        }
+
+        .left-side {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .right-side {
+            width: 280px;
+            border-left:  0.5px solid rgba(212, 175, 55, 0.107); /* Gold color separator */
+            padding: 24px 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
         /* Header */
@@ -249,13 +270,13 @@
 
         /* Lista de Detalhes */
         .details-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 16px;
-            max-height: 180px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
             overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-gold) transparent;
         }
 
         .details-grid::-webkit-scrollbar { width: 4px; }
@@ -316,62 +337,66 @@
 <body>
 
     <div class="widget-card">
-        <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Volatilidade Anualizada</h2>
-                <div class="subtitle" id="cardSubtitle">Oscilação e Risco do Portfólio (12 Meses)</div>
+        <div class="left-side">
+            <div class="header">
+                <div>
+                    <div id="backNav">←</div>
+                    <h2 id="cardTitle">Volatilidade Anualizada</h2>
+                    <div class="subtitle" id="cardSubtitle">Oscilação e Risco do Portfólio (12 Meses)</div>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <button class="filter-btn">MTD</button>
+                        <button class="filter-btn">YTD</button>
+                        <button class="filter-btn active">12M</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active">Consol.</button>
+                        <button class="filter-btn">Classes</button>
+                    </div>
+                    <div class="filter-group">
+                        <button class="filter-btn active">vs IBOV</button>
+                        <button class="filter-btn">vs CDI</button>
+                    </div>
+                </div>
             </div>
-            
-            <div class="filters">
-                <div class="filter-group">
-                    <button class="filter-btn">MTD</button>
-                    <button class="filter-btn">YTD</button>
-                    <button class="filter-btn active">12M</button>
+
+            <div class="kpi-section">
+                <div class="kpi-box">
+                    <span class="label" id="mainLabel">Volatilidade (Portfólio)</span>
+                    <div class="main-value" id="mainValue">14,2%</div>
+                    <div class="subtitle" id="mainSub">Desvio Padrão Anual.</div>
                 </div>
-                <div class="filter-group">
-                    <button class="filter-btn active">Consol.</button>
-                    <button class="filter-btn">Classes</button>
+                <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
+                    <span class="label" id="secondaryLabel">Volatilidade (Benchmark)</span>
+                    <div class="sub-value" id="benchValue">18,5%</div>
+                    <div class="subtitle" id="benchSub">IBOV</div>
                 </div>
-                <div class="filter-group">
-                    <button class="filter-btn active">vs IBOV</button>
-                    <button class="filter-btn">vs CDI</button>
+                
+                <div class="kpi-row-secondary">
+                    <div class="kpi-mini">
+                        <span class="label">Máximo Drawdown</span>
+                        <div class="mini-value" id="drawdownValue">-8,40% <span class="variation-pill negative">Risco Baixo</span></div>
+                    </div>
+                    <div class="kpi-mini">
+                        <span class="label">Índice Sharpe</span>
+                        <div class="mini-value" id="sharpeValue">1.35 <span class="variation-pill">Excedente</span></div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="chart-container" id="chartContainer">
+                <div class="chart-tooltip" id="chartTooltip"></div>
+                <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                    </svg>
             </div>
         </div>
 
-        <div class="kpi-section">
-            <div class="kpi-box">
-                <span class="label" id="mainLabel">Volatilidade (Portfólio)</span>
-                <div class="main-value" id="mainValue">14,2%</div>
-                <div class="subtitle" id="mainSub">Desvio Padrão Anual.</div>
-            </div>
-            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
-                <span class="label" id="secondaryLabel">Volatilidade (Benchmark)</span>
-                <div class="sub-value" id="benchValue">18,5%</div>
-                <div class="subtitle" id="benchSub">IBOV</div>
-            </div>
-            
-            <div class="kpi-row-secondary">
-                <div class="kpi-mini">
-                    <span class="label">Máximo Drawdown</span>
-                    <div class="mini-value" id="drawdownValue">-8,40% <span class="variation-pill negative">Risco Baixo</span></div>
+        <div class="right-side">
+            <div class="details-grid" id="detailsGrid">
                 </div>
-                <div class="kpi-mini">
-                    <span class="label">Índice Sharpe</span>
-                    <div class="mini-value" id="sharpeValue">1.35 <span class="variation-pill">Excedente</span></div>
-                </div>
-            </div>
         </div>
-
-        <div class="chart-container" id="chartContainer">
-            <div class="chart-tooltip" id="chartTooltip"></div>
-            <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
-                </svg>
-        </div>
-
-        <div class="details-grid" id="detailsGrid">
-            </div>
     </div>
 
     <script>
