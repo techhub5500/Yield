@@ -272,3 +272,97 @@ Esta base suporta dois fluxos, que podem coexistir:
 Usuário (chat) → `POST /api/message` → Junior/Dispatcher → Coordenador de Investimentos → tool request (FinanceBridge/Search/Math) → dados reais → síntese → resposta.
 
 No futuro, cards e agente podem compartilhar as mesmas métricas (mesma fonte e agregação), reduzindo duplicação.
+
+---
+
+## 10) Card oficial: Rentabilidade Consolidada (implementado)
+
+### 10.1 O que foi implementado
+
+- Card oficial de **Rentabilidade Consolidada** em `client/html/invest-dash.html` (aba Rentabilidade).
+- Novo módulo frontend dedicado: `client/js/invest-dash.rentabilidade.js`.
+- Nova métrica backend registrada: `investments.profitability` em `src/core/investments/metrics-registry.js`.
+- Integração no bootstrap do dashboard em `client/js/invest-dash.js`.
+
+### 10.2 Estrutura de cálculo (reaproveitamento da base)
+
+Para evitar duplicação de regra de negócio, a métrica reaproveita a mesma base transacional do card de patrimônio:
+
+- Estados por ativo são derivados de `investments_transactions` (operações manuais como compra, venda, proventos).
+- Cálculo temporal usa as mesmas funções de evolução de estado por data (`buildStateUntilDate`, custos, realizado, posição aberta).
+- O card de rentabilidade calcula série temporal de retorno do portfólio sobre o período selecionado:
+  - `retorno_portfolio(t) = (valor_total(t) / valor_total(início_período) - 1) * 100`
+  - `valor_total = valor_em_aberto + caixa_realizado`
+
+### 10.3 Contribuição para rentabilidade total
+
+A regra foi mantida e dinamizada:
+
+- **Contribuição (p.p.) = Retorno do ativo (%) × Peso no patrimônio (fração)**
+
+No backend:
+
+- Retorno do ativo é medido entre início e fim do período selecionado.
+- Peso considera participação do ativo no patrimônio ao final do período.
+- O card apresenta contribuições agrupadas em Renda Variável e Renda Fixa, com drill-down por ativo.
+
+### 10.4 Persistência e fonte de dados
+
+Todos os dados do card são dinâmicos e vinculados ao usuário autenticado, via MongoDB:
+
+- `investments_transactions`
+- `investments_positions`
+- `investments_assets`
+
+Não há dados fixos no frontend para o card oficial.
+
+### 10.5 Períodos suportados (primeiro nível)
+
+Filtro implementado no card e enviado ao backend por `periodPreset`:
+
+- `mtd`: 1º dia do mês atual até hoje.
+- `ytd`: 1º dia útil de janeiro até hoje.
+- `12m`: últimos 12 meses móveis.
+- `origin`: desde o início da carteira (primeiro evento do usuário).
+
+Essas regras são aplicadas no backend (`metrics-registry`), garantindo consistência do cálculo para gráfico, KPI e benchmarks.
+
+### 10.6 Benchmarks (fontes e organização)
+
+Implementado em `src/core/investments/benchmarks.js`:
+
+- **CDI**: JSON local `server/docs/md_sistema/taxa_cdi.json`
+- **Ibovespa**: JSON local `server/docs/md_sistema/ibov.json`
+- **Selic**: BRAPI (`/api/v2/prime-rate`) via `BrapiClient.getPrimeRateHistory()`
+- **IFIX**: BRAPI via histórico de cotação (`getQuoteHistory('IFIX')`)
+
+Regras adotadas:
+
+- JSONs permanecem em arquivo dedicado para atualização por edição de dados, sem hardcode no JS do frontend.
+- Benchmark é calculado por ponto temporal da série, não apenas no fechamento.
+
+### 10.7 Regra crítica de alinhamento temporal
+
+Para cada ponto exibido no gráfico:
+
+- O valor do portfólio e os valores dos benchmarks usam a **mesma data âncora**.
+- Tooltip exibe benchmark correspondente exatamente ao ponto selecionado pelo usuário.
+
+Isso elimina desalinhamento temporal entre rentabilidade e comparação de referência.
+
+### 10.8 Estrutura do frontend (separação de responsabilidades)
+
+- `client/js/invest-dash.rentabilidade.js`
+  - Renderiza card em Shadow DOM
+  - Aplica filtros MTD/YTD/12M/Origem
+  - Consome `window.YieldInvestments.api.queryCards(...)`
+  - Renderiza gráfico, tooltip e benchmarks sincronizados por ponto
+  - Navegação de drill-down sem acoplar regras de negócio
+
+- `client/js/invest-dash.js`
+  - Instancia o controller de rentabilidade e mantém integração com os demais cards
+
+- `client/js/invest-dash.manual-modal.js`
+  - Após `create/edit/delete` no Lançamento Manual, executa refresh de **todos** os cards registrados em `window.YieldInvestments.cards` (não apenas Patrimônio), mantendo Rentabilidade e demais cards sincronizados com as movimentações.
+
+---

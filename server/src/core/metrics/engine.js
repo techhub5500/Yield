@@ -7,6 +7,7 @@
 
 const logger = require('../../utils/logger');
 const { getMetric } = require('./registry');
+const { listMetrics } = require('./registry');
 
 /**
  * Executa múltiplas métricas de forma isolada (falha de uma não derruba outras).
@@ -34,6 +35,13 @@ async function runMetrics(input) {
     const metric = getMetric(metricId);
 
     if (!metric) {
+      const availableMetricIds = listMetrics().map((item) => item.id);
+      logger.logic('WARN', 'MetricsEngine', `Métrica não registrada: ${metricId}`, {
+        traceId: context?.traceId,
+        requestedMetricId: metricId,
+        availableMetricIds,
+      });
+
       results.push({
         metricId,
         status: 'not_found',

@@ -227,11 +227,37 @@
         /* Linha de Benchmark */
         .benchmark-line {
             fill: none;
-            stroke: rgba(255, 255, 255, 0.3);
-            stroke-width: 1.5;
-            stroke-dasharray: 4, 4;
+            stroke-width: 1.2;
+            stroke-dasharray: 4, 3;
             stroke-linecap: round;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
+        .benchmark-line.active { opacity: 1; }
+        .bench-cdi { stroke: rgba(255, 255, 255, 0.4); }
+        .bench-selic { stroke: var(--positive); }
+        .bench-ibov { stroke: var(--primary-gold); }
+        .bench-ifix { stroke: var(--terracotta); }
+
+        .benchmarks-summary {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+        }
+        .bench-item {
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid transparent;
+            padding-left: 8px;
+        }
+        .bench-item.cdi { border-color: rgba(255, 255, 255, 0.4); }
+        .bench-item.selic { border-color: var(--positive); }
+        .bench-item.ibov { border-color: var(--primary-gold); }
+        .bench-item.ifix { border-color: var(--terracotta); }
+        
+        .bench-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text-muted); }
+        .bench-val { font-size: 0.9rem; color: var(--text-main); font-weight: 600; }
 
         .interactive-line {
             stroke: rgba(255, 255, 255, 0.2);
@@ -384,9 +410,10 @@
                     </div>
                 </div>
                 <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
-                    <span class="label" id="secondaryLabel">Benchmark (CDI)</span>
-                    <div class="sub-value" style="font-size: 1.3rem; color: var(--text-main);" id="secondaryValue">15,25%</div>
-                    <div class="subtitle" style="margin-top: 4px; font-size: 0.65rem;">Meta superada</div>
+                    <span class="label">Benchmarks Comparativos</span>
+                    <div class="benchmarks-summary" id="benchmarksSummary">
+                        <!-- Conteúdo dinâmico -->
+                    </div>
                 </div>
             </div>
 
@@ -402,7 +429,11 @@
                     
                     <path class="chart-area" d="M0,180 C150,170 300,100 450,80 S650,40 800,20 V200 H0 Z" />
                     
-                    <path class="benchmark-line" d="M0,180 C150,175 300,140 450,120 S650,90 800,80" />
+                    <!-- Benchmarks -->
+                    <path id="path-cdi" class="benchmark-line bench-cdi" d="M0,180 C150,175 300,140 450,120 S650,90 800,80" />
+                    <path id="path-selic" class="benchmark-line bench-selic" d="M0,182 C150,177 300,145 450,125 S650,95 800,85" />
+                    <path id="path-ibov" class="benchmark-line bench-ibov" d="M0,185 C150,160 300,150 450,110 S650,70 800,60" />
+                    <path id="path-ifix" class="benchmark-line bench-ifix" d="M0,178 C150,170 300,135 450,115 S650,85 800,75" />
                     
                     <path class="chart-line" d="M0,180 C150,170 300,100 450,80 S650,40 800,20" />
                     
@@ -454,8 +485,12 @@
                 label: 'Retorno do Período',
                 value: '18,45%',
                 variation: 'Alfa: +3,20 p.p.',
-                secondaryLabel: 'Benchmark (CDI)',
-                secondaryValue: '15,25%',
+                benchmarks: [
+                    { id: 'cdi', name: 'CDI', value: '15,25%' },
+                    { id: 'selic', name: 'Selic', value: '15,15%' },
+                    { id: 'ibov', name: 'Ibovespa', value: '14,00%' },
+                    { id: 'ifix', name: 'IFIX', value: '9,30%' }
+                ],
                 details: {
                     left: [
                         { id: 'acoes-br', name: 'Renda Variável', value: '+12,5%', meta: 'Retorno: 22,40%', varText: 'Contribuição' }
@@ -468,12 +503,14 @@
             // NÍVEL 2: Renda Variável
             'acoes-br': {
                 title: 'Renda Variável',
-                subtitle: 'Rentabilidade vs Ibovespa',
+                subtitle: 'Rentabilidade vs Benchmarks',
                 label: 'Retorno da Classe',
                 value: '22,40%',
                 variation: 'Alfa: +8,40 p.p.',
-                secondaryLabel: 'Benchmark (IBOV)',
-                secondaryValue: '14,00%',
+                benchmarks: [
+                    { id: 'ibov', name: 'Ibovespa', value: '14,00%' },
+                    { id: 'ifix', name: 'IFIX', value: '9,30%' }
+                ],
                 details: {
                     left: [
                         { id: 'stocks', name: 'Stocks (EUA)', value: '+8,1%', meta: 'Retorno: 25,0%', varText: 'Contrib.' },
@@ -487,12 +524,14 @@
             // NÍVEL 2: Renda Fixa
             'rf': {
                 title: 'Renda Fixa',
-                subtitle: 'Rentabilidade vs CDI',
+                subtitle: 'Rentabilidade vs Benchmarks',
                 label: 'Retorno da Classe',
                 value: '13,10%',
                 variation: 'Alfa: -0,10 p.p.',
-                secondaryLabel: 'Benchmark (CDI)',
-                secondaryValue: '13,20%',
+                benchmarks: [
+                    { id: 'cdi', name: 'CDI', value: '13,20%' },
+                    { id: 'selic', name: 'Selic', value: '13,15%' }
+                ],
                 details: {
                     left: [
                         { id: 'ipca', name: 'Tesouro IPCA+', value: '+3,1%', meta: 'Retorno: 14,5%', varText: 'Contrib.' }
@@ -509,8 +548,9 @@
                 label: 'Rentabilidade',
                 value: '25,00%',
                 variation: 'Alfa: +5,0 p.p.',
-                secondaryLabel: 'S&P 500 (BRL)',
-                secondaryValue: '20,00%',
+                benchmarks: [
+                    { id: 'ibov', name: 'Ibovespa', value: '14,00%' }
+                ],
                 details: {
                     left: [
                         { id: 'nvda', name: 'NVDA', value: '+65,0%', meta: 'Contrib: 1,5%', varText: '' }
@@ -526,8 +566,9 @@
                 label: 'Rentabilidade',
                 value: '10,50%',
                 variation: 'Alfa: +1,2 p.p.',
-                secondaryLabel: 'IFIX',
-                secondaryValue: '9,30%',
+                benchmarks: [
+                    { id: 'ifix', name: 'IFIX', value: '9,30%' }
+                ],
                 details: {
                     left: [
                         { id: 'hglg11', name: 'HGLG11', value: '+12,4%', meta: 'Contrib: 0,5%', varText: '' },
@@ -544,8 +585,9 @@
                 label: 'Rentabilidade',
                 value: '18,20%',
                 variation: 'Alfa: +4,2 p.p.',
-                secondaryLabel: 'Benchmark (IBOV)',
-                secondaryValue: '14,00%',
+                benchmarks: [
+                    { id: 'ibov', name: 'Ibovespa', value: '14,00%' }
+                ],
                 details: {
                     left: [
                         { id: 'vale3', name: 'VALE3', value: '+15,0%', meta: 'Contrib: 1,2%', varText: '' },
@@ -682,8 +724,7 @@
         const mainLabel = document.getElementById('mainLabel');
         const mainValue = document.getElementById('mainValue');
         const mainVariation = document.getElementById('mainVariation');
-        const secondaryLabel = document.getElementById('secondaryLabel');
-        const secondaryValue = document.getElementById('secondaryValue');
+        const benchmarksSummary = document.getElementById('benchmarksSummary');
         const detailsGrid = document.getElementById('detailsGrid');
         const widgetCard = document.querySelector('.widget-card');
 
@@ -722,8 +763,21 @@
             mainLabel.innerText = state.label;
             mainValue.innerText = state.value;
             mainVariation.innerText = state.variation;
-            secondaryLabel.innerText = state.secondaryLabel;
-            secondaryValue.innerText = state.secondaryValue;
+
+            // Atualizar Resumo de Benchmarks
+            benchmarksSummary.innerHTML = (state.benchmarks || []).map(b => `
+                <div class="bench-item ${b.id}">
+                    <span class="bench-label">${b.name}</span>
+                    <span class="bench-val">${b.value}</span>
+                </div>
+            `).join('');
+
+            // Atualizar Linhas do Gráfico
+            document.querySelectorAll('.benchmark-line').forEach(line => line.classList.remove('active'));
+            (state.benchmarks || []).forEach(b => {
+                const line = document.getElementById('path-' + b.id);
+                if (line) line.classList.add('active');
+            });
 
             // Lógica de cor do Alfa
             if(state.variation.includes('-')) {
@@ -815,15 +869,43 @@
 
             // Simulação de valores para o tooltip
             const pct = ((200 - pt.y) / 200) * 20; // Aproximação de 0 a 20%
-            const bench = pct - 3.2; 
             
             tooltip.style.display = 'block';
             tooltip.style.left = `${x}px`;
             tooltip.style.top = `${(pt.y / 200) * rect.height}px`;
-            tooltip.innerHTML = `
-                <div style="font-weight: 700; color: var(--primary-gold);">Portfólio: ${pct.toFixed(2)}%</div>
-                <div style="font-size: 0.7rem; color: var(--text-muted);">Benchmark: ${bench.toFixed(2)}%</div>
-            `;
+
+            let tooltipHtml = `<div style="font-weight: 700; color: var(--primary-gold); margin-bottom: 4px;">Portfólio: ${pct.toFixed(2)}%</div>`;
+            
+            // Adicionar Benchmarks ativos ao tooltip
+            document.querySelectorAll('.benchmark-line.active').forEach(benchPath => {
+                const bLength = benchPath.getTotalLength();
+                let bLow = 0, bHigh = bLength;
+                let bPt = benchPath.getPointAtLength(0);
+
+                for (let i = 0; i < 8; i++) {
+                    const mid = (bLow + bHigh) / 2;
+                    bPt = benchPath.getPointAtLength(mid);
+                    if (bPt.x < targetX) bLow = mid;
+                    else bHigh = mid;
+                }
+
+                const bPct = ((200 - bPt.y) / 200) * 20;
+                
+                // Mapeamento de Nomes
+                const names = { 'cdi': 'CDI', 'selic': 'Selic', 'ibov': 'Ibovespa', 'ifix': 'IFIX' };
+                const bId = benchPath.id.replace('path-', '');
+                const bLabel = names[bId] || bId.toUpperCase();
+                
+                // Mapeamento de cor para o label
+                let colorClass = 'var(--text-muted)';
+                if (benchPath.classList.contains('bench-selic')) colorClass = 'var(--positive)';
+                if (benchPath.classList.contains('bench-ibov')) colorClass = 'var(--primary-gold)';
+                if (benchPath.classList.contains('bench-ifix')) colorClass = 'var(--terracotta)';
+
+                tooltipHtml += `<div style="font-size: 0.7rem; color: ${colorClass}; opacity: 0.9;">${bLabel}: ${bPct.toFixed(2)}%</div>`;
+            });
+
+            tooltip.innerHTML = tooltipHtml;
         });
 
         container.addEventListener('mouseleave', () => {

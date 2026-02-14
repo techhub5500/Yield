@@ -509,11 +509,14 @@
             renderEditStep();
         }
 
-        async function refreshPatrimonioCard() {
-            const card = window.YieldInvestments?.cards?.patrimonio;
-            if (card?.fetchAndRenderLiveData) {
-                await card.fetchAndRenderLiveData();
-            }
+        async function refreshConnectedCards() {
+            const cards = Object.values(window.YieldInvestments?.cards || {});
+            const refreshJobs = cards
+                .filter((card) => typeof card?.fetchAndRenderLiveData === 'function')
+                .map((card) => card.fetchAndRenderLiveData());
+
+            if (!refreshJobs.length) return;
+            await Promise.allSettled(refreshJobs);
         }
 
         function collectFormValues(fieldDefs, prefix, target) {
@@ -812,8 +815,8 @@
 
                 await window.YieldInvestments.api.createManualAsset(requestPayload);
 
-                await refreshPatrimonioCard();
-                setSuccess('Ativo salvo com sucesso e patrimônio atualizado.');
+                await refreshConnectedCards();
+                setSuccess('Ativo salvo com sucesso e cards atualizados.');
             } catch (error) {
                 setError(error.message || 'Falha ao salvar ativo');
             } finally {
@@ -839,7 +842,7 @@
 
                     await window.YieldInvestments.api.deleteAsset(state.edit.selectedAsset.assetId);
 
-                    await refreshPatrimonioCard();
+                    await refreshConnectedCards();
                     setSuccess('Ativo removido com sucesso.');
                     setTimeout(() => {
                         resetFlow();
@@ -860,8 +863,8 @@
                     payload
                 );
 
-                await refreshPatrimonioCard();
-                setSuccess('Movimentação registrada com sucesso e patrimônio recalculado.');
+                await refreshConnectedCards();
+                setSuccess('Movimentação registrada com sucesso e cards recalculados.');
             } catch (error) {
                 setError(error.message || 'Falha ao registrar movimentação');
             } finally {

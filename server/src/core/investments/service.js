@@ -537,6 +537,7 @@ class InvestmentsMetricsService {
         statuses: ['open', 'closed', 'pending_settlement'],
         groupBy: ['day', 'month'],
         periodsMonths: [2, 3, 6, 12],
+        periodPreset: ['mtd', 'ytd', '12m', 'origin'],
       },
       metrics,
     };
@@ -624,6 +625,7 @@ class InvestmentsMetricsService {
     flog.info('InvestmentsMetricsService', 'Consulta de cards recebida', {
       cards: cards.length,
       uniqueMetrics: uniqueMetricIds.length,
+      metricIds: uniqueMetricIds,
     });
 
     const metricsResult = await this.queryMetrics({
@@ -634,6 +636,15 @@ class InvestmentsMetricsService {
     });
 
     const metricsById = new Map(metricsResult.metrics.map((item) => [item.metricId, item]));
+    const unresolvedMetricIds = metricsResult.metrics
+      .filter((metric) => metric.status === 'not_found' || metric.status === 'error')
+      .map((metric) => metric.metricId);
+
+    if (unresolvedMetricIds.length) {
+      flog.warn('InvestmentsMetricsService', 'Métricas não resolvidas na consulta de cards', {
+        unresolvedMetricIds,
+      });
+    }
 
     const cardResults = cards.map((card) => {
       const cardMetrics = (card.metricIds || []).map((metricId) => (

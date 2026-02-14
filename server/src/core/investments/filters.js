@@ -14,7 +14,10 @@ const DEFAULT_FILTERS = {
   accountIds: [],
   tags: [],
   asOf: null,
+  periodPreset: 'origin',
 };
+
+const ALLOWED_PERIOD_PRESETS = new Set(['mtd', 'ytd', '12m', 'origin']);
 
 /**
  * Normaliza array de strings (trim, lower, remove vazios, unique).
@@ -50,6 +53,9 @@ function normalizeInvestmentsFilters(raw = {}) {
     accountIds: normalizeStringArray(input.accountIds || input.accountId),
     tags: normalizeStringArray(input.tags),
     asOf: input.asOf && /^\d{4}-\d{2}-\d{2}$/.test(input.asOf) ? input.asOf : null,
+    periodPreset: ALLOWED_PERIOD_PRESETS.has(String(input.periodPreset || '').toLowerCase())
+      ? String(input.periodPreset || '').toLowerCase()
+      : 'origin',
   };
 
   return { filters, periodsMonths, groupBy };

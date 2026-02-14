@@ -156,7 +156,34 @@ function createAuthRouter() {
       }
 
       // Verificar senha
-      const passwordValid = await bcrypt.compare(password, user.passwordHash);
+      let passwordValid = false;
+
+      if (typeof user.passwordHash === 'string' && user.passwordHash.length > 0) {
+        passwordValid = await bcrypt.compare(password, user.passwordHash);
+      } else if (typeof user.password === 'string' && user.password.length > 0) {
+        // Compatibilidade com registros legados que armazenam senha em texto.
+        // Migra para hash no primeiro login válido.
+        passwordValid = password === user.password;
+
+        if (passwordValid) {
+          const passwordHash = await bcrypt.hash(password, 10);
+          await usersCollection.updateOne(
+            { _id: user._id },
+            {
+              $set: {
+                passwordHash,
+                updatedAt: new Date().toISOString(),
+              },
+              $unset: {
+                password: '',
+              },
+            }
+          );
+
+          logger.system('WARN', 'AuthRoute', `Usuário migrado para passwordHash: ${user.email}`);
+        }
+      }
+
       if (!passwordValid) {
         return res.status(401).json({ error: 'Email ou senha incorretos' });
       }

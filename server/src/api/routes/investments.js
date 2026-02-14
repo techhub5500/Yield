@@ -116,9 +116,13 @@ function createInvestmentsRouter(deps = {}) {
     try {
       const cards = Array.isArray(req.body?.cards) ? req.body.cards : [];
       const filters = req.body?.filters || {};
+      const requestedMetricIds = Array.from(new Set(
+        cards.flatMap((card) => Array.isArray(card?.metricIds) ? card.metricIds : [])
+      ));
 
       flog.debug('InvestmentsRoute', 'cards/query recebido', {
         cardCount: cards.length,
+        metricIds: requestedMetricIds,
       });
 
       const result = await service.queryCards({

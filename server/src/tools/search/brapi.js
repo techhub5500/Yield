@@ -60,6 +60,28 @@ class BrapiClient {
   }
 
   /**
+   * Obtém histórico de taxa básica de juros (ex.: SELIC).
+   * @param {Object} [options]
+   * @param {string} [options.country='brazil']
+   * @param {boolean} [options.historical=true]
+   * @param {string} [options.start] - DD/MM/YYYY
+   * @param {string} [options.end] - DD/MM/YYYY
+   * @param {string} [options.sortBy='date']
+   * @param {string} [options.sortOrder='asc']
+   * @returns {Promise<Object>}
+   */
+  async getPrimeRateHistory(options = {}) {
+    return await this._request('/v2/prime-rate', {
+      country: options.country || 'brazil',
+      historical: String(options.historical ?? true),
+      start: options.start,
+      end: options.end,
+      sortBy: options.sortBy || 'date',
+      sortOrder: options.sortOrder || 'asc',
+    });
+  }
+
+  /**
    * Obtém fundamentos de um ativo.
    * @param {string} ticker - Ticker do ativo
    * @returns {Promise<Object>} Dados de fundamentos

@@ -128,11 +128,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const patrimonioFactory = window.YieldInvestmentsPatrimonio?.createPatrimonioCardController;
     const normalizeWidgetModel = window.YieldInvestmentsPatrimonio?.normalizeWidgetModel;
+    const rentabilidadeFactory = window.YieldInvestmentsRentabilidade?.createRentabilidadeCardController;
     const manualModalFactory = window.YieldInvestmentsManualModal?.createManualAssetModalController;
 
     const patrimonioSlot = document.getElementById('patrimonio-card-slot');
+    const rentabilidadeSlot = document.getElementById('rentabilidade-card-slot');
     const patrimonioCard = typeof patrimonioFactory === 'function'
         ? patrimonioFactory(patrimonioSlot)
+        : null;
+    const rentabilidadeCard = typeof rentabilidadeFactory === 'function'
+        ? rentabilidadeFactory(rentabilidadeSlot)
         : null;
 
     if (typeof manualModalFactory === 'function') {
@@ -146,6 +151,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 patrimonioCard.applyModel(normalizeWidgetModel(null));
             }
         });
+    }
+
+    if (rentabilidadeCard) {
+        window.YieldInvestments.cards.rentabilidade = rentabilidadeCard;
+        rentabilidadeCard.fetchAndRenderLiveData().catch(() => {});
     }
 
     window.YieldInvestments.preloadManifest().catch(() => {});

@@ -13,11 +13,25 @@ const {
   buildAdaptiveAnchorDates,
   toIsoDate,
 } = require('./brapi-utils');
+const {
+  addDays,
+  indexSeriesByDate,
+  buildCdiBenchmarks,
+  buildIbovBenchmarks,
+  buildSelicBenchmarks,
+  buildIfixBenchmarks,
+} = require('./benchmarks');
 
 let _initialized = false;
 
 function formatCurrencyBRL(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+}
+
+function formatPercent(value) {
+  const parsed = Number(value || 0);
+  const signal = parsed >= 0 ? '+' : '';
+  return `${signal}${parsed.toFixed(2).replace('.', ',')}%`;
 }
 
 function classifyAssetGroup(assetClass) {
@@ -35,6 +49,54 @@ function toDateLabel(isoDate) {
   const [year, month] = isoDate.split('-');
   if (!year || !month) return isoDate;
   return `${month}/${String(year).slice(-2)}`;
+}
+
+function toMonthLabel(isoDate) {
+  if (!isoDate) return 'Atual';
+  const [year, month] = String(isoDate).split('-');
+  if (!year || !month) return isoDate;
+  return `${month}/${year}`;
+}
+
+function normalizePeriodPreset(value) {
+  const preset = String(value || '').toLowerCase();
+  if (['mtd', 'ytd', '12m', 'origin'].includes(preset)) return preset;
+  return 'origin';
+}
+
+function startOfMonth(isoDate) {
+  const [year, month] = String(isoDate || '').split('-');
+  return `${year}-${month}-01`;
+}
+
+function firstBusinessDayOfYear(isoDate) {
+  const [year] = String(isoDate || '').split('-');
+  const date = new Date(`${year}-01-01T00:00:00.000Z`);
+  while ([0, 6].includes(date.getUTCDay())) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return toIsoDate(date);
+}
+
+function rolling12mStart(isoDate) {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  date.setUTCMonth(date.getUTCMonth() - 12);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return toIsoDate(date);
+}
+
+function resolvePeriodRange({ preset, asOfDate, originDate }) {
+  const normalized = normalizePeriodPreset(preset);
+  if (normalized === 'mtd') {
+    return { preset: normalized, start: startOfMonth(asOfDate), end: asOfDate, label: 'MTD' };
+  }
+  if (normalized === 'ytd') {
+    return { preset: normalized, start: firstBusinessDayOfYear(asOfDate), end: asOfDate, label: 'YTD' };
+  }
+  if (normalized === '12m') {
+    return { preset: normalized, start: rolling12mStart(asOfDate), end: asOfDate, label: '12M' };
+  }
+  return { preset: 'origin', start: originDate, end: asOfDate, label: 'Origem' };
 }
 
 function sortByDateAndCreation(a, b) {
@@ -105,6 +167,25 @@ function buildStateUntilDate(transactions, targetDate) {
   }
 
   return state;
+}
+
+function buildStateBeforeDate(transactions, targetDate) {
+  const dayBefore = addDays(targetDate, -1);
+  return buildStateUntilDate(transactions, dayBefore);
+}
+
+function toFixed2(value) {
+  return Number((Number(value || 0)).toFixed(2));
+}
+
+function buildPercentRows(items) {
+  return items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    meta: item.meta,
+    value: formatPercent(item.value),
+    varText: `${item.contribution >= 0 ? '+' : ''}${item.contribution.toFixed(2).replace('.', ',')} p.p.`,
+  }));
 }
 
 function buildAssetDetailsRows(assetsModel, groupKey) {
@@ -457,6 +538,362 @@ function ensureInvestmentsMetricsRegistered() {
         },
       };
     },
+  });
+
+  const profitabilityHandler = async ({ context, filters }) => {
+      const transactions = await context.repository.listTransactions({
+        userId: context.userId,
+        filters,
+        end: filters.asOf || null,
+      });
+
+      const assets = await context.repository.listAssets({
+        userId: context.userId,
+        filters,
+      });
+
+      const positions = await context.repository.listLatestPositionsByUser({
+        userId: context.userId,
+        filters,
+        end: filters.asOf || null,
+      });
+
+      const asOfDate = filters.asOf || toIsoDate(new Date());
+
+      const transactionsByAsset = new Map();
+      transactions
+        .sort(sortByDateAndCreation)
+        .forEach((tx) => {
+          if (!tx.assetId) return;
+          if (!transactionsByAsset.has(tx.assetId)) transactionsByAsset.set(tx.assetId, []);
+          transactionsByAsset.get(tx.assetId).push(tx);
+        });
+
+      const positionByAsset = new Map(positions.map((item) => [item.assetId, item]));
+      const assetById = new Map(assets.map((item) => [item.assetId, item]));
+
+      const allAssetIds = new Set([
+        ...Array.from(transactionsByAsset.keys()),
+        ...Array.from(positionByAsset.keys()),
+      ]);
+
+      if (!allAssetIds.size) {
+        return {
+          status: 'empty',
+          data: {
+            widget: {
+              rootView: 'total',
+              period: { preset: 'origin', start: asOfDate, end: asOfDate, label: 'Origem' },
+              chart: { currency: 'PERCENT', points: [] },
+              views: {
+                total: {
+                  title: 'Rentabilidade Consolidada',
+                  subtitle: 'Sem dados para o período selecionado',
+                  label: 'Retorno do Período',
+                  value: '0,00%',
+                  variation: 'Alfa: +0,00 p.p.',
+                  benchmarks: [
+                    { id: 'cdi', name: 'CDI', value: '0,00%' },
+                    { id: 'selic', name: 'Selic', value: '0,00%' },
+                    { id: 'ibov', name: 'Ibovespa', value: '0,00%' },
+                    { id: 'ifix', name: 'IFIX', value: '0,00%' },
+                  ],
+                  details: { left: [], right: [] },
+                },
+              },
+            },
+          },
+        };
+      }
+
+      let originDate = asOfDate;
+      allAssetIds.forEach((assetId) => {
+        const txs = transactionsByAsset.get(assetId) || [];
+        const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || asOfDate;
+        if (firstDate < originDate) originDate = firstDate;
+      });
+
+      const period = resolvePeriodRange({
+        preset: filters.periodPreset,
+        asOfDate,
+        originDate,
+      });
+
+      const anchorDates = buildAdaptiveAnchorDates(period.start, period.end, 24);
+      const historyCache = new Map();
+
+      const assetsModel = [];
+
+      for (const assetId of allAssetIds) {
+        const txs = (transactionsByAsset.get(assetId) || []).sort(sortByDateAndCreation);
+        const position = positionByAsset.get(assetId) || null;
+        const asset = assetById.get(assetId) || {
+          assetId,
+          name: assetId,
+          assetClass: position?.assetClass || 'equity',
+          metadata: {},
+        };
+
+        const ticker = resolveTicker(asset);
+        const canUseBrapi = !!ticker && ['equity', 'crypto'].includes(asset.assetClass);
+        const history = canUseBrapi
+          ? await getTickerHistory(context, ticker, historyCache)
+          : [];
+
+        const pointsByDate = new Map();
+
+        anchorDates.forEach((targetDate) => {
+          const state = buildStateUntilDate(txs, targetDate);
+          const quantityAtDate = txs.length
+            ? state.quantity
+            : (position?.referenceDate && position.referenceDate <= targetDate
+              ? safeNumber(position.quantity)
+              : 0);
+
+          let priceAtDate = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
+          if (history.length) {
+            const matched = pickPriceForDate(history, adjustWeekendDate(targetDate));
+            if (matched) priceAtDate = safeNumber(matched.price, priceAtDate);
+          }
+
+          const openValue = quantityAtDate * priceAtDate;
+          const totalValue = openValue + state.realizedCash;
+
+          pointsByDate.set(targetDate, {
+            date: targetDate,
+            openValue,
+            realizedCash: state.realizedCash,
+            totalValue,
+          });
+        });
+
+        const stateBeforeStart = buildStateBeforeDate(txs, period.start);
+        const firstPoint = pointsByDate.get(anchorDates[0]) || { totalValue: 0, openValue: 0, realizedCash: 0 };
+        const endPoint = pointsByDate.get(period.end) || pointsByDate.get(anchorDates[anchorDates.length - 1]) || firstPoint;
+
+        const startValue = firstPoint.totalValue;
+        const endValue = endPoint.totalValue;
+        const returnPct = startValue > 0 ? ((endValue / startValue) - 1) * 100 : 0;
+
+        assetsModel.push({
+          assetId,
+          name: asset.name || assetId,
+          ticker,
+          assetClass: asset.assetClass,
+          group: classifyAssetGroup(asset.assetClass),
+          txCount: txs.length,
+          pointsByDate,
+          stateBeforeStart,
+          startValue,
+          endValue,
+          returnPct,
+          openEndValue: endPoint.openValue,
+        });
+      }
+
+      const totalsByDate = new Map();
+      anchorDates.forEach((date) => {
+        const total = assetsModel.reduce((sum, assetModel) => {
+          const point = assetModel.pointsByDate.get(date);
+          return sum + Number(point?.totalValue || 0);
+        }, 0);
+
+        totalsByDate.set(date, total);
+      });
+
+      const startTotal = Number(totalsByDate.get(period.start) || totalsByDate.get(anchorDates[0]) || 0);
+
+      const cdiSeries = await buildCdiBenchmarks(anchorDates, period.start);
+      const ibovSeries = await buildIbovBenchmarks(anchorDates, period.start);
+      const selicSeries = await buildSelicBenchmarks(anchorDates, period.start, period.end, context.brapiClient);
+      const ifixSeries = await buildIfixBenchmarks(anchorDates, period.start, context.brapiClient);
+
+      const cdiByDate = indexSeriesByDate(cdiSeries);
+      const selicByDate = indexSeriesByDate(selicSeries);
+      const ibovByDate = indexSeriesByDate(ibovSeries);
+      const ifixByDate = indexSeriesByDate(ifixSeries);
+
+      const chartPoints = anchorDates.map((date) => {
+        const totalAtDate = Number(totalsByDate.get(date) || 0);
+        const portfolioPct = startTotal > 0 ? ((totalAtDate / startTotal) - 1) * 100 : 0;
+
+        return {
+          date,
+          label: toMonthLabel(date),
+          value: toFixed2(portfolioPct),
+          benchmarks: {
+            cdi: toFixed2(cdiByDate.get(date) || 0),
+            selic: toFixed2(selicByDate.get(date) || 0),
+            ibov: toFixed2(ibovByDate.get(date) || 0),
+            ifix: toFixed2(ifixByDate.get(date) || 0),
+          },
+        };
+      });
+
+      const endPoint = chartPoints[chartPoints.length - 1] || { value: 0, benchmarks: { cdi: 0, selic: 0, ibov: 0, ifix: 0 } };
+      const openPatrimony = assetsModel.reduce((sum, item) => sum + item.openEndValue, 0);
+      const totalPatrimony = Number(totalsByDate.get(period.end) || openPatrimony || 0);
+      const alpha = endPoint.value - endPoint.benchmarks.cdi;
+
+      const rvItems = assetsModel
+        .filter((item) => item.group === 'rv' && item.endValue > 0)
+        .map((item) => {
+          const weight = totalPatrimony > 0 ? item.endValue / totalPatrimony : 0;
+          return {
+            id: `asset-${item.assetId}`,
+            name: item.name,
+            meta: item.ticker || item.assetClass,
+            value: item.returnPct,
+            contribution: item.returnPct * weight,
+            group: 'rv',
+            weight,
+          };
+        })
+        .sort((a, b) => b.contribution - a.contribution);
+
+      const rfItems = assetsModel
+        .filter((item) => item.group === 'rf' && item.endValue > 0)
+        .map((item) => {
+          const weight = totalPatrimony > 0 ? item.endValue / totalPatrimony : 0;
+          return {
+            id: `asset-${item.assetId}`,
+            name: item.name,
+            meta: item.ticker || item.assetClass,
+            value: item.returnPct,
+            contribution: item.returnPct * weight,
+            group: 'rf',
+            weight,
+          };
+        })
+        .sort((a, b) => b.contribution - a.contribution);
+
+      const assetViews = assetsModel.reduce((acc, item) => {
+        const weight = totalPatrimony > 0 ? item.endValue / totalPatrimony : 0;
+        acc[`asset-${item.assetId}`] = {
+          title: item.name,
+          subtitle: item.ticker || item.assetClass,
+          label: 'Rentabilidade',
+          value: formatPercent(item.returnPct),
+          variation: `Peso na carteira: ${(weight * 100).toFixed(2).replace('.', ',')}%`,
+          benchmarks: [
+            { id: 'cdi', name: 'CDI', value: formatPercent(endPoint.benchmarks.cdi) },
+            { id: 'selic', name: 'Selic', value: formatPercent(endPoint.benchmarks.selic) },
+          ],
+          details: {
+            left: [
+              {
+                id: '',
+                name: 'Valor no início',
+                meta: period.start,
+                value: formatCurrencyBRL(item.startValue),
+                varText: '',
+              },
+              {
+                id: '',
+                name: 'Valor no fim',
+                meta: period.end,
+                value: formatCurrencyBRL(item.endValue),
+                varText: '',
+              },
+            ],
+            right: [],
+          },
+        };
+        return acc;
+      }, {});
+
+      const views = {
+        total: {
+          title: 'Rentabilidade Consolidada',
+          subtitle: `Período: ${period.label}`,
+          label: 'Retorno do Período',
+          value: formatPercent(endPoint.value),
+          variation: `Alfa: ${alpha >= 0 ? '+' : ''}${alpha.toFixed(2).replace('.', ',')} p.p.`,
+          benchmarks: [
+            { id: 'cdi', name: 'CDI', value: formatPercent(endPoint.benchmarks.cdi) },
+            { id: 'selic', name: 'Selic', value: formatPercent(endPoint.benchmarks.selic) },
+            { id: 'ibov', name: 'Ibovespa', value: formatPercent(endPoint.benchmarks.ibov) },
+            { id: 'ifix', name: 'IFIX', value: formatPercent(endPoint.benchmarks.ifix) },
+          ],
+          details: {
+            left: buildPercentRows(rvItems.slice(0, 8)),
+            right: buildPercentRows(rfItems.slice(0, 8)),
+          },
+        },
+        'renda-variavel': {
+          title: 'Renda Variável',
+          subtitle: 'Contribuição para rentabilidade total',
+          label: 'Retorno da Classe',
+          value: formatPercent(rvItems.reduce((sum, item) => sum + item.value * item.weight, 0)),
+          variation: `Contribuição total: ${rvItems.reduce((sum, item) => sum + item.contribution, 0).toFixed(2).replace('.', ',')} p.p.`,
+          benchmarks: [
+            { id: 'ibov', name: 'Ibovespa', value: formatPercent(endPoint.benchmarks.ibov) },
+            { id: 'ifix', name: 'IFIX', value: formatPercent(endPoint.benchmarks.ifix) },
+          ],
+          details: {
+            left: buildPercentRows(rvItems.slice(0, 12)),
+            right: [],
+          },
+        },
+        'renda-fixa': {
+          title: 'Renda Fixa',
+          subtitle: 'Contribuição para rentabilidade total',
+          label: 'Retorno da Classe',
+          value: formatPercent(rfItems.reduce((sum, item) => sum + item.value * item.weight, 0)),
+          variation: `Contribuição total: ${rfItems.reduce((sum, item) => sum + item.contribution, 0).toFixed(2).replace('.', ',')} p.p.`,
+          benchmarks: [
+            { id: 'cdi', name: 'CDI', value: formatPercent(endPoint.benchmarks.cdi) },
+            { id: 'selic', name: 'Selic', value: formatPercent(endPoint.benchmarks.selic) },
+          ],
+          details: {
+            left: buildPercentRows(rfItems.slice(0, 12)),
+            right: [],
+          },
+        },
+        ...assetViews,
+      };
+
+      if (views.total.details.left.length) {
+        views.total.details.left[0].id = 'renda-variavel';
+      }
+      if (views.total.details.right.length) {
+        views.total.details.right[0].id = 'renda-fixa';
+      }
+
+      return {
+        status: 'ok',
+        data: {
+          widget: {
+            rootView: 'total',
+            period,
+            chart: {
+              currency: 'PERCENT',
+              points: chartPoints,
+            },
+            views,
+          },
+        },
+      };
+    };
+
+  const profitabilityMetricAliases = [
+    'investments.profitability',
+    'investments.rentabilidade',
+    'investments.rentabilidade_consolidada',
+    'investments.profitability_consolidated',
+    'investments.consolidated_profitability',
+  ];
+
+  profitabilityMetricAliases.forEach((metricId) => {
+    registerMetric({
+      id: metricId,
+    title: 'Rentabilidade consolidada',
+    description: 'Rentabilidade do portfólio com comparação temporal por benchmarks (CDI, Selic, Ibovespa e IFIX).',
+    supportedFilters: ['currencies', 'assetClasses', 'statuses', 'accountIds', 'tags', 'periodPreset', 'asOf'],
+    output: { kind: 'widget' },
+    tags: ['investments', 'dashboard', 'rentabilidade'],
+    handler: profitabilityHandler,
+    });
   });
 
   _initialized = true;
