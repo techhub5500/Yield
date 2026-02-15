@@ -59,8 +59,8 @@
                 <div class="option-content active" id="m-opt1">
                     <div class="main-card-full">
                         <div class="card-header">
-                            <button class="card-opt active">Patrimônio Total Investido</button>
-                            <button class="card-opt">Resultado Financeiro</button>
+                            <button class="card-opt active" data-main-card="patrimonio">Patrimônio Total Investido</button>
+                            <button class="card-opt" data-main-card="resultado">Resultado Financeiro</button>
                             <button class="card-opt">Alocação Real vs Planejada</button>
                             <button class="card-opt">Rentabilidade Consolidada</button>
                             <button class="manual-asset-trigger" id="manual-asset-trigger" aria-label="Lançar ativo manualmente">
@@ -70,6 +70,7 @@
                         <div class="card-body">
                             <div class="card-main-content">
                                 <div id="patrimonio-card-slot"></div>
+                                <div id="resultado-card-slot" style="display:none;"></div>
                             </div>
                         </div>
                     </div>
@@ -186,6 +187,7 @@
     <script src="../js/integration.js"></script>
     <script src="../js/invest-dash.patrimonio.js"></script>
     <script src="../js/invest-dash.rentabilidade.js"></script>
+    <script src="../js/invest-dash.resultado.js"></script>
     <script src="../js/invest-dash.manual-modal.js"></script>
     <script src="../js/invest-dash.js"></script>
 </body>

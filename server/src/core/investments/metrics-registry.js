@@ -69,6 +69,15 @@ function startOfMonth(isoDate) {
   return `${year}-${month}-01`;
 }
 
+function firstBusinessDayOfMonth(isoDate) {
+  const [year, month] = String(isoDate || '').split('-');
+  const date = new Date(`${year}-${month}-01T00:00:00.000Z`);
+  while ([0, 6].includes(date.getUTCDay())) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return toIsoDate(date);
+}
+
 function firstBusinessDayOfYear(isoDate) {
   const [year] = String(isoDate || '').split('-');
   const date = new Date(`${year}-01-01T00:00:00.000Z`);
@@ -88,7 +97,7 @@ function rolling12mStart(isoDate) {
 function resolvePeriodRange({ preset, asOfDate, originDate }) {
   const normalized = normalizePeriodPreset(preset);
   if (normalized === 'mtd') {
-    return { preset: normalized, start: startOfMonth(asOfDate), end: asOfDate, label: 'MTD' };
+    return { preset: normalized, start: firstBusinessDayOfMonth(asOfDate), end: asOfDate, label: 'MTD' };
   }
   if (normalized === 'ytd') {
     return { preset: normalized, start: firstBusinessDayOfYear(asOfDate), end: asOfDate, label: 'YTD' };
@@ -200,6 +209,204 @@ function buildAssetDetailsRows(assetsModel, groupKey) {
       value: formatCurrencyBRL(item.currentValue),
       varText: `${item.unrealizedPnl >= 0 ? '+' : ''}${formatCurrencyBRL(item.unrealizedPnl)}`,
     }));
+}
+
+function parsePercentValue(rawValue) {
+  if (rawValue === null || rawValue === undefined) return null;
+  const normalized = String(rawValue).trim().replace('%', '').replace(',', '.');
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseBrapiDateToIso(rawDate) {
+  const text = String(rawDate || '').trim();
+  if (!text) return null;
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+    const [day, month, year] = text.split('/');
+    return `${year}-${month}-${day}`;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return toIsoDate(parsed);
+}
+
+function extractInflationEntries(payload) {
+  const rows = [
+    payload?.inflation,
+    payload?.results,
+    payload?.results?.[0]?.inflation,
+    payload?.data?.inflation,
+  ].find((item) => Array.isArray(item)) || [];
+  if (!Array.isArray(rows)) return [];
+
+  return rows
+    .map((row) => {
+      const date = parseBrapiDateToIso(row?.date || row?.referenceDate);
+      const valuePct = parsePercentValue(row?.value);
+      if (!date || !Number.isFinite(valuePct)) return null;
+      return { date, valuePct };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function collapseInflationByMonth(entries) {
+  const byMonth = new Map();
+
+  entries.forEach((entry) => {
+    const monthKey = String(entry.date || '').slice(0, 7);
+    if (!monthKey) return;
+    const previous = byMonth.get(monthKey);
+    if (!previous || entry.date > previous.date) {
+      byMonth.set(monthKey, entry);
+    }
+  });
+
+  return Array.from(byMonth.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function resolveInflationPctFromEntries(entries) {
+  if (!Array.isArray(entries) || !entries.length) return 0;
+
+  const monthlyEntries = collapseInflationByMonth(entries);
+  if (!monthlyEntries.length) return 0;
+
+  const values = monthlyEntries.map((item) => Number(item.valuePct || 0)).filter(Number.isFinite);
+  if (!values.length) return 0;
+
+  const lastValue = values[values.length - 1];
+
+  const looksLikeAlreadyAccumulated = values.length >= 3
+    && values.filter((value) => Math.abs(value) >= 2).length >= Math.ceil(values.length * 0.6);
+
+  if (looksLikeAlreadyAccumulated) {
+    return lastValue;
+  }
+
+  let factor = 1;
+  values.forEach((valuePct) => {
+    factor *= (1 + (valuePct / 100));
+  });
+
+  const compoundedPct = (factor - 1) * 100;
+
+  if (Math.abs(compoundedPct) > 40 && Math.abs(lastValue) <= 20) {
+    return lastValue;
+  }
+
+  return compoundedPct;
+}
+
+function extractDividendEntries(payload) {
+  const firstResult = payload?.results?.[0] || {};
+
+  const rawRows = [
+    firstResult?.dividendsData,
+    firstResult?.dividends,
+    firstResult?.stockDividends,
+    firstResult?.cashDividends,
+    firstResult?.earningsData,
+    firstResult?.earnings,
+    payload?.dividends,
+    payload?.dividendsData,
+  ].find((item) => Array.isArray(item)) || [];
+
+  return rawRows
+    .map((row) => {
+      const nested = row?.dividend || row?.event || row || {};
+      const amount = Number(
+        nested?.rate
+        ?? nested?.value
+        ?? nested?.amount
+        ?? nested?.cashAmount
+        ?? nested?.cashDividends
+        ?? nested?.price
+      );
+
+      const date = parseBrapiDateToIso(
+        nested?.paymentDate
+        || nested?.date
+        || nested?.approvedOn
+        || nested?.lastDatePrior
+        || nested?.comDate
+        || nested?.exDate
+      );
+
+      if (!date || !Number.isFinite(amount) || amount <= 0) return null;
+      return {
+        date,
+        amount,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function resolveTaxRate(asset) {
+  const metadata = asset?.metadata || {};
+  const taxConfig = metadata.taxConfig || metadata.taxProfile || {};
+
+  const candidates = [
+    metadata.irRate,
+    metadata.taxRate,
+    taxConfig.irRate,
+    taxConfig.taxRate,
+    taxConfig.rate,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      if (parsed > 1) return parsed / 100;
+      return parsed;
+    }
+  }
+
+  if (metadata.taxConfigured || taxConfig.enabled) {
+    return 0.15;
+  }
+
+  return null;
+}
+
+function resolveResultKind(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (['realized', 'unrealized', 'both'].includes(normalized)) return normalized;
+  return 'both';
+}
+
+function toBrapiDate(isoDate) {
+  const [year, month, day] = String(isoDate || '').split('-');
+  if (!year || !month || !day) return '';
+  return `${day}/${month}/${year}`;
+}
+
+async function resolveCumulativeInflationPct(context, startIso, endIso) {
+  if (!context?.brapiClient || typeof context.brapiClient.getInflationHistory !== 'function') return 0;
+  if (!startIso || !endIso || startIso > endIso) return 0;
+
+  try {
+    const payload = await context.brapiClient.getInflationHistory({
+      country: 'brazil',
+      historical: true,
+      start: toBrapiDate(startIso),
+      end: toBrapiDate(endIso),
+      sortBy: 'date',
+      sortOrder: 'asc',
+    });
+
+    const entries = extractInflationEntries(payload);
+    if (!entries.length) return 0;
+    return resolveInflationPctFromEntries(entries);
+  } catch (_error) {
+    return 0;
+  }
 }
 
 function buildWidgetModel(input) {
@@ -893,6 +1100,510 @@ function ensureInvestmentsMetricsRegistered() {
     output: { kind: 'widget' },
     tags: ['investments', 'dashboard', 'rentabilidade'],
     handler: profitabilityHandler,
+    });
+  });
+
+  const financialResultHandler = async ({ context, filters }) => {
+    const transactions = await context.repository.listTransactions({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const assets = await context.repository.listAssets({
+      userId: context.userId,
+      filters,
+    });
+
+    const positions = await context.repository.listLatestPositionsByUser({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const asOfDate = filters.asOf || toIsoDate(new Date());
+    const resultType = resolveResultKind(filters.resultType);
+
+    const transactionsByAsset = new Map();
+    transactions
+      .sort(sortByDateAndCreation)
+      .forEach((tx) => {
+        if (!tx.assetId) return;
+        if (!transactionsByAsset.has(tx.assetId)) transactionsByAsset.set(tx.assetId, []);
+        transactionsByAsset.get(tx.assetId).push(tx);
+      });
+
+    const positionByAsset = new Map(positions.map((item) => [item.assetId, item]));
+    const assetById = new Map(assets.map((item) => [item.assetId, item]));
+
+    const allAssetIds = new Set([
+      ...Array.from(transactionsByAsset.keys()),
+      ...Array.from(positionByAsset.keys()),
+    ]);
+
+    if (!allAssetIds.size) {
+      return {
+        status: 'empty',
+        data: {
+          widget: {
+            rootView: 'total',
+            period: { preset: 'origin', start: asOfDate, end: asOfDate, label: 'Origem' },
+            resultType,
+            taxes: {
+              configured: false,
+              warning: '',
+            },
+            chart: { kind: 'waterfall', points: [] },
+            views: {
+              total: {
+                title: 'Resultado Financeiro',
+                subtitle: 'Sem dados para o período selecionado',
+                label: 'Resultado Bruto',
+                value: formatCurrencyBRL(0),
+                valueClass: 'neutral',
+                roiNominal: 'ROI Nominal: 0,00%',
+                roiReal: 'ROI Real: 0,00%',
+                netLabel: 'Resultado Líquido (Est.)',
+                netValue: formatCurrencyBRL(0),
+                netDescription: 'Após impostos e taxas',
+                warning: '',
+                dividendsLabel: 'Proventos (Div/JCP)',
+                dividendsValue: formatCurrencyBRL(0),
+                realizedLabel: 'Realizado (Caixa)',
+                realizedValue: formatCurrencyBRL(0),
+                realizedShare: '0,0%',
+                unrealizedLabel: 'Não Realizado (Papel)',
+                unrealizedValue: formatCurrencyBRL(0),
+                unrealizedShare: '0,0%',
+                details: { left: [], right: [] },
+              },
+            },
+          },
+        },
+      };
+    }
+
+    let originDate = asOfDate;
+    allAssetIds.forEach((assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || asOfDate;
+      if (firstDate < originDate) originDate = firstDate;
+    });
+
+    const period = resolvePeriodRange({
+      preset: filters.periodPreset,
+      asOfDate,
+      originDate,
+    });
+
+    const historyCache = new Map();
+    const dividendsCache = new Map();
+    const assetModels = [];
+
+    for (const assetId of allAssetIds) {
+      const txs = (transactionsByAsset.get(assetId) || []).sort(sortByDateAndCreation);
+      const position = positionByAsset.get(assetId) || null;
+      const asset = assetById.get(assetId) || {
+        assetId,
+        name: assetId,
+        assetClass: position?.assetClass || 'equity',
+        status: position?.status || 'open',
+        metadata: {},
+      };
+
+      const stateStart = buildStateBeforeDate(txs, period.start);
+      const stateEnd = buildStateUntilDate(txs, period.end);
+
+      const ticker = resolveTicker(asset);
+      const canUseBrapi = !!ticker && ['equity', 'crypto', 'funds'].includes(asset.assetClass);
+      const history = canUseBrapi
+        ? await getTickerHistory(context, ticker, historyCache)
+        : [];
+
+      let priceStart = safeNumber(position?.avgPrice, safeNumber(position?.marketPrice));
+      let priceEnd = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
+
+      if (history.length) {
+        const startMatch = pickPriceForDate(history, adjustWeekendDate(period.start));
+        const endMatch = pickPriceForDate(history, adjustWeekendDate(period.end));
+        if (startMatch) priceStart = safeNumber(startMatch.price, priceStart);
+        if (endMatch) priceEnd = safeNumber(endMatch.price, priceEnd);
+      }
+
+      const quantityStart = txs.length
+        ? stateStart.quantity
+        : (position?.referenceDate && position.referenceDate <= period.start ? safeNumber(position.quantity) : 0);
+      const quantityEnd = txs.length
+        ? stateEnd.quantity
+        : (position?.referenceDate && position.referenceDate <= period.end ? safeNumber(position.quantity) : 0);
+
+      const openValueStart = quantityStart * priceStart;
+      const openValueEnd = quantityEnd * priceEnd;
+      const openInvestedStart = quantityStart * stateStart.avgCost;
+      const openInvestedEnd = quantityEnd * stateEnd.avgCost;
+
+      const unrealizedPnlStart = openValueStart - openInvestedStart;
+      const unrealizedPnlEnd = openValueEnd - openInvestedEnd;
+      const unrealizedResult = unrealizedPnlEnd - unrealizedPnlStart;
+      const realizedResultRaw = stateEnd.realizedResult - stateStart.realizedResult;
+
+      const manualIncome = txs
+        .filter((tx) => tx.referenceDate >= period.start && tx.referenceDate <= period.end && tx.operation === 'manual_income')
+        .reduce((sum, tx) => sum + safeNumber(tx.grossAmount), 0);
+
+      const feesInPeriod = txs
+        .filter((tx) => tx.referenceDate >= period.start && tx.referenceDate <= period.end)
+        .reduce((sum, tx) => sum + safeNumber(tx.fees), 0);
+
+      let grossDividendsBrapi = 0;
+
+      if (ticker && context?.brapiClient && typeof context.brapiClient.getDividendsHistory === 'function') {
+        if (!dividendsCache.has(ticker)) {
+          try {
+            const payload = await context.brapiClient.getDividendsHistory(ticker);
+            dividendsCache.set(ticker, extractDividendEntries(payload));
+          } catch (_error) {
+            dividendsCache.set(ticker, []);
+          }
+        }
+
+        const entries = dividendsCache.get(ticker) || [];
+        entries
+          .filter((entry) => entry.date >= period.start && entry.date <= period.end)
+          .forEach((entry) => {
+            const stateAtDate = buildStateUntilDate(txs, entry.date);
+            if (stateAtDate.quantity > 0) {
+              grossDividendsBrapi += stateAtDate.quantity * entry.amount;
+            }
+          });
+      }
+
+      const realizedTradingResult = realizedResultRaw - manualIncome;
+      const proventosReceived = grossDividendsBrapi > 0 ? grossDividendsBrapi : manualIncome;
+      const realizedComponent = realizedTradingResult + proventosReceived;
+      const unrealizedComponent = unrealizedResult;
+      const grossResult = realizedComponent + unrealizedComponent;
+
+      const txsInPeriod = txs.filter((tx) => tx.referenceDate >= period.start && tx.referenceDate <= period.end);
+      const hasRealizedStatus = txsInPeriod.some((tx) => {
+        const status = String(tx.status || '').toLowerCase();
+        return ['closed', 'realized', 'settled'].includes(status) || ['manual_sale', 'manual_income'].includes(String(tx.operation || ''));
+      }) || proventosReceived > 0;
+
+      const hasUnrealizedStatus = txsInPeriod.some((tx) => {
+        const status = String(tx.status || '').toLowerCase();
+        return ['open', 'pending_settlement', 'unrealized'].includes(status);
+      }) || quantityEnd > 0;
+
+      const selectedResult = resultType === 'realized'
+        ? (hasRealizedStatus ? realizedComponent : 0)
+        : resultType === 'unrealized'
+          ? (hasUnrealizedStatus ? unrealizedComponent : 0)
+          : grossResult;
+
+      const selectedRealized = resultType === 'unrealized' ? 0 : (hasRealizedStatus ? realizedComponent : 0);
+      const selectedUnrealized = resultType === 'realized' ? 0 : (hasUnrealizedStatus ? unrealizedComponent : 0);
+
+      const investedBase = Math.max(
+        0,
+        openInvestedEnd + (stateEnd.realizedCostBasis - stateStart.realizedCostBasis)
+      );
+
+      const taxRate = resolveTaxRate(asset);
+      const hasTaxConfig = taxRate !== null;
+      const taxProvision = hasTaxConfig && selectedResult > 0
+        ? selectedResult * taxRate
+        : 0;
+
+      const netResult = selectedResult - taxProvision;
+
+      assetModels.push({
+        assetId,
+        name: asset.name || assetId,
+        ticker,
+        assetClass: asset.assetClass,
+        status: asset.status || 'open',
+        group: classifyAssetGroup(asset.assetClass),
+        selectedResult,
+        selectedRealized,
+        selectedUnrealized,
+        grossResult,
+        proventosReceived,
+        netResult,
+        taxProvision,
+        taxRate,
+        investedBase,
+        feesInPeriod,
+      });
+    }
+
+    const totalResult = assetModels.reduce((sum, item) => sum + item.selectedResult, 0);
+    const totalNetResult = assetModels.reduce((sum, item) => sum + item.netResult, 0);
+    const totalRealized = assetModels.reduce((sum, item) => sum + item.selectedRealized, 0);
+    const totalUnrealized = assetModels.reduce((sum, item) => sum + item.selectedUnrealized, 0);
+    const totalInvested = assetModels.reduce((sum, item) => sum + item.investedBase, 0);
+    const totalTaxProvision = assetModels.reduce((sum, item) => sum + item.taxProvision, 0);
+    const totalProventos = assetModels.reduce((sum, item) => sum + item.proventosReceived, 0);
+
+    const hasAnyTaxConfigured = assetModels.some((item) => Number.isFinite(item.taxRate));
+    const warningText = '';
+
+    const inflationPct = await resolveCumulativeInflationPct(context, period.start, period.end);
+    const roiNominal = totalInvested > 0 ? (totalResult / totalInvested) : 0;
+    const roiReal = (((1 + roiNominal) / (1 + (inflationPct / 100))) - 1) * 100;
+
+    const grouped = assetModels.reduce((acc, assetModel) => {
+      if (!acc[assetModel.group]) {
+        acc[assetModel.group] = {
+          group: assetModel.group,
+          result: 0,
+          netResult: 0,
+          realized: 0,
+          unrealized: 0,
+          taxProvision: 0,
+          assets: [],
+        };
+      }
+
+      const target = acc[assetModel.group];
+      target.result += assetModel.selectedResult;
+      target.netResult += assetModel.netResult;
+      target.realized += assetModel.selectedRealized;
+      target.unrealized += assetModel.selectedUnrealized;
+      target.taxProvision += assetModel.taxProvision;
+      target.assets.push(assetModel);
+      return acc;
+    }, { rv: { group: 'rv', result: 0, netResult: 0, realized: 0, unrealized: 0, taxProvision: 0, assets: [] }, rf: { group: 'rf', result: 0, netResult: 0, realized: 0, unrealized: 0, taxProvision: 0, assets: [] } });
+
+    const classLabel = {
+      rv: 'Renda Variável',
+      rf: 'Renda Fixa',
+    };
+
+    const toResultClass = (value) => {
+      if (value > 0) return 'positive';
+      if (value < 0) return 'negative';
+      return 'neutral';
+    };
+
+    const toAssetStatus = (assetModel) => {
+      const hasRealized = Math.abs(assetModel.selectedRealized) > 0.0001;
+      const hasUnrealized = Math.abs(assetModel.selectedUnrealized) > 0.0001;
+      if (hasRealized && hasUnrealized) return 'Parcial';
+      if (hasRealized) return 'Realizado';
+      if (hasUnrealized) return 'Não Realizado';
+      return 'Neutro';
+    };
+
+    const classRows = ['rv', 'rf']
+      .map((groupKey) => {
+        const item = grouped[groupKey];
+        const contribution = totalResult !== 0 ? (item.result / totalResult) * 100 : 0;
+        return {
+          id: `class-${groupKey}`,
+          name: classLabel[groupKey],
+          meta: `Contribuição: ${contribution.toFixed(1).replace('.', ',')}%`,
+          value: formatCurrencyBRL(item.result),
+          varText: `${item.result >= 0 ? '+' : ''}${contribution.toFixed(1).replace('.', ',')}%`,
+          contribution,
+        };
+      })
+      .sort((a, b) => Math.abs(b.contribution) - Math.abs(a.contribution));
+
+    const chartTotal = classRows.map((row) => ({
+      id: row.id,
+      label: row.name,
+      value: grouped[row.id === 'class-rv' ? 'rv' : 'rf'].result,
+    }));
+
+    const views = {
+      total: {
+        title: 'Resultado Financeiro',
+        subtitle: `Geração de valor no período (${period.label})`,
+        label: 'Resultado Bruto',
+        value: formatCurrencyBRL(totalResult),
+        valueClass: toResultClass(totalResult),
+        roiNominal: `ROI Nominal: ${formatPercent(roiNominal * 100)}`,
+        roiReal: `ROI Real: ${formatPercent(roiReal)}`,
+        netLabel: 'Resultado Líquido (Est.)',
+        netValue: formatCurrencyBRL(hasAnyTaxConfigured ? totalNetResult : totalResult),
+        netDescription: hasAnyTaxConfigured
+          ? `IR provisionado: ${formatCurrencyBRL(totalTaxProvision)}`
+          : 'Sem IR configurado (líquido = bruto)',
+        warning: warningText,
+        dividendsLabel: 'Proventos (Div/JCP)',
+        dividendsValue: formatCurrencyBRL(totalProventos),
+        realizedLabel: 'Realizado (Caixa)',
+        realizedValue: formatCurrencyBRL(totalRealized),
+        realizedShare: `${(totalResult !== 0 ? ((totalRealized / totalResult) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+        unrealizedLabel: 'Não Realizado (Papel)',
+        unrealizedValue: formatCurrencyBRL(totalUnrealized),
+        unrealizedShare: `${(totalResult !== 0 ? ((totalUnrealized / totalResult) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+        chart: {
+          kind: 'waterfall',
+          points: chartTotal,
+        },
+        details: {
+          left: classRows,
+          right: [],
+        },
+      },
+    };
+
+    ['rv', 'rf'].forEach((groupKey) => {
+      const groupModel = grouped[groupKey];
+      const sortedAssets = groupModel.assets
+        .slice()
+        .sort((a, b) => Math.abs(b.selectedResult) - Math.abs(a.selectedResult));
+
+      const viewId = `class-${groupKey}`;
+      const invested = sortedAssets.reduce((sum, item) => sum + item.investedBase, 0);
+      const classRoiNominal = invested > 0 ? ((groupModel.result / invested) * 100) : 0;
+
+      const assetRows = sortedAssets.map((assetModel) => ({
+        id: `asset-${assetModel.assetId}`,
+        name: assetModel.name,
+        meta: `${toAssetStatus(assetModel)}${assetModel.ticker ? ` · ${assetModel.ticker}` : ''}`,
+        value: formatCurrencyBRL(assetModel.selectedResult),
+        varText: assetModel.status || 'open',
+      }));
+
+      views[viewId] = {
+        title: `Resultado: ${classLabel[groupKey]}`,
+        subtitle: 'Detalhamento por ativo',
+        label: 'Resultado Bruto',
+        value: formatCurrencyBRL(groupModel.result),
+        valueClass: toResultClass(groupModel.result),
+        roiNominal: `ROI Nominal: ${formatPercent(classRoiNominal)}`,
+        roiReal: `ROI Real: ${formatPercent((((1 + (classRoiNominal / 100)) / (1 + (inflationPct / 100))) - 1) * 100)}`,
+        netLabel: 'Resultado Líquido (Est.)',
+        netValue: formatCurrencyBRL(hasAnyTaxConfigured ? groupModel.netResult : groupModel.result),
+        netDescription: hasAnyTaxConfigured
+          ? `IR provisionado: ${formatCurrencyBRL(groupModel.taxProvision)}`
+          : 'Sem IR configurado (líquido = bruto)',
+        warning: warningText,
+        dividendsLabel: 'Proventos (Div/JCP)',
+        dividendsValue: formatCurrencyBRL(sortedAssets.reduce((sum, item) => sum + item.proventosReceived, 0)),
+        realizedLabel: 'Realizado (Caixa)',
+        realizedValue: formatCurrencyBRL(groupModel.realized),
+        realizedShare: `${(groupModel.result !== 0 ? ((groupModel.realized / groupModel.result) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+        unrealizedLabel: 'Não Realizado (Papel)',
+        unrealizedValue: formatCurrencyBRL(groupModel.unrealized),
+        unrealizedShare: `${(groupModel.result !== 0 ? ((groupModel.unrealized / groupModel.result) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+        chart: {
+          kind: 'waterfall',
+          points: sortedAssets.map((assetModel) => ({
+            id: `asset-${assetModel.assetId}`,
+            label: assetModel.ticker || assetModel.name,
+            value: assetModel.selectedResult,
+          })),
+        },
+        details: {
+          left: assetRows,
+          right: [],
+        },
+      };
+
+      sortedAssets.forEach((assetModel) => {
+        const assetViewId = `asset-${assetModel.assetId}`;
+        const grossGain = assetModel.selectedResult + assetModel.feesInPeriod;
+
+        views[assetViewId] = {
+          title: `Resultado: ${assetModel.name}`,
+          subtitle: 'Decomposição do resultado individual',
+          label: 'Resultado Bruto',
+          value: formatCurrencyBRL(assetModel.selectedResult),
+          valueClass: toResultClass(assetModel.selectedResult),
+          roiNominal: `ROI Nominal: ${formatPercent(assetModel.investedBase > 0 ? ((assetModel.selectedResult / assetModel.investedBase) * 100) : 0)}`,
+          roiReal: `ROI Real: ${formatPercent((((1 + (assetModel.investedBase > 0 ? (assetModel.selectedResult / assetModel.investedBase) : 0)) / (1 + (inflationPct / 100))) - 1) * 100)}`,
+          netLabel: 'Resultado Líquido (Est.)',
+          netValue: formatCurrencyBRL(hasAnyTaxConfigured ? assetModel.netResult : assetModel.selectedResult),
+          netDescription: hasAnyTaxConfigured
+            ? `IR provisionado: ${formatCurrencyBRL(assetModel.taxProvision)}`
+            : 'Sem IR configurado (líquido = bruto)',
+          warning: warningText,
+          dividendsLabel: 'Proventos (Div/JCP)',
+          dividendsValue: formatCurrencyBRL(assetModel.proventosReceived),
+          realizedLabel: 'Realizado (Caixa)',
+          realizedValue: formatCurrencyBRL(assetModel.selectedRealized),
+          realizedShare: `${(assetModel.selectedResult !== 0 ? ((assetModel.selectedRealized / assetModel.selectedResult) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+          unrealizedLabel: 'Não Realizado (Papel)',
+          unrealizedValue: formatCurrencyBRL(assetModel.selectedUnrealized),
+          unrealizedShare: `${(assetModel.selectedResult !== 0 ? ((assetModel.selectedUnrealized / assetModel.selectedResult) * 100) : 0).toFixed(1).replace('.', ',')}%`,
+          chart: {
+            kind: 'waterfall',
+            points: [
+              { id: '', label: 'Ganho Bruto', value: grossGain },
+              { id: '', label: 'Custos', value: -Math.abs(assetModel.feesInPeriod) },
+              { id: '', label: 'Resultado', value: hasAnyTaxConfigured ? assetModel.netResult : assetModel.selectedResult },
+            ],
+          },
+          details: {
+            left: [
+              {
+                id: '',
+                name: 'Ganho bruto',
+                meta: 'Valorização, juros ou rendimento',
+                value: formatCurrencyBRL(grossGain),
+                varText: '',
+              },
+              {
+                id: '',
+                name: 'Custos',
+                meta: 'Corretagem, taxas e encargos',
+                value: formatCurrencyBRL(-Math.abs(assetModel.feesInPeriod)),
+                varText: '',
+              },
+              {
+                id: '',
+                name: 'Resultado líquido estimado',
+                meta: hasAnyTaxConfigured ? 'Com provisão de IR' : 'Sem provisão de IR',
+                value: formatCurrencyBRL(hasAnyTaxConfigured ? assetModel.netResult : assetModel.selectedResult),
+                varText: '',
+              },
+            ],
+            right: [],
+          },
+        };
+      });
+    });
+
+    return {
+      status: 'ok',
+      data: {
+        widget: {
+          rootView: 'total',
+          period,
+          resultType,
+          taxes: {
+            configured: hasAnyTaxConfigured,
+            warning: warningText,
+          },
+          chart: {
+            kind: 'waterfall',
+            points: chartTotal,
+          },
+          views,
+        },
+      },
+    };
+  };
+
+  const financialResultAliases = [
+    'investments.financial_result',
+    'investments.resultado_financeiro',
+    'investments.financial_result_consolidated',
+  ];
+
+  financialResultAliases.forEach((metricId) => {
+    registerMetric({
+      id: metricId,
+      title: 'Resultado financeiro consolidado',
+      description: 'Resultado financeiro por classe e ativo, com níveis hierárquicos, ROI nominal/real e suporte a provisão de IR.',
+      supportedFilters: ['currencies', 'assetClasses', 'statuses', 'accountIds', 'tags', 'periodPreset', 'resultType', 'asOf'],
+      output: { kind: 'widget' },
+      tags: ['investments', 'dashboard', 'resultado'],
+      handler: financialResultHandler,
     });
   });
 

@@ -15,9 +15,11 @@ const DEFAULT_FILTERS = {
   tags: [],
   asOf: null,
   periodPreset: 'origin',
+  resultType: 'both',
 };
 
 const ALLOWED_PERIOD_PRESETS = new Set(['mtd', 'ytd', '12m', 'origin']);
+const ALLOWED_RESULT_TYPES = new Set(['both', 'realized', 'unrealized']);
 
 /**
  * Normaliza array de strings (trim, lower, remove vazios, unique).
@@ -56,6 +58,9 @@ function normalizeInvestmentsFilters(raw = {}) {
     periodPreset: ALLOWED_PERIOD_PRESETS.has(String(input.periodPreset || '').toLowerCase())
       ? String(input.periodPreset || '').toLowerCase()
       : 'origin',
+    resultType: ALLOWED_RESULT_TYPES.has(String(input.resultType || '').toLowerCase())
+      ? String(input.resultType || '').toLowerCase()
+      : 'both',
   };
 
   return { filters, periodsMonths, groupBy };

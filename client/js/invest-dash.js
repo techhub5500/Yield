@@ -129,12 +129,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const patrimonioFactory = window.YieldInvestmentsPatrimonio?.createPatrimonioCardController;
     const normalizeWidgetModel = window.YieldInvestmentsPatrimonio?.normalizeWidgetModel;
     const rentabilidadeFactory = window.YieldInvestmentsRentabilidade?.createRentabilidadeCardController;
+    const resultadoFactory = window.YieldInvestmentsResultado?.createResultadoCardController;
     const manualModalFactory = window.YieldInvestmentsManualModal?.createManualAssetModalController;
 
     const patrimonioSlot = document.getElementById('patrimonio-card-slot');
+    const resultadoSlot = document.getElementById('resultado-card-slot');
     const rentabilidadeSlot = document.getElementById('rentabilidade-card-slot');
     const patrimonioCard = typeof patrimonioFactory === 'function'
         ? patrimonioFactory(patrimonioSlot)
+        : null;
+    const resultadoCard = typeof resultadoFactory === 'function'
+        ? resultadoFactory(resultadoSlot)
         : null;
     const rentabilidadeCard = typeof rentabilidadeFactory === 'function'
         ? rentabilidadeFactory(rentabilidadeSlot)
@@ -156,6 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rentabilidadeCard) {
         window.YieldInvestments.cards.rentabilidade = rentabilidadeCard;
         rentabilidadeCard.fetchAndRenderLiveData().catch(() => {});
+    }
+
+    if (resultadoCard) {
+        window.YieldInvestments.cards.resultado = resultadoCard;
+        resultadoCard.fetchAndRenderLiveData().catch(() => {});
     }
 
     window.YieldInvestments.preloadManifest().catch(() => {});
@@ -181,6 +191,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const parent = option.parentElement;
             parent.querySelectorAll('.card-opt').forEach((item) => item.classList.remove('active'));
             option.classList.add('active');
+
+            const mainCardTarget = option.getAttribute('data-main-card');
+            if (!mainCardTarget || !patrimonioSlot || !resultadoSlot) return;
+
+            if (mainCardTarget === 'patrimonio') {
+                patrimonioSlot.style.display = '';
+                resultadoSlot.style.display = 'none';
+                if (patrimonioCard) {
+                    patrimonioCard.fetchAndRenderLiveData().catch(() => {});
+                }
+            }
+
+            if (mainCardTarget === 'resultado') {
+                patrimonioSlot.style.display = 'none';
+                resultadoSlot.style.display = '';
+                if (resultadoCard) {
+                    resultadoCard.fetchAndRenderLiveData().catch(() => {});
+                }
+            }
         });
     });
 

@@ -366,3 +366,106 @@ Isso elimina desalinhamento temporal entre rentabilidade e comparação de refer
   - Após `create/edit/delete` no Lançamento Manual, executa refresh de **todos** os cards registrados em `window.YieldInvestments.cards` (não apenas Patrimônio), mantendo Rentabilidade e demais cards sincronizados com as movimentações.
 
 ---
+
+## 11) Card oficial: Resultado Financeiro (implementado)
+
+### 11.1 O que foi implementado
+
+- Card oficial de **Resultado Financeiro** integrado em `client/html/invest-dash.html` na navegação:
+  - `Patrimônio > Resultado Financeiro`
+- Novo módulo frontend dedicado: `client/js/invest-dash.resultado.js`.
+- Nova métrica backend registrada com aliases:
+  - `investments.financial_result`
+  - `investments.resultado_financeiro`
+  - `investments.financial_result_consolidated`
+- Integração de bootstrap em `client/js/invest-dash.js` com alternância entre os slots de Patrimônio Total e Resultado Financeiro sem quebrar o layout existente.
+
+### 11.2 Estrutura hierárquica (3 níveis)
+
+O card segue a hierarquia definida no layout oficial:
+
+1) **Consolidado**
+- Resultado por classe (`Renda Variável` / `Renda Fixa`)
+- Contribuição percentual da classe para o total do período
+
+2) **Classe de Ativo**
+- Lista os ativos da classe selecionada
+- Mostra status contextual por ativo (`Realizado`, `Não Realizado`, `Parcial`)
+
+3) **Ativo Individual**
+- Decomposição de resultado em:
+  - Ganho bruto
+  - Custos
+  - Resultado líquido estimado (quando houver configuração de imposto)
+
+### 11.3 Indicadores e fórmulas
+
+- **Resultado Bruto**
+  - Mede **geração de valor**, não patrimônio.
+  - Fórmula consolidada:
+    - `Resultado Bruto = Resultado Realizado + Resultado Não Realizado + Proventos`
+  - Para posição em custódia, o componente não realizado é calculado por lucro/prejuízo:
+    - `Não Realizado = (Valor de Mercado - Custo das posições abertas)`
+  - Em períodos (`MTD`, `YTD`, `12M`, `origin`), o não realizado usa a variação de PnL (delta de lucro), sem tratar principal/aporte como ganho.
+
+- **Resultado Líquido (Est.)**
+  - Quando há configuração de imposto no ativo (metadata), aplica provisão interna de IR sobre resultado positivo.
+  - Sem configuração de imposto:
+    - `Resultado Líquido = Resultado Bruto`
+
+- **ROI Nominal**
+  - `ROI Nominal (%) = (Resultado Bruto / Base Investida) * 100`
+
+- **ROI Real**
+  - Fórmula de Fisher:
+    - `ROI Real (%) = (((1 + ROI_Nominal_decimal) / (1 + Inflacao_decimal)) - 1) * 100`
+
+### 11.4 Filtros suportados
+
+- **Período** (mesmo padrão da Rentabilidade):
+  - `MTD`, `YTD`, `12M`
+  - `origin` (desde o primeiro aporte)
+- **Tipo de Resultado**:
+  - `both` (Ambos)
+  - `realized` (Realizado)
+  - `unrealized` (Não Realizado)
+
+O filtro foi incorporado ao contrato de normalização em `core/investments/filters.js` e exposto no manifesto (`availableFilters.resultType`).
+
+### 11.5 Fontes Brapi utilizadas
+
+- **Dividendos/Proventos por ativo**:
+  - `BrapiClient.getDividendsHistory(ticker)`
+- **Inflação (Brasil)**:
+  - `BrapiClient.getInflationHistory({ country: 'brazil', ... })`
+
+Obs.: foram adicionados métodos dedicados no cliente Brapi (`server/src/tools/search/brapi.js`) para manter consistência de integração e reutilização futura.
+
+### 11.6 Frontend e integração com cards existentes
+
+- `client/js/invest-dash.resultado.js`
+  - Renderiza card em Shadow DOM mantendo a identidade visual oficial do layout de referência
+  - Implementa filtros de período/tipo de resultado
+  - Exibe proventos (Dividendos/JCP) junto ao bloco de resultado líquido
+  - Renderiza gráfico waterfall dinâmico por nível
+  - Navegação entre níveis com histórico (back)
+  - Consome `window.YieldInvestments.api.queryCards(...)`
+
+- `client/js/invest-dash.js`
+  - Registra o controller em `window.YieldInvestments.cards.resultado`
+  - Faz toggle entre os slots `patrimonio-card-slot` e `resultado-card-slot`
+
+- `client/js/invest-dash.manual-modal.js`
+  - Permanece com refresh global de cards; Resultado Financeiro participa automaticamente desse ciclo
+
+### 11.7 Persistência e escopo de dados
+
+Todos os cálculos usam dados por usuário autenticado em MongoDB, reaproveitando a mesma base estrutural:
+
+- `investments_transactions`
+- `investments_positions`
+- `investments_assets`
+
+Sem hardcode de valores no card oficial.
+
+---

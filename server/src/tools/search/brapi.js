@@ -82,6 +82,47 @@ class BrapiClient {
   }
 
   /**
+   * Obtém histórico de inflação por país.
+   * @param {Object} [options]
+   * @param {string} [options.country='brazil']
+   * @param {boolean} [options.historical=true]
+   * @param {string} [options.start] - DD/MM/YYYY
+   * @param {string} [options.end] - DD/MM/YYYY
+   * @param {string} [options.sortBy='date']
+   * @param {string} [options.sortOrder='asc']
+   * @returns {Promise<Object>}
+   */
+  async getInflationHistory(options = {}) {
+    return await this._request('/v2/inflation', {
+      country: options.country || 'brazil',
+      historical: String(options.historical ?? true),
+      start: options.start,
+      end: options.end,
+      sortBy: options.sortBy || 'date',
+      sortOrder: options.sortOrder || 'asc',
+    });
+  }
+
+  /**
+   * Obtém histórico de dividendos/proventos de um ativo.
+   * @param {string} ticker
+   * @returns {Promise<Object>}
+   */
+  async getDividendsHistory(ticker) {
+    const encoded = encodeURIComponent(String(ticker || '').trim().toUpperCase());
+
+    try {
+      return await this._request(`/v2/quote/${encoded}`, {
+        dividends: 'true',
+      });
+    } catch (_error) {
+      return await this._request(`/quote/${encoded}`, {
+        dividends: 'true',
+      });
+    }
+  }
+
+  /**
    * Obtém fundamentos de um ativo.
    * @param {string} ticker - Ticker do ativo
    * @returns {Promise<Object>} Dados de fundamentos

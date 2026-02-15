@@ -538,6 +538,7 @@ class InvestmentsMetricsService {
         groupBy: ['day', 'month'],
         periodsMonths: [2, 3, 6, 12],
         periodPreset: ['mtd', 'ytd', '12m', 'origin'],
+        resultType: ['both', 'realized', 'unrealized'],
       },
       metrics,
     };
