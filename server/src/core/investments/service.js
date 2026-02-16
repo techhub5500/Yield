@@ -130,7 +130,7 @@ class InvestmentsMetricsService {
     this.assertUserId(userId);
     if (!assetId) throw new Error('assetId é obrigatório');
 
-    const asset = await repository.getAssetById({ userId, assetId });
+    let asset = await repository.getAssetById({ userId, assetId });
     if (!asset) throw new Error('Ativo não encontrado para este usuário');
 
     const tickerCandidate = normalizeTicker(asset.ticker || asset.metadata?.ticker || asset.name);
@@ -193,6 +193,18 @@ class InvestmentsMetricsService {
       ...(payload.metadata || {}),
       ...(ticker ? { ticker } : {}),
     };
+
+    const allocationTarget = Number(metadata.allocationTargetPct);
+    if (metadata.allocationTargetPct !== null && metadata.allocationTargetPct !== undefined && metadata.allocationTargetPct !== ''
+      && (!Number.isFinite(allocationTarget) || allocationTarget < 0 || allocationTarget > 100)) {
+      throw new Error('Alocação Meta (%) deve estar entre 0 e 100');
+    }
+
+    const deviationMargin = Number(metadata.allocationDeviationPct);
+    if (metadata.allocationDeviationPct !== null && metadata.allocationDeviationPct !== undefined && metadata.allocationDeviationPct !== ''
+      && (!Number.isFinite(deviationMargin) || deviationMargin < 0 || deviationMargin > 100)) {
+      throw new Error('Margem de Desvio (%) deve estar entre 0 e 100');
+    }
 
     const createdAsset = await repository.upsertAsset({
       userId,
@@ -449,6 +461,53 @@ class InvestmentsMetricsService {
           previousMarketValue: Number(current.marketValue || 0),
         },
         source: 'manual',
+      });
+    } else if (operation === 'update_allocation') {
+      const nextTargetRaw = payload.allocationTargetPct;
+      const nextMarginRaw = payload.allocationDeviationPct;
+
+      const nextTarget = Number(nextTargetRaw);
+      const nextMargin = Number(nextMarginRaw);
+
+      if (nextTargetRaw !== null && nextTargetRaw !== undefined && nextTargetRaw !== '' && (!Number.isFinite(nextTarget) || nextTarget < 0 || nextTarget > 100)) {
+        throw new Error('Alocação Meta (%) deve estar entre 0 e 100');
+      }
+
+      if (nextMarginRaw !== null && nextMarginRaw !== undefined && nextMarginRaw !== '' && (!Number.isFinite(nextMargin) || nextMargin < 0 || nextMargin > 100)) {
+        throw new Error('Margem de Desvio (%) deve estar entre 0 e 100');
+      }
+
+      const nextAssetClass = String(payload.assetClass || '').trim();
+      if (nextAssetClass && !ALLOWED_ASSET_CLASSES.includes(nextAssetClass)) {
+        throw new Error('Classe de ativo inválida para atualização');
+      }
+
+      const nextCategory = String(payload.category || '').trim();
+
+      const nextMetadata = {
+        ...(asset.metadata || {}),
+      };
+
+      if (nextTargetRaw !== null && nextTargetRaw !== undefined && nextTargetRaw !== '') {
+        nextMetadata.allocationTargetPct = nextTarget;
+      }
+
+      if (nextMarginRaw !== null && nextMarginRaw !== undefined && nextMarginRaw !== '') {
+        nextMetadata.allocationDeviationPct = nextMargin;
+      }
+
+      asset = await repository.upsertAsset({
+        userId,
+        assetId: asset.assetId,
+        name: asset.name,
+        ticker: asset.ticker,
+        assetClass: nextAssetClass || asset.assetClass,
+        category: nextCategory || asset.category,
+        currency: asset.currency,
+        status: asset.status,
+        accountId: asset.accountId || null,
+        tags: Array.isArray(asset.tags) ? asset.tags : [],
+        metadata: nextMetadata,
       });
     } else if (operation === 'update_position') {
       if (Number.isFinite(Number(payload.quantity))) quantity = Number(payload.quantity);

@@ -218,6 +218,157 @@ function parsePercentValue(rawValue) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function toSlug(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+}
+
+function normalizeAllocationTarget(value) {
+  const parsed = parsePercentValue(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(100, parsed));
+}
+
+function normalizeDeviationMargin(value) {
+  const parsed = parsePercentValue(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.min(100, parsed));
+}
+
+function formatSignedPercent(value, decimals = 2) {
+  const parsed = Number(value || 0);
+  const signal = parsed > 0 ? '+' : '';
+  return `${signal}${parsed.toFixed(decimals).replace('.', ',')}%`;
+}
+
+function resolveAllocationStatus(diffPct, marginPct) {
+  if (diffPct > marginPct) return 'over';
+  if (diffPct < -marginPct) return 'under';
+  return 'on-track';
+}
+
+function resolveAllocationActionText(status, diffPct) {
+  if (status === 'over') return `Vender / Aguardar (${formatSignedPercent(diffPct, 1)})`;
+  if (status === 'under') return `Aportar (${formatSignedPercent(diffPct, 1)})`;
+  return `Manter (${formatSignedPercent(diffPct, 1)})`;
+}
+
+function resolveClassLabel(assetClass) {
+  return classifyAssetGroup(assetClass) === 'rf' ? 'Renda Fixa' : 'Renda Variável';
+}
+
+function resolveSubclassLabel(asset) {
+  return String(asset?.category || asset?.metadata?.subcategory || 'Sem subclasse').trim() || 'Sem subclasse';
+}
+
+function computeStrategyScore(rows) {
+  const totalDeviation = rows.reduce((sum, row) => sum + Math.abs(safeNumber(row.diffPct)), 0);
+  const score = 100 - (totalDeviation / 2);
+  return Math.max(0, Math.min(100, Number(score.toFixed(1))));
+}
+
+function computeAporteRebalance(rows, totalPatrimony) {
+  const candidates = rows
+    .filter((row) => safeNumber(row.targetPct) > 0)
+    .map((row) => {
+      const currentValue = safeNumber(row.currentValue);
+      const targetPct = safeNumber(row.targetPct);
+      const desiredValueNow = (totalPatrimony * targetPct) / 100;
+      const shortfallValue = desiredValueNow - currentValue;
+
+      const idealTotal = targetPct > 0
+        ? currentValue / (targetPct / 100)
+        : totalPatrimony;
+
+      const aporteNeeded = Math.max(0, idealTotal - totalPatrimony);
+
+      return {
+        ...row,
+        shortfallValue,
+        aporteNeeded,
+      };
+    })
+    .filter((row) => row.shortfallValue > 0.0001)
+    .sort((a, b) => b.aporteNeeded - a.aporteNeeded);
+
+  if (!candidates.length || totalPatrimony <= 0) {
+    return {
+      amount: 0,
+      basisId: null,
+      basisName: null,
+    };
+  }
+
+  const mostOff = candidates[0];
+
+  return {
+    amount: Number(safeNumber(mostOff.aporteNeeded).toFixed(2)),
+    basisId: mostOff.id,
+    basisName: mostOff.name,
+  };
+}
+
+function computeTradeRebalance(rows) {
+  const summary = rows.reduce((acc, row) => {
+    const adjustment = safeNumber(row.adjustmentValue);
+
+    if (adjustment > 0) {
+      acc.buyAmount += adjustment;
+    }
+
+    if (adjustment < 0) {
+      acc.sellAmount += Math.abs(adjustment);
+    }
+
+    return acc;
+  }, {
+    buyAmount: 0,
+    sellAmount: 0,
+  });
+
+  return {
+    buyAmount: Number(summary.buyAmount.toFixed(2)),
+    sellAmount: Number(summary.sellAmount.toFixed(2)),
+    netAmount: Number((summary.buyAmount - summary.sellAmount).toFixed(2)),
+  };
+}
+
+function enrichAllocationRow(rawRow, totalPatrimony) {
+  const currentValue = safeNumber(rawRow.currentValue);
+  const targetPct = safeNumber(rawRow.targetPct);
+  const marginPct = safeNumber(rawRow.marginPct);
+
+  const realPct = totalPatrimony > 0
+    ? (currentValue / totalPatrimony) * 100
+    : 0;
+
+  const diffPct = realPct - targetPct;
+  const status = resolveAllocationStatus(diffPct, marginPct);
+  const adjustmentValue = ((totalPatrimony * targetPct) / 100) - currentValue;
+  const lossPct = safeNumber(rawRow.lossPct);
+  const unrealizedPnl = safeNumber(rawRow.unrealizedPnl);
+
+  const hasLossAlert = status === 'over' && adjustmentValue < 0 && unrealizedPnl < 0;
+  const infoMessage = hasLossAlert
+    ? `O sistema sugere vender ${formatCurrencyBRL(Math.abs(adjustmentValue))} para rebalancear, mas você está com prejuízo de ${formatSignedPercent(lossPct, 2)} neste ativo.`
+    : '';
+
+  return {
+    ...rawRow,
+    realPct: Number(realPct.toFixed(4)),
+    diffPct: Number(diffPct.toFixed(4)),
+    status,
+    actionLabel: resolveAllocationActionText(status, diffPct),
+    adjustmentValue: Number(adjustmentValue.toFixed(2)),
+    hasLossAlert,
+    infoMessage,
+  };
+}
+
 function parseBrapiDateToIso(rawDate) {
   const text = String(rawDate || '').trim();
   if (!text) return null;
@@ -745,6 +896,325 @@ function ensureInvestmentsMetricsRegistered() {
         },
       };
     },
+  });
+
+  const allocationMetricHandler = async ({ context, filters }) => {
+    const transactions = await context.repository.listTransactions({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const assets = await context.repository.listAssets({
+      userId: context.userId,
+      filters,
+    });
+
+    const positions = await context.repository.listLatestPositionsByUser({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const asOfDate = filters.asOf || toIsoDate(new Date());
+
+    const transactionsByAsset = new Map();
+    transactions
+      .sort(sortByDateAndCreation)
+      .forEach((tx) => {
+        if (!tx.assetId) return;
+        if (!transactionsByAsset.has(tx.assetId)) transactionsByAsset.set(tx.assetId, []);
+        transactionsByAsset.get(tx.assetId).push(tx);
+      });
+
+    const positionByAsset = new Map(positions.map((item) => [item.assetId, item]));
+    const assetById = new Map(assets.map((item) => [item.assetId, item]));
+
+    const allAssetIds = new Set([
+      ...Array.from(transactionsByAsset.keys()),
+      ...Array.from(positionByAsset.keys()),
+      ...Array.from(assetById.keys()),
+    ]);
+
+    if (!allAssetIds.size) {
+      return {
+        status: 'empty',
+        data: {
+          widget: {
+            rootView: 'class-root',
+            generatedAt: new Date().toISOString(),
+            asOfDate,
+            recalcPolicy: {
+              basis: 'mark-to-market',
+              refreshPerDay: 3,
+              refreshIntervalHours: 8,
+            },
+            kpis: {
+              class: {
+                score: 100,
+                aporteRebalance: { amount: 0, basisId: null, basisName: null },
+                tradeRebalance: { buyAmount: 0, sellAmount: 0, netAmount: 0 },
+              },
+              subclass: {
+                score: 100,
+                aporteRebalance: { amount: 0, basisId: null, basisName: null },
+                tradeRebalance: { buyAmount: 0, sellAmount: 0, netAmount: 0 },
+              },
+              asset: {
+                score: 100,
+                aporteRebalance: { amount: 0, basisId: null, basisName: null },
+                tradeRebalance: { buyAmount: 0, sellAmount: 0, netAmount: 0 },
+              },
+            },
+            totalPatrimony: 0,
+            nodes: [],
+          },
+        },
+      };
+    }
+
+    const historyCache = new Map();
+    const assetRowsRaw = [];
+
+    for (const assetId of allAssetIds) {
+      const txs = (transactionsByAsset.get(assetId) || []).sort(sortByDateAndCreation);
+      const position = positionByAsset.get(assetId) || null;
+      const asset = assetById.get(assetId) || {
+        assetId,
+        name: assetId,
+        assetClass: position?.assetClass || 'equity',
+        category: position?.category || null,
+        metadata: {},
+      };
+
+      const stateEnd = buildStateUntilDate(txs, asOfDate);
+      const quantityEnd = txs.length
+        ? stateEnd.quantity
+        : safeNumber(position?.quantity);
+
+      if (quantityEnd <= 0 && safeNumber(position?.marketValue) <= 0) continue;
+
+      const ticker = resolveTicker(asset);
+      const canUseBrapi = !!ticker && ['equity', 'crypto', 'funds'].includes(asset.assetClass);
+      const history = canUseBrapi
+        ? await getTickerHistory(context, ticker, historyCache)
+        : [];
+
+      let currentPrice = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
+      if (history.length) {
+        const matched = pickPriceForDate(history, adjustWeekendDate(asOfDate));
+        if (matched) currentPrice = safeNumber(matched.price, currentPrice);
+      }
+
+      const currentValue = quantityEnd > 0
+        ? quantityEnd * currentPrice
+        : safeNumber(position?.marketValue);
+
+      if (currentValue <= 0) continue;
+
+      const avgCost = quantityEnd > 0
+        ? (txs.length ? stateEnd.avgCost : safeNumber(position?.avgPrice))
+        : safeNumber(position?.avgPrice);
+
+      const investedOpen = quantityEnd * avgCost;
+      const unrealizedPnl = currentValue - investedOpen;
+      const realizedResult = safeNumber(stateEnd.realizedResult);
+      const financialResult = unrealizedPnl + realizedResult;
+      const lossPct = avgCost > 0
+        ? ((currentPrice / avgCost) - 1) * 100
+        : 0;
+
+      const metadata = asset.metadata || {};
+      const targetPct = normalizeAllocationTarget(metadata.allocationTargetPct);
+      const marginPct = normalizeDeviationMargin(
+        metadata.allocationDeviationPct
+        ?? metadata.deviationMarginPct
+        ?? metadata.marginDeviationPct
+      );
+
+      const classKey = classifyAssetGroup(asset.assetClass);
+      const classLabel = resolveClassLabel(asset.assetClass);
+      const subclassLabel = resolveSubclassLabel(asset);
+
+      const subclassKey = `${classKey}:${toSlug(subclassLabel) || 'sem-subclasse'}`;
+
+      assetRowsRaw.push({
+        id: `asset:${assetId}`,
+        parentId: `subclass:${subclassKey}`,
+        level: 'asset',
+        name: asset.name || assetId,
+        assetId,
+        ticker,
+        assetClass: asset.assetClass,
+        classKey,
+        classLabel,
+        subclassKey,
+        subclassLabel,
+        currentValue,
+        targetPct,
+        marginPct,
+        unrealizedPnl,
+        realizedResult,
+        financialResult,
+        lossPct,
+      });
+    }
+
+    const totalPatrimony = assetRowsRaw.reduce((sum, row) => sum + row.currentValue, 0);
+
+    const classAcc = new Map();
+    const subclassAcc = new Map();
+
+    assetRowsRaw.forEach((row) => {
+      const classTarget = classAcc.get(row.classKey) || {
+        id: `class:${row.classKey}`,
+        parentId: null,
+        level: 'class',
+        name: row.classLabel,
+        classKey: row.classKey,
+        classLabel: row.classLabel,
+        currentValue: 0,
+        targetPct: 0,
+        marginWeightedSum: 0,
+        marginWeightTotal: 0,
+        unrealizedPnl: 0,
+        realizedResult: 0,
+        financialResult: 0,
+      };
+
+      classTarget.currentValue += row.currentValue;
+      classTarget.targetPct += row.targetPct;
+      classTarget.marginWeightedSum += row.marginPct * row.currentValue;
+      classTarget.marginWeightTotal += row.currentValue;
+      classTarget.unrealizedPnl += row.unrealizedPnl;
+      classTarget.realizedResult += row.realizedResult;
+      classTarget.financialResult += row.financialResult;
+      classAcc.set(row.classKey, classTarget);
+
+      const subTarget = subclassAcc.get(row.subclassKey) || {
+        id: `subclass:${row.subclassKey}`,
+        parentId: `class:${row.classKey}`,
+        level: 'subclass',
+        name: row.subclassLabel,
+        classKey: row.classKey,
+        classLabel: row.classLabel,
+        subclassKey: row.subclassKey,
+        subclassLabel: row.subclassLabel,
+        currentValue: 0,
+        targetPct: 0,
+        marginWeightedSum: 0,
+        marginWeightTotal: 0,
+        unrealizedPnl: 0,
+        realizedResult: 0,
+        financialResult: 0,
+      };
+
+      subTarget.currentValue += row.currentValue;
+      subTarget.targetPct += row.targetPct;
+      subTarget.marginWeightedSum += row.marginPct * row.currentValue;
+      subTarget.marginWeightTotal += row.currentValue;
+      subTarget.unrealizedPnl += row.unrealizedPnl;
+      subTarget.realizedResult += row.realizedResult;
+      subTarget.financialResult += row.financialResult;
+      subclassAcc.set(row.subclassKey, subTarget);
+    });
+
+    const classRows = Array.from(classAcc.values())
+      .map((row) => ({
+        ...row,
+        marginPct: row.marginWeightTotal > 0 ? row.marginWeightedSum / row.marginWeightTotal : 0,
+      }))
+      .map((row) => enrichAllocationRow(row, totalPatrimony))
+      .sort((a, b) => b.currentValue - a.currentValue);
+
+    const subclassRows = Array.from(subclassAcc.values())
+      .map((row) => ({
+        ...row,
+        marginPct: row.marginWeightTotal > 0 ? row.marginWeightedSum / row.marginWeightTotal : 0,
+      }))
+      .map((row) => enrichAllocationRow(row, totalPatrimony))
+      .sort((a, b) => b.currentValue - a.currentValue);
+
+    const assetRows = assetRowsRaw
+      .map((row) => enrichAllocationRow(row, totalPatrimony))
+      .sort((a, b) => b.currentValue - a.currentValue);
+
+    const nodes = [
+      ...classRows,
+      ...subclassRows,
+      ...assetRows,
+    ].map((node) => ({
+      ...node,
+      currentValueText: formatCurrencyBRL(node.currentValue),
+      realPctText: formatSignedPercent(node.realPct, 2),
+      targetPctText: formatSignedPercent(node.targetPct, 2),
+      diffPctText: formatSignedPercent(node.diffPct, 2),
+      adjustmentValueText: formatCurrencyBRL(node.adjustmentValue),
+      marginPctText: formatSignedPercent(node.marginPct, 2),
+      lossPctText: formatSignedPercent(node.lossPct, 2),
+      realizedResultText: formatCurrencyBRL(node.realizedResult),
+      unrealizedPnlText: formatCurrencyBRL(node.unrealizedPnl),
+      financialResultText: formatCurrencyBRL(node.financialResult),
+      realizedResultClass: safeNumber(node.realizedResult) > 0 ? 'positive' : safeNumber(node.realizedResult) < 0 ? 'negative' : 'neutral',
+      unrealizedPnlClass: safeNumber(node.unrealizedPnl) > 0 ? 'positive' : safeNumber(node.unrealizedPnl) < 0 ? 'negative' : 'neutral',
+      financialResultClass: safeNumber(node.financialResult) > 0 ? 'positive' : safeNumber(node.financialResult) < 0 ? 'negative' : 'neutral',
+    }));
+
+    const kpis = {
+      class: {
+        score: computeStrategyScore(classRows),
+        aporteRebalance: computeAporteRebalance(classRows, totalPatrimony),
+        tradeRebalance: computeTradeRebalance(classRows),
+      },
+      subclass: {
+        score: computeStrategyScore(subclassRows),
+        aporteRebalance: computeAporteRebalance(subclassRows, totalPatrimony),
+        tradeRebalance: computeTradeRebalance(subclassRows),
+      },
+      asset: {
+        score: computeStrategyScore(assetRows),
+        aporteRebalance: computeAporteRebalance(assetRows, totalPatrimony),
+        tradeRebalance: computeTradeRebalance(assetRows),
+      },
+    };
+
+    return {
+      status: 'ok',
+      data: {
+        widget: {
+          rootView: 'class-root',
+          generatedAt: new Date().toISOString(),
+          asOfDate,
+          recalcPolicy: {
+            basis: 'mark-to-market',
+            refreshPerDay: 3,
+            refreshIntervalHours: 8,
+          },
+          totalPatrimony: Number(totalPatrimony.toFixed(2)),
+          kpis,
+          nodes,
+        },
+      },
+    };
+  };
+
+  const allocationMetricAliases = [
+    'investments.allocation_vs_target',
+    'investments.allocation_real_vs_plan',
+    'investments.allocation_rebalance',
+    'investments.alocacao_real_planejada',
+  ];
+
+  allocationMetricAliases.forEach((metricId) => {
+    registerMetric({
+      id: metricId,
+      title: 'Alocação Real vs Planejada',
+      description: 'Compara alocação real vs meta em níveis classe/subclasse/ativo com score de aderência e recomendações de rebalanceamento.',
+      supportedFilters: ['currencies', 'assetClasses', 'statuses', 'accountIds', 'tags', 'asOf'],
+      output: { kind: 'widget' },
+      tags: ['investments', 'dashboard', 'alocacao', 'rebalanceamento'],
+      handler: allocationMetricHandler,
+    });
   });
 
   const profitabilityHandler = async ({ context, filters }) => {

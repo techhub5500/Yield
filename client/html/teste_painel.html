@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Movimentações Recentes</title>
+    <style>
+        /* Reset básico e variáveis de cor baseadas na identidade visual */
+        :root {
+            --bg-dark: #2c2a25; /* Cor de fundo principal dos cards */
+            --bg-darker: #1e1d1a; /* Cor de fundo da página/seções */
+            --text-primary: #e0d8c8; /* Texto claro principal */
+            --text-secondary: #a8a49d; /* Texto secundário/rótulos */
+            --accent-gold: #c9b06b; /* Dourado para destaques */
+            --accent-green: #76b082; /* Verde para valores positivos */
+            --accent-red: #c46a6a; /* Vermelho para valores negativos */
+            --border-color: rgba(224, 216, 200, 0.1); /* Cor sutil para bordas */
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-darker);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Estilo do Card Principal */
+        .card {
+            background-color: var(--bg-dark);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* Cabeçalho do Card */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .card-title {
+            font-family: 'Georgia', serif; /* Fonte serifada para o título */
+            font-size: 24px;
+            font-weight: normal;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        /* Filtros */
+        .filters {
+            display: flex;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 4px;
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background-color: var(--accent-gold);
+            color: var(--bg-darker);
+            font-weight: bold;
+        }
+
+        /* Tabela de Movimentações */
+        .transactions-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 12px; /* Espaço entre as linhas */
+        }
+
+        .transactions-table th {
+            text-align: left;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: normal;
+            padding: 0 12px 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .transactions-table th.text-right {
+            text-align: right;
+        }
+
+        .transactions-table td {
+            padding: 16px 12px;
+            background-color: rgba(255, 255, 255, 0.02);
+            color: var(--text-primary);
+            font-size: 15px;
+            vertical-align: middle;
+        }
+        
+        /* Arredondar os cantos da primeira e última célula de cada linha */
+        .transactions-table td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        .transactions-table td:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .transactions-table td.text-right {
+            text-align: right;
+        }
+
+        /* Badges de Tipo de Movimentação */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .badge-compra {
+            background-color: rgba(118, 176, 130, 0.2);
+            color: var(--accent-green);
+        }
+
+        .badge-venda {
+            background-color: rgba(196, 106, 106, 0.2);
+            color: var(--accent-red);
+        }
+
+        .badge-provento {
+            background-color: rgba(201, 176, 107, 0.2);
+            color: var(--accent-gold);
+        }
+
+        /* Cores para Valores */
+        .val-pos { color: var(--accent-green); }
+        .val-neg { color: var(--accent-red); }
+        .val-neutral { color: var(--text-primary); }
+
+        /* Paginação */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 24px;
+            color: var(--text-secondary);
+        }
+
+        .page-item {
+            margin: 0 8px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        .page-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .page-item.active {
+            background-color: var(--accent-gold);
+            color: var(--bg-darker);
+            font-weight: bold;
+        }
+
+        .page-arrow {
+            font-size: 18px;
+            padding: 4px 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Movimentações Recentes</h3>
+        <div class="filters">
+            <button class="filter-btn">30 dias</button>
+            <button class="filter-btn">90 dias</button>
+            <button class="filter-btn active">Tudo</button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="transactions-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Ativo</th>
+                    <th>Tipo</th>
+                    <th class="text-right">Quantidade</th>
+                    <th class="text-right">Preço Unit.</th>
+                    <th class="text-right">Valor Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>PETR4</td>
+                    <td><span class="badge badge-compra">Compra</span></td>
+                    <td class="text-right">100</td>
+                    <td class="text-right">R$ 35,20</td>
+                    <td class="text-right val-pos">R$ 3.520,00</td>
+                </tr>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>MGLU3</td>
+                    <td><span class="badge badge-venda">Venda</span></td>
+                    <td class="text-right">-200</td>
+                    <td class="text-right">R$ 3,15</td>
+                    <td class="text-right val-neg">R$ -630,00</td>
+                </tr>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>HGLG11</td>
+                    <td><span class="badge badge-provento">Provento</span></td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">-</td>
+                    <td class="text-right val-pos">R$ 120,00</td>
+                </tr>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>PETR4</td>
+                    <td><span class="badge badge-compra">Compra</span></td>
+                    <td class="text-right">100</td>
+                    <td class="text-right">R$ 35,20</td>
+                    <td class="text-right val-pos">R$ 1.520,00</td>
+                </tr>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>MGLU3</td>
+                    <td><span class="badge badge-venda">Venda</span></td>
+                    <td class="text-right">-200</td>
+                    <td class="text-right">R$ 3,25</td>
+                    <td class="text-right val-neg">R$ -630,00</td>
+                </tr>
+                <tr>
+                    <td>12/02/2024</td>
+                    <td>PETR4</td>
+                    <td><span class="badge badge-provento">Provento</span></td>
+                    <td class="text-right">-</td>
+                    <td class="text-right">R$ 3,00</td>
+                    <td class="text-right val-pos">R$ 1.520,00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination">
+        <span class="page-item page-arrow">&lt;</span>
+        <span class="page-item active">1</span>
+        <span class="page-item">2</span>
+        <span class="page-item page-arrow">&gt;</span>
+    </div>
+</div>
+
+</body>
+</html>

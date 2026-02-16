@@ -469,3 +469,163 @@ Todos os cálculos usam dados por usuário autenticado em MongoDB, reaproveitand
 Sem hardcode de valores no card oficial.
 
 ---
+
+## 12) Card oficial: Alocação Real vs Planejada (implementado)
+
+### 12.1 O que foi implementado
+
+- Card oficial de **Alocação Real vs Planejada** integrado em:
+  - `Patrimônio > Alocação Real vs Planejada`
+- Novo módulo frontend dedicado:
+  - `client/js/invest-dash.alocacao.js`
+- Nova métrica backend registrada com aliases:
+  - `investments.allocation_vs_target`
+  - `investments.allocation_real_vs_plan`
+  - `investments.allocation_rebalance`
+  - `investments.alocacao_real_planejada`
+- Integração no bootstrap de cards em:
+  - `client/js/invest-dash.js`
+
+### 12.2 Estrutura de agregação (Classe > Subclasse > Ativo)
+
+O card usa hierarquia de 3 níveis com drill-down:
+
+1) **Classe**
+- `Renda Variável`
+- `Renda Fixa`
+
+2) **Subclasse**
+- Derivada de `asset.category` (ou fallback de metadata)
+
+3) **Ativo**
+- Nó individual por `assetId`
+
+Os filtros de visualização implementados no frontend são:
+
+- **Classe** (raiz em nível de classe)
+- **Subclasse** (raiz em nível de subclasse)
+- **Ativo** (lista direta de ativos)
+
+### 12.3 Base de cálculo e regra de patrimônio
+
+O cálculo usa **mark-to-market** (valor atual), e não apenas capital investido:
+
+- `Valor Atual da Posição = Quantidade × Preço Atual`
+- `Preço Atual` prioriza histórico da Brapi quando disponível (equity/crypto/funds), com fallback para posição atual.
+- `Patrimônio Total (base da alocação) = soma dos valores atuais das posições abertas`
+
+Isso garante que a alocação reaja a ganho/perda de preço.
+
+### 12.4 Fórmulas de cálculo (score e rebalanceamento)
+
+#### Score de aderência
+
+- `Score = 100 - (Soma dos desvios absolutos entre % Real e % Meta) / 2`
+- Aplicado por modo (`class`, `subclass`, `asset`) e limitado a `[0, 100]`.
+
+#### Rebalanceamento por aporte (sem venda)
+
+Implementado por modo, usando o item com maior insuficiência econômica vs meta:
+
+1. Calcula insuficiência atual por nó:
+  - `Insuficiência = Valor Ideal no Patrimônio Atual - Valor Atual`
+  - `Valor Ideal no Patrimônio Atual = Patrimônio Atual × Meta%`
+2. Seleciona o nó com maior insuficiência positiva.
+3. Calcula:
+  - `Novo Total Ideal = Valor Atual do Nó / (Meta% / 100)`
+4. Calcula:
+  - `Aporte Necessário = max(0, Novo Total Ideal - Patrimônio Atual)`
+
+Esse ajuste corrige casos em que o KPI podia aparecer como `R$ 0,00` mesmo com necessidade real de aporte.
+
+#### Rebalanceamento por venda/compra (ajuste fino)
+
+Além do valor por nó (`Valor Ajuste`), o card passa a consolidar por modo:
+
+- `buyAmount`: soma de compras sugeridas (itens `under`)
+- `sellAmount`: soma de vendas sugeridas (itens `over`)
+- `netAmount = buyAmount - sellAmount`
+
+No frontend, os dois lados (`Comprar` e `Vender`) são exibidos de forma explícita.
+
+#### Valor de ajuste por nó
+
+2. Calcula:
+   - `Novo Total Ideal = Valor Atual do Nó / (Meta% / 100)`
+
+- `Valor Ajuste = (Patrimônio Total × Meta%) - Valor Atual`
+- `Valor Ajuste > 0`: Comprar
+- `Valor Ajuste < 0`: Vender
+
+### 12.5 Lógica das etiquetas e margem de desvio
+
+Para cada nó (classe/subclasse/ativo):
+
+- `Desvio = %Real - %Meta`
+- `status = over` se `Desvio > Margem`
+- `status = under` se `Desvio < -Margem`
+- `status = on-track` caso contrário
+
+Etiquetas exibidas:
+
+- `Vender / Aguardar (+X%)`
+- `Aportar (-X%)`
+- `Manter (0%)`
+
+### 12.6 Alerta especial (ícone info)
+
+No nível de ativo, o alerta é exibido quando:
+
+- Ativo está acima da meta (considerando margem), **e**
+- Ajuste sugere venda (`Valor Ajuste < 0`), **e**
+- Ativo está em prejuízo (`PnL não realizado < 0`)
+
+Mensagem exibida:
+
+> “O sistema sugere vender R$ X para rebalancear, mas você está com prejuízo de Y% neste ativo.”
+
+### 12.7 Integração com Lançamento Manual
+
+Atualizações implementadas no modal manual (`client/js/invest-dash.manual-modal.js`):
+
+- Novo campo no cadastro de ativo:
+  - `Margem de Desvio (%)` (`metadata.allocationDeviationPct`)
+- Campo existente mantido:
+  - `Alocação Meta (%)` (`metadata.allocationTargetPct`)
+- Nova operação de edição:
+  - `Atualizar Meta e Margem`
+  - Permite editar meta, margem, classe do ativo e subclasse
+
+No backend (`service.editManualAsset`) foi adicionado suporte à operação:
+
+- `update_allocation`
+
+Após create/edit/delete, o modal continua disparando refresh de **todos os cards** registrados em `window.YieldInvestments.cards`, portanto o card de alocação recalcula sem reload manual.
+
+### 12.8 Frequência de recálculo
+
+- A métrica expõe política de recálculo com base mark-to-market:
+  - `refreshPerDay: 3`
+  - `refreshIntervalHours: 8`
+- No frontend, o controller agenda refresh automático em intervalo de 8 horas enquanto a tela estiver ativa.
+
+### 12.9 Estrutura de dados entregue pelo backend (widget)
+
+A métrica retorna um widget com:
+
+- `totalPatrimony`
+- `kpis` por modo (`class`, `subclass`, `asset`):
+  - `score`
+  - `aporteRebalance` (`amount`, `basisId`, `basisName`)
+- `nodes[]` com os níveis de agregação e campos de decisão:
+  - `%Real`, `%Meta`, desvio, margem
+  - status, etiqueta de ação
+  - valor de ajuste compra/venda
+  - resultado financeiro por nível (classe/subclasse/ativo), com agregação consistente
+    - `financialResult = realizedResult + unrealizedPnl`
+  - classe visual de lucro/prejuízo para exibição no card
+  - alerta de prejuízo para venda (quando aplicável)
+
+Isso mantém o frontend focado em renderização/filtros e centraliza a lógica de cálculo no backend.
+
+---
