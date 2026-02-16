@@ -15,6 +15,7 @@ const COLLECTIONS = {
   POSITIONS: 'investments_positions',
   ASSETS: 'investments_assets',
   PRICES: 'investments_prices',
+  ACTIVITY_LOG: 'investments_activity_log',
 };
 
 /** @type {MongoClient|null} */
@@ -291,6 +292,97 @@ async function insertInvestmentTransaction(payload) {
 }
 
 /**
+ * Registra evento de atividade do usuário no painel.
+ * @param {Object} payload
+ * @returns {Promise<Object>}
+ */
+async function insertActivityLog(payload) {
+  const db = await getDb();
+  const now = new Date();
+  const createdAt = now.toISOString();
+
+  const document = {
+    activityId: payload.activityId || `act_${crypto.randomUUID()}`,
+    userId: payload.userId,
+    assetId: payload.assetId || null,
+    assetName: payload.assetName || '',
+    ticker: payload.ticker || null,
+    activityType: payload.activityType || 'unknown',
+    operation: payload.operation || '',
+    referenceDate: payload.referenceDate || createdAt.slice(0, 10),
+    quantity: Number(payload.quantity || 0),
+    unitPrice: Number(payload.unitPrice || 0),
+    totalValue: Number(payload.totalValue || 0),
+    currency: payload.currency || 'BRL',
+    metadata: payload.metadata || {},
+    source: payload.source || 'manual',
+    createdAt,
+    createdAtEpochMs: now.getTime(),
+  };
+
+  await db.collection(COLLECTIONS.ACTIVITY_LOG).insertOne(document);
+  return document;
+}
+
+/**
+ * Lista atividades do usuário para painel, ordenadas da mais recente para a mais antiga.
+ * @param {Object} params
+ * @returns {Promise<Object[]>}
+ */
+async function listActivityLog(params) {
+  const db = await getDb();
+  const limit = Number.isFinite(Number(params.limit)) ? Math.max(1, Number(params.limit)) : 100;
+  const filter = {
+    userId: params.userId,
+  };
+
+  if (params.start || params.end) {
+    filter.referenceDate = {};
+    if (params.start) filter.referenceDate.$gte = params.start;
+    if (params.end) filter.referenceDate.$lte = params.end;
+  }
+
+  if (Array.isArray(params.activityTypes) && params.activityTypes.length) {
+    filter.activityType = { $in: params.activityTypes };
+  }
+
+  if (params.assetId) {
+    filter.assetId = params.assetId;
+  }
+
+  return db
+    .collection(COLLECTIONS.ACTIVITY_LOG)
+    .find(filter)
+    .sort({ referenceDate: -1, createdAt: -1 })
+    .limit(limit)
+    .toArray();
+}
+
+/**
+ * Limpa histórico de atividades do usuário por escopo temporal.
+ * @param {Object} params
+ * @returns {Promise<{deletedCount:number}>}
+ */
+async function purgeActivityLog(params) {
+  const db = await getDb();
+  const scope = String(params.scope || 'all').toLowerCase();
+  const filter = { userId: params.userId };
+
+  if (scope === '30d' || scope === '90d') {
+    const days = scope === '30d' ? 30 : 90;
+    const startDate = new Date();
+    startDate.setUTCDate(startDate.getUTCDate() - days);
+    const startIso = startDate.toISOString().slice(0, 10);
+    filter.referenceDate = { $gte: startIso };
+  }
+
+  const result = await db.collection(COLLECTIONS.ACTIVITY_LOG).deleteMany(filter);
+  return {
+    deletedCount: result.deletedCount || 0,
+  };
+}
+
+/**
  * Remove um ativo e todos os dados relacionados (posições e transações).
  * @param {string} userId
  * @param {string} assetId
@@ -346,6 +438,7 @@ module.exports = {
   COLLECTIONS,
   getDb,
   listTransactions,
+  listActivityLog,
   listPositions,
   listAssets,
   searchAssetsByName,
@@ -354,5 +447,7 @@ module.exports = {
   deleteAsset,
   insertPositionSnapshot,
   insertInvestmentTransaction,
+  insertActivityLog,
+  purgeActivityLog,
   listLatestPositionsByUser,
 };

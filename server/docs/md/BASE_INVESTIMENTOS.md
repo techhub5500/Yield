@@ -629,3 +629,78 @@ A métrica retorna um widget com:
 Isso mantém o frontend focado em renderização/filtros e centraliza a lógica de cálculo no backend.
 
 ---
+
+## 13) Card oficial: Volatilidade Anualizada (implementado)
+
+### 13.1 O que foi implementado
+
+- Card oficial de **Volatilidade Anualizada** integrado em:
+  - `Volatilidade > Volatilidade do Portfólio`
+- Novo módulo frontend dedicado:
+  - `client/js/invest-dash.volatilidade.js`
+- Nova métrica backend registrada com aliases:
+  - `investments.volatility_annualized`
+  - `investments.volatility`
+  - `investments.volatilidade_anualizada`
+  - `investments.portfolio_volatility`
+- Integração no bootstrap de cards em:
+  - `client/js/invest-dash.js`
+
+### 13.2 Filtros suportados
+
+O card aplica recálculo completo ao trocar qualquer filtro:
+
+- **Período** (`periodPreset`):
+  - `MTD`, `YTD`, `12M`, `origin`
+  - Padrão: `origin`
+- **Escopo** (`volatilityScope`):
+  - `consolidated` (Consol.)
+  - `classes`
+- **Benchmark** (`volatilityBenchmark`):
+  - `ibov`
+  - `cdi`
+
+Esses filtros foram adicionados à normalização (`core/investments/filters.js`) e expostos no manifesto (`service.getManifest()`).
+
+### 13.3 Métricas calculadas (regra de negócio)
+
+As métricas seguem a especificação técnica de `card_volati.md`:
+
+- **Volatilidade Anualizada**
+  - Desvio padrão dos retornos diários anualizado por `√252`
+- **Máximo Drawdown**
+  - Maior queda entre pico e vale subsequente na série de valor
+- **Índice Sharpe**
+  - `(Retorno do período - retorno livre de risco) / volatilidade anualizada`
+  - Taxa livre de risco baseada em CDI acumulado do período
+- **Beta**
+  - `Cov(Rp, Rm) / Var(Rm)` com alinhamento temporal diário entre carteira e benchmark selecionado
+
+### 13.4 Benchmarks e fonte dos dados
+
+- `IBOV` e `CDI` são consumidos no backend a partir de:
+  - `server/docs/md_sistema/ibov.json`
+  - `server/docs/md_sistema/taxa_cdi.json`
+- Os JSONs permanecem em arquivo (sem hardcode no frontend), permitindo atualização contínua de dados sem mudança no JS do card.
+- Para cálculo diário de risco (vol/beta), o backend converte a base mensal dos JSONs em série diária útil (dias úteis), mantendo compatibilidade com novos meses inseridos nesses arquivos.
+
+### 13.5 Estrutura do widget retornado
+
+A métrica retorna `widget` com:
+
+- `rootView` (`total` ou `classes-root`)
+- `period`, `scope`, `benchmark`
+- `views` hierárquicas com drill-down por classe:
+  - KPIs principais (vol portfólio, vol benchmark)
+  - KPIs secundários (drawdown, sharpe, beta)
+  - `chartData` (linha central, banda de desvio e linha benchmark)
+  - `details[]` (lista lateral com métricas por classe/ativo)
+
+### 13.6 Integração com Lançamento Manual
+
+O card participa do mesmo ciclo global de refresh dos demais cards:
+
+- Após create/edit/delete no modal manual (`invest-dash.manual-modal.js`), todos os controllers registrados em `window.YieldInvestments.cards` executam `fetchAndRenderLiveData()`.
+- Com isso, a Volatilidade recalcula automaticamente após novas movimentações, sem reload manual da página.
+
+---

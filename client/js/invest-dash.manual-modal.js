@@ -802,7 +802,9 @@
                 state.edit.brapi.loading = false;
                 state.edit.brapi.error = '';
                 state.edit.brapi.quote = quote;
-                state.edit.fields.price = String(quote.priceOnReferenceDate || '');
+                if (Number.isFinite(Number(quote.priceOnReferenceDate)) && Number(quote.priceOnReferenceDate) > 0) {
+                    state.edit.fields.price = String(quote.priceOnReferenceDate);
+                }
                 render();
             } catch (error) {
                 if (state.edit.brapi.lookupKey !== lookupKey) return;

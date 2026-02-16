@@ -130,18 +130,64 @@ class InvestmentsMetricsService {
     this.assertUserId(userId);
     if (!assetId) throw new Error('assetId é obrigatório');
 
-    let asset = await repository.getAssetById({ userId, assetId });
+    const requestedDate = isIsoDate(referenceDate)
+      ? referenceDate
+      : toIsoDate(new Date());
+
+    const adjustedReferenceDate = adjustWeekendDate(requestedDate);
+
+    const fallbackFromAsset = async (assetRecord) => {
+      const latestPositions = await repository.listLatestPositionsByUser({
+        userId,
+        filters: {},
+        end: requestedDate,
+      });
+
+      const latestPosition = latestPositions.find((item) => item.assetId === assetId) || null;
+      const fallbackPrice = Number.isFinite(Number(latestPosition?.marketPrice))
+        ? Number(latestPosition.marketPrice)
+        : Number.isFinite(Number(latestPosition?.avgPrice))
+          ? Number(latestPosition.avgPrice)
+          : 0;
+
+      return {
+        success: true,
+        ticker: normalizeTicker(assetRecord?.ticker || assetRecord?.metadata?.ticker || assetRecord?.name) || '',
+        shortName: assetRecord?.name || assetId,
+        longName: assetRecord?.name || assetId,
+        currency: assetRecord?.currency || 'BRL',
+        regularMarketPrice: fallbackPrice,
+        referenceDate: requestedDate,
+        adjustedReferenceDate,
+        priceOnReferenceDate: fallbackPrice,
+        sourceDate: latestPosition?.referenceDate || adjustedReferenceDate,
+        hasHistory: false,
+        source: 'fallback',
+      };
+    };
+
+    const asset = await repository.getAssetById({ userId, assetId });
     if (!asset) throw new Error('Ativo não encontrado para este usuário');
 
     const tickerCandidate = normalizeTicker(asset.ticker || asset.metadata?.ticker || asset.name);
     if (!isTickerLike(tickerCandidate)) {
-      throw new Error('Ativo não possui ticker válido para consulta na Brapi');
+      const fallbackQuote = await fallbackFromAsset(asset);
+      return {
+        ...fallbackQuote,
+        assetId,
+        assetName: asset.name,
+      };
     }
 
-    const quote = await this.getBrapiQuoteByTicker({
-      ticker: tickerCandidate,
-      referenceDate,
-    });
+    let quote;
+    try {
+      quote = await this.getBrapiQuoteByTicker({
+        ticker: tickerCandidate,
+        referenceDate: requestedDate,
+      });
+    } catch (_error) {
+      quote = await fallbackFromAsset(asset);
+    }
 
     return {
       ...quote,
@@ -158,6 +204,51 @@ class InvestmentsMetricsService {
     if (!userId || typeof userId !== 'string') {
       throw new Error('userId inválido para operação de investimentos');
     }
+  }
+
+  /**
+   * Registra evento de atividade para o painel.
+   * @param {Object} input
+   * @returns {Promise<void>}
+   */
+  async logActivity(input = {}) {
+    const {
+      userId,
+      asset,
+      activityType,
+      operation,
+      referenceDate,
+      quantity,
+      unitPrice,
+      totalValue,
+      currency,
+      metadata,
+    } = input;
+
+    if (!userId || !activityType) return;
+
+    const assetName = String(asset?.name || asset?.ticker || '').trim();
+    const ticker = normalizeTicker(asset?.ticker || asset?.metadata?.ticker || assetName);
+
+    await repository.insertActivityLog({
+      userId,
+      assetId: asset?.assetId || null,
+      assetName,
+      ticker: ticker || null,
+      activityType,
+      operation: operation || '',
+      referenceDate,
+      quantity,
+      unitPrice,
+      totalValue,
+      currency: currency || asset?.currency || 'BRL',
+      metadata: {
+        assetClass: asset?.assetClass || null,
+        category: asset?.category || null,
+        ...(metadata || {}),
+      },
+      source: 'manual',
+    });
   }
 
   /**
@@ -251,6 +342,22 @@ class InvestmentsMetricsService {
       source: 'manual',
     });
 
+    await this.logActivity({
+      userId,
+      asset: createdAsset,
+      activityType: 'manual_create',
+      operation: 'manual_create',
+      referenceDate,
+      quantity,
+      unitPrice: avgPrice,
+      totalValue: quantity * avgPrice,
+      currency,
+      metadata: {
+        assetClass,
+        category,
+      },
+    });
+
     return {
       success: true,
       asset: createdAsset,
@@ -268,7 +375,53 @@ class InvestmentsMetricsService {
     this.assertUserId(userId);
     if (!assetId) throw new Error('assetId é obrigatório para exclusão');
 
+    const existingAsset = await repository.getAssetById({ userId, assetId });
+    if (!existingAsset) {
+      return false;
+    }
+
+    await this.logActivity({
+      userId,
+      asset: existingAsset,
+      activityType: 'delete_asset',
+      operation: 'delete_asset',
+      referenceDate: new Date().toISOString().slice(0, 10),
+      quantity: 0,
+      unitPrice: 0,
+      totalValue: 0,
+      currency: existingAsset.currency,
+      metadata: {
+        reason: 'manual_delete_asset',
+      },
+    });
+
     return repository.deleteAsset(userId, assetId);
+  }
+
+  /**
+   * Limpa histórico do painel de atividades sem alterar a carteira.
+   * @param {Object} input
+   * @returns {Promise<Object>}
+   */
+  async clearActivitiesHistory(input) {
+    const { userId, scope = 'all' } = input;
+    this.assertUserId(userId);
+
+    const normalizedScope = String(scope || 'all').toLowerCase();
+    if (!['30d', '90d', 'all'].includes(normalizedScope)) {
+      throw new Error('Escopo inválido. Use 30d, 90d ou all.');
+    }
+
+    const result = await repository.purgeActivityLog({
+      userId,
+      scope: normalizedScope,
+    });
+
+    return {
+      success: true,
+      scope: normalizedScope,
+      deletedCount: result.deletedCount || 0,
+    };
   }
 
   /**
@@ -298,7 +451,7 @@ class InvestmentsMetricsService {
     this.assertUserId(userId);
 
     if (!assetId) throw new Error('assetId é obrigatório');
-    const asset = await repository.getAssetById({ userId, assetId });
+    let asset = await repository.getAssetById({ userId, assetId });
     if (!asset) throw new Error('Ativo não encontrado para este usuário');
 
     const nowDate = new Date().toISOString().slice(0, 10);
@@ -363,6 +516,21 @@ class InvestmentsMetricsService {
         fees,
         source: 'manual',
       });
+
+      await this.logActivity({
+        userId,
+        asset,
+        activityType: 'add_buy',
+        operation,
+        referenceDate,
+        quantity: buyQuantity,
+        unitPrice: buyPrice,
+        totalValue: buyInvested,
+        currency: asset.currency,
+        metadata: {
+          fees,
+        },
+      });
     } else if (operation === 'add_sell') {
       const soldQuantity = Number(payload.quantity);
       const soldPrice = Number(payload.price);
@@ -403,6 +571,21 @@ class InvestmentsMetricsService {
         fees,
         source: 'manual',
       });
+
+      await this.logActivity({
+        userId,
+        asset,
+        activityType: 'add_sell',
+        operation,
+        referenceDate,
+        quantity: soldQuantity,
+        unitPrice: soldPrice,
+        totalValue: (soldQuantity * soldPrice) - fees,
+        currency: asset.currency,
+        metadata: {
+          fees,
+        },
+      });
     } else if (operation === 'add_income') {
       const grossAmount = Number(payload.grossAmount);
       const incomeType = String(payload.incomeType || '').trim();
@@ -429,6 +612,21 @@ class InvestmentsMetricsService {
         grossAmount,
         metadata: { incomeType },
         source: 'manual',
+      });
+
+      await this.logActivity({
+        userId,
+        asset,
+        activityType: 'add_income',
+        operation,
+        referenceDate,
+        quantity: 0,
+        unitPrice: 0,
+        totalValue: grossAmount,
+        currency: asset.currency,
+        metadata: {
+          incomeType,
+        },
       });
     } else if (operation === 'update_balance') {
       if (asset.assetClass !== 'fixed_income') {
@@ -462,9 +660,26 @@ class InvestmentsMetricsService {
         },
         source: 'manual',
       });
+
+      await this.logActivity({
+        userId,
+        asset,
+        activityType: 'update_balance',
+        operation,
+        referenceDate,
+        quantity: normalizedQuantity,
+        unitPrice: marketPrice,
+        totalValue: currentBalance,
+        currency: asset.currency,
+        metadata: {
+          previousMarketValue: Number(current.marketValue || 0),
+        },
+      });
     } else if (operation === 'update_allocation') {
       const nextTargetRaw = payload.allocationTargetPct;
       const nextMarginRaw = payload.allocationDeviationPct;
+      const previousTargetRaw = asset?.metadata?.allocationTargetPct;
+      const previousMarginRaw = asset?.metadata?.allocationDeviationPct;
 
       const nextTarget = Number(nextTargetRaw);
       const nextMargin = Number(nextMarginRaw);
@@ -496,6 +711,16 @@ class InvestmentsMetricsService {
         nextMetadata.allocationDeviationPct = nextMargin;
       }
 
+      const targetUpdated = nextTargetRaw !== null
+        && nextTargetRaw !== undefined
+        && nextTargetRaw !== ''
+        && Number(previousTargetRaw) !== Number(nextMetadata.allocationTargetPct);
+
+      const marginUpdated = nextMarginRaw !== null
+        && nextMarginRaw !== undefined
+        && nextMarginRaw !== ''
+        && Number(previousMarginRaw) !== Number(nextMetadata.allocationDeviationPct);
+
       asset = await repository.upsertAsset({
         userId,
         assetId: asset.assetId,
@@ -508,6 +733,26 @@ class InvestmentsMetricsService {
         accountId: asset.accountId || null,
         tags: Array.isArray(asset.tags) ? asset.tags : [],
         metadata: nextMetadata,
+      });
+
+      await this.logActivity({
+        userId,
+        asset,
+        activityType: 'update_allocation',
+        operation,
+        referenceDate,
+        quantity: Number(current.quantity || 0),
+        unitPrice: Number(current.avgPrice || 0),
+        totalValue: Number(current.marketValue || 0),
+        currency: asset.currency,
+        metadata: {
+          allocationTargetPct: nextMetadata.allocationTargetPct,
+          allocationDeviationPct: nextMetadata.allocationDeviationPct,
+          allocationTargetUpdated: targetUpdated,
+          allocationDeviationUpdated: marginUpdated,
+          assetClass: asset.assetClass,
+          category: asset.category,
+        },
       });
     } else if (operation === 'update_position') {
       if (Number.isFinite(Number(payload.quantity))) quantity = Number(payload.quantity);
@@ -598,6 +843,8 @@ class InvestmentsMetricsService {
         periodsMonths: [2, 3, 6, 12],
         periodPreset: ['mtd', 'ytd', '12m', 'origin'],
         resultType: ['both', 'realized', 'unrealized'],
+        volatilityScope: ['consolidated', 'classes'],
+        volatilityBenchmark: ['ibov', 'cdi'],
       },
       metrics,
     };

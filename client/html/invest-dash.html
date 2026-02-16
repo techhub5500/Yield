@@ -116,7 +116,7 @@
                         </div>
                         <div class="card-body">
                             <div class="card-main-content">
-                                <!-- Conteúdo Principal -->
+                                <div id="volatilidade-card-slot"></div>
                             </div>
                         </div>
                     </div>
@@ -154,12 +154,60 @@
         <section class="fixed-activities">
             <div class="activities-header">
                 <h2>Últimas atividades de investimentos</h2>
+                <div class="activities-header-actions">
+                    <div class="filters" role="tablist" aria-label="Filtro de período do painel">
+                        <button class="filter-btn" data-period="30d" type="button">30 dias</button>
+                        <button class="filter-btn" data-period="90d" type="button">90 dias</button>
+                        <button class="filter-btn active" data-period="all" type="button">Tudo</button>
+                    </div>
+                    <div class="painel-clear-wrap">
+                        <button class="painel-clear-trigger" id="painel-clear-trigger" type="button" aria-haspopup="true" aria-expanded="false">
+                            Limpar histórico
+                        </button>
+                        <div class="painel-clear-menu" id="painel-clear-menu">
+                            <button type="button" data-clear-scope="30d">Apagar últimos 30 dias</button>
+                            <button type="button" data-clear-scope="90d">Apagar últimos 90 dias</button>
+                            <button type="button" data-clear-scope="all">Apagar tudo</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="activities-container">
-                <!-- Estrutura sem conteúdo conforme solicitado -->
-                <div class="activity-placeholder"></div>
-                <div class="activity-placeholder"></div>
-                <div class="activity-placeholder"></div>
+                <div id="painel-atividades-slot">
+                    <div class="table-responsive">
+                        <table class="transactions-table">
+                            <colgroup>
+                                <col class="col-data" />
+                                <col class="col-ativo" />
+                                <col class="col-tipo" />
+                                <col class="col-quantidade" />
+                                <col class="col-unitario" />
+                                <col class="col-impacto" />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Ativo</th>
+                                    <th>Tipo</th>
+                                    <th class="text-right">Quantidade</th>
+                                    <th class="text-right">Valor Unitário</th>
+                                    <th class="text-right">Impacto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="painel-atividades-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="painel-empty-state" id="painel-empty-state">
+                        Nenhuma movimentação encontrada para os filtros selecionados.
+                    </div>
+
+                    <div class="pagination">
+                        <button class="page-item page-arrow" id="painel-page-prev" type="button" aria-label="Página anterior">&lt;</button>
+                        <span class="page-item active" id="painel-page-info">Página 1 de 1</span>
+                        <button class="page-item page-arrow" id="painel-page-next" type="button" aria-label="Próxima página">&gt;</button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -190,6 +238,8 @@
     <script src="../js/invest-dash.rentabilidade.js"></script>
     <script src="../js/invest-dash.resultado.js"></script>
     <script src="../js/invest-dash.alocacao.js"></script>
+    <script src="../js/invest-dash.volatilidade.js"></script>
+    <script src="../js/invest-dash.painel.js"></script>
     <script src="../js/invest-dash.manual-modal.js"></script>
     <script src="../js/invest-dash.js"></script>
 </body>

@@ -16,10 +16,14 @@ const DEFAULT_FILTERS = {
   asOf: null,
   periodPreset: 'origin',
   resultType: 'both',
+  volatilityScope: 'consolidated',
+  volatilityBenchmark: 'ibov',
 };
 
 const ALLOWED_PERIOD_PRESETS = new Set(['mtd', 'ytd', '12m', 'origin']);
 const ALLOWED_RESULT_TYPES = new Set(['both', 'realized', 'unrealized']);
+const ALLOWED_VOLATILITY_SCOPES = new Set(['consolidated', 'classes']);
+const ALLOWED_VOLATILITY_BENCHMARKS = new Set(['ibov', 'cdi']);
 
 /**
  * Normaliza array de strings (trim, lower, remove vazios, unique).
@@ -61,6 +65,12 @@ function normalizeInvestmentsFilters(raw = {}) {
     resultType: ALLOWED_RESULT_TYPES.has(String(input.resultType || '').toLowerCase())
       ? String(input.resultType || '').toLowerCase()
       : 'both',
+    volatilityScope: ALLOWED_VOLATILITY_SCOPES.has(String(input.volatilityScope || '').toLowerCase())
+      ? String(input.volatilityScope || '').toLowerCase()
+      : 'consolidated',
+    volatilityBenchmark: ALLOWED_VOLATILITY_BENCHMARKS.has(String(input.volatilityBenchmark || '').toLowerCase())
+      ? String(input.volatilityBenchmark || '').toLowerCase()
+      : 'ibov',
   };
 
   return { filters, periodsMonths, groupBy };

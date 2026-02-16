@@ -280,6 +280,73 @@ function indexSeriesByDate(series) {
   return map;
 }
 
+function isBusinessDay(date) {
+  const weekday = date.getUTCDay();
+  return weekday !== 0 && weekday !== 6;
+}
+
+function buildBusinessDates(startIso, endIso) {
+  if (!isIsoDate(startIso) || !isIsoDate(endIso) || startIso > endIso) return [];
+
+  const start = new Date(`${startIso}T00:00:00.000Z`);
+  const end = new Date(`${endIso}T00:00:00.000Z`);
+  const dates = [];
+
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    if (!isBusinessDay(cursor)) continue;
+    dates.push(toIsoDate(cursor));
+  }
+
+  return dates;
+}
+
+function countBusinessDaysInMonth(year, month) {
+  const cursor = new Date(Date.UTC(year, month - 1, 1));
+  let count = 0;
+
+  while (cursor.getUTCMonth() === (month - 1)) {
+    if (isBusinessDay(cursor)) count += 1;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return Math.max(1, count);
+}
+
+async function buildDailyBenchmarkSeries(kind, startIso, endIso) {
+  if (!['cdi', 'ibov'].includes(String(kind || '').toLowerCase())) return [];
+
+  const normalizedKind = String(kind).toLowerCase();
+  const monthly = await readMonthlyJsonSeries(normalizedKind);
+  const businessDates = buildBusinessDates(startIso, endIso);
+
+  if (!businessDates.length) return [];
+
+  let cumulativeFactor = 1;
+
+  return businessDates.map((date) => {
+    const [yearText, monthText] = date.split('-');
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const monthKey = `${yearText}-${monthText}`;
+    const monthPct = Number(monthly.get(monthKey) || 0);
+
+    const businessDaysInMonth = countBusinessDaysInMonth(year, month);
+    const monthFactor = 1 + (monthPct / 100);
+    const dailyFactor = monthFactor > 0
+      ? Math.pow(monthFactor, 1 / businessDaysInMonth)
+      : 1;
+    const dailyReturn = dailyFactor - 1;
+
+    cumulativeFactor *= dailyFactor;
+
+    return {
+      date,
+      value: (cumulativeFactor - 1) * 100,
+      dailyReturn,
+    };
+  });
+}
+
 module.exports = {
   addDays,
   indexSeriesByDate,
@@ -287,4 +354,5 @@ module.exports = {
   buildIbovBenchmarks,
   buildSelicBenchmarks,
   buildIfixBenchmarks,
+  buildDailyBenchmarkSeries,
 };

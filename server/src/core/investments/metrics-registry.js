@@ -20,6 +20,7 @@ const {
   buildIbovBenchmarks,
   buildSelicBenchmarks,
   buildIfixBenchmarks,
+  buildDailyBenchmarkSeries,
 } = require('./benchmarks');
 
 let _initialized = false;
@@ -56,6 +57,68 @@ function toMonthLabel(isoDate) {
   const [year, month] = String(isoDate).split('-');
   if (!year || !month) return isoDate;
   return `${month}/${year}`;
+}
+
+function resolveActivityDateRange(activityPeriod) {
+  const now = new Date();
+  const end = toIsoDate(now);
+
+  if (activityPeriod === '30d' || activityPeriod === '90d') {
+    const startDate = new Date(now);
+    startDate.setUTCDate(startDate.getUTCDate() - (activityPeriod === '30d' ? 30 : 90));
+    return {
+      start: toIsoDate(startDate),
+      end,
+    };
+  }
+
+  return {
+    start: null,
+    end: null,
+  };
+}
+
+function classifyActivityType(activity) {
+  const kind = String(activity.activityType || activity.operation || '').toLowerCase();
+  const assetClass = String(activity.metadata?.assetClass || '').toLowerCase();
+  const targetUpdated = Boolean(activity.metadata?.allocationTargetUpdated);
+  const deviationUpdated = Boolean(activity.metadata?.allocationDeviationUpdated);
+
+  if (kind === 'add_buy' || kind === 'manual_create') {
+    if (['fixed_income', 'funds', 'cash'].includes(assetClass)) return 'aporte';
+    return 'compra';
+  }
+
+  if (kind === 'add_sell') return 'venda';
+  if (kind === 'add_income') return 'dividendo';
+  if (kind === 'update_allocation') {
+    if (targetUpdated && deviationUpdated) return 'update_meta_margem';
+    if (deviationUpdated) return 'update_margem';
+    return 'update_meta';
+  }
+  if (kind === 'update_balance') return 'aporte';
+  if (kind === 'delete_asset') return 'exclusao';
+
+  return 'movimentacao';
+}
+
+function labelActivityType(activityType) {
+  if (activityType === 'compra') return 'Compra de ativo';
+  if (activityType === 'venda') return 'Venda de ativo';
+  if (activityType === 'dividendo') return 'Recebimento de dividendos';
+  if (activityType === 'aporte') return 'Aporte';
+  if (activityType === 'exclusao') return 'Exclusão de movimentação';
+  if (activityType === 'update_margem') return 'Atualização de margem de desvio (%)';
+  if (activityType === 'update_meta_margem') return 'Atualização de meta e margem (%)';
+  if (activityType === 'update_meta') return 'Atualização de meta (%)';
+  return 'Movimentação';
+}
+
+function formatActivityImpactClass(value) {
+  const parsed = Number(value || 0);
+  if (parsed > 0) return 'positive';
+  if (parsed < 0) return 'negative';
+  return 'neutral';
 }
 
 function normalizePeriodPreset(value) {
@@ -530,6 +593,232 @@ function resolveResultKind(value) {
   const normalized = String(value || '').toLowerCase();
   if (['realized', 'unrealized', 'both'].includes(normalized)) return normalized;
   return 'both';
+}
+
+function isBusinessDay(date) {
+  const day = date.getUTCDay();
+  return day !== 0 && day !== 6;
+}
+
+function buildBusinessDateRange(startIso, endIso) {
+  if (!startIso || !endIso || startIso > endIso) return [];
+
+  const start = new Date(`${startIso}T00:00:00.000Z`);
+  const end = new Date(`${endIso}T00:00:00.000Z`);
+  const dates = [];
+
+  for (const cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
+    if (!isBusinessDay(cursor)) continue;
+    dates.push(toIsoDate(cursor));
+  }
+
+  return dates;
+}
+
+function formatPercentNoSignal(value, decimals = 2) {
+  const parsed = Number(value || 0);
+  return `${parsed.toFixed(decimals).replace('.', ',')}%`;
+}
+
+function toFixedNumber(value, decimals = 2) {
+  return Number(Number(value || 0).toFixed(decimals));
+}
+
+function standardDeviationSample(values) {
+  const series = (Array.isArray(values) ? values : []).filter((item) => Number.isFinite(item));
+  if (series.length < 2) return 0;
+
+  const mean = series.reduce((sum, value) => sum + value, 0) / series.length;
+  const variance = series.reduce((sum, value) => {
+    const diff = value - mean;
+    return sum + (diff * diff);
+  }, 0) / (series.length - 1);
+
+  return variance > 0 ? Math.sqrt(variance) : 0;
+}
+
+function covarianceSample(aValues, bValues) {
+  const paired = [];
+
+  const maxLength = Math.min(
+    Array.isArray(aValues) ? aValues.length : 0,
+    Array.isArray(bValues) ? bValues.length : 0
+  );
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const a = Number(aValues[index]);
+    const b = Number(bValues[index]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+    paired.push([a, b]);
+  }
+
+  if (paired.length < 2) return 0;
+
+  const meanA = paired.reduce((sum, row) => sum + row[0], 0) / paired.length;
+  const meanB = paired.reduce((sum, row) => sum + row[1], 0) / paired.length;
+
+  const cov = paired.reduce((sum, row) => {
+    const da = row[0] - meanA;
+    const db = row[1] - meanB;
+    return sum + (da * db);
+  }, 0) / (paired.length - 1);
+
+  return cov;
+}
+
+function calculateMaxDrawdownPct(values) {
+  const series = (Array.isArray(values) ? values : []).map((item) => Number(item)).filter((item) => Number.isFinite(item));
+  if (!series.length) return 0;
+
+  let peak = series[0];
+  let maxDrawdown = 0;
+
+  series.forEach((value) => {
+    if (value > peak) peak = value;
+    if (peak <= 0) return;
+    const drawdown = ((value - peak) / peak) * 100;
+    if (drawdown < maxDrawdown) maxDrawdown = drawdown;
+  });
+
+  return maxDrawdown;
+}
+
+function buildReturnsSeries(values) {
+  const series = [];
+
+  for (let index = 1; index < values.length; index += 1) {
+    const previous = Number(values[index - 1]);
+    const current = Number(values[index]);
+    if (!Number.isFinite(previous) || previous <= 0 || !Number.isFinite(current)) {
+      series.push(0);
+      continue;
+    }
+    series.push((current - previous) / previous);
+  }
+
+  return series;
+}
+
+function classifyDrawdownLabel(drawdownPct) {
+  const absValue = Math.abs(Number(drawdownPct || 0));
+  if (absValue <= 5) return 'Risco Baixo';
+  if (absValue <= 12) return 'Risco Médio';
+  return 'Risco Alto';
+}
+
+function classifySharpeLabel(sharpe) {
+  const value = Number(sharpe || 0);
+  if (value < 0.5) return 'Ruim';
+  if (value < 1) return 'Moderado';
+  return 'Excelente';
+}
+
+function classifyBetaLabel(beta) {
+  const value = Number(beta || 0);
+  if (value < 0.8) return 'Defensivo';
+  if (value > 1.2) return 'Agressivo';
+  return 'Neutro';
+}
+
+function buildRollingBandMap(dates, returns, indexByDate) {
+  const result = new Map();
+
+  dates.forEach((date, index) => {
+    const currentIndex = Number(indexByDate.get(date) || 100);
+
+    if (index < 2) {
+      result.set(date, 0.8);
+      return;
+    }
+
+    const windowStart = Math.max(0, index - 21);
+    const windowReturns = returns.slice(windowStart, index).filter((item) => Number.isFinite(item));
+    const stdDaily = standardDeviationSample(windowReturns);
+    const bandValue = currentIndex * stdDaily * Math.sqrt(21);
+    result.set(date, Math.max(0.6, bandValue));
+  });
+
+  return result;
+}
+
+function pickMapValueOnOrBefore(map, isoDate) {
+  if (!map?.size) return 0;
+  if (map.has(isoDate)) return Number(map.get(isoDate) || 0);
+
+  let selectedDate = null;
+  for (const date of map.keys()) {
+    if (date > isoDate) continue;
+    if (!selectedDate || date > selectedDate) selectedDate = date;
+  }
+
+  if (!selectedDate) {
+    const firstEntry = map.entries().next().value;
+    return Number(firstEntry?.[1] || 0);
+  }
+
+  return Number(map.get(selectedDate) || 0);
+}
+
+function buildVolatilityChartPoints(anchorDates, portfolioIndexByDate, benchmarkIndexByDate, bandByDate) {
+  return anchorDates.map((anchorDate) => {
+    const adjustedDate = adjustWeekendDate(anchorDate);
+    const portfolioValue = pickMapValueOnOrBefore(portfolioIndexByDate, adjustedDate);
+    const benchmarkValue = pickMapValueOnOrBefore(benchmarkIndexByDate, adjustedDate);
+    const bandValue = pickMapValueOnOrBefore(bandByDate, adjustedDate);
+
+    return {
+      date: adjustedDate,
+      label: toMonthLabel(adjustedDate),
+      val: toFixedNumber(portfolioValue, 2),
+      dev: toFixedNumber(bandValue, 2),
+      bench: toFixedNumber(benchmarkValue, 2),
+    };
+  });
+}
+
+function computeRiskMetrics({ values, benchmarkDailyReturns, riskFreeCumulativeReturn }) {
+  const cleanValues = (Array.isArray(values) ? values : []).map((item) => Number(item)).filter((item) => Number.isFinite(item));
+
+  if (cleanValues.length < 2) {
+    return {
+      volatilityAnnualPct: 0,
+      maxDrawdownPct: 0,
+      sharpe: 0,
+      beta: 0,
+      returns: [],
+    };
+  }
+
+  const returns = buildReturnsSeries(cleanValues);
+  const stdDaily = standardDeviationSample(returns);
+  const volatilityAnnualDecimal = stdDaily * Math.sqrt(252);
+  const volatilityAnnualPct = volatilityAnnualDecimal * 100;
+
+  const maxDrawdownPct = calculateMaxDrawdownPct(cleanValues);
+
+  const start = cleanValues[0];
+  const end = cleanValues[cleanValues.length - 1];
+  const portfolioReturn = start > 0 ? ((end / start) - 1) : 0;
+
+  const sharpe = volatilityAnnualDecimal > 0
+    ? (portfolioReturn - Number(riskFreeCumulativeReturn || 0)) / volatilityAnnualDecimal
+    : 0;
+
+  const benchmarkReturns = Array.isArray(benchmarkDailyReturns)
+    ? benchmarkDailyReturns.slice(0, returns.length)
+    : [];
+  const benchmarkVariance = Math.pow(standardDeviationSample(benchmarkReturns), 2);
+  const beta = benchmarkVariance > 0
+    ? covarianceSample(returns, benchmarkReturns) / benchmarkVariance
+    : 0;
+
+  return {
+    volatilityAnnualPct,
+    maxDrawdownPct,
+    sharpe,
+    beta,
+    returns,
+  };
 }
 
 function toBrapiDate(isoDate) {
@@ -1573,6 +1862,428 @@ function ensureInvestmentsMetricsRegistered() {
     });
   });
 
+  const volatilityHandler = async ({ context, filters }) => {
+    const transactions = await context.repository.listTransactions({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const assets = await context.repository.listAssets({
+      userId: context.userId,
+      filters,
+    });
+
+    const positions = await context.repository.listLatestPositionsByUser({
+      userId: context.userId,
+      filters,
+      end: filters.asOf || null,
+    });
+
+    const asOfDate = filters.asOf || toIsoDate(new Date());
+    const scope = String(filters.volatilityScope || 'consolidated').toLowerCase() === 'classes'
+      ? 'classes'
+      : 'consolidated';
+    const benchmarkId = String(filters.volatilityBenchmark || 'ibov').toLowerCase() === 'cdi'
+      ? 'cdi'
+      : 'ibov';
+
+    const transactionsByAsset = new Map();
+    transactions
+      .sort(sortByDateAndCreation)
+      .forEach((tx) => {
+        if (!tx.assetId) return;
+        if (!transactionsByAsset.has(tx.assetId)) transactionsByAsset.set(tx.assetId, []);
+        transactionsByAsset.get(tx.assetId).push(tx);
+      });
+
+    const positionByAsset = new Map(positions.map((item) => [item.assetId, item]));
+    const assetById = new Map(assets.map((item) => [item.assetId, item]));
+
+    const allAssetIds = new Set([
+      ...Array.from(transactionsByAsset.keys()),
+      ...Array.from(positionByAsset.keys()),
+    ]);
+
+    if (!allAssetIds.size) {
+      return {
+        status: 'empty',
+        data: {
+          widget: {
+            rootView: scope === 'classes' ? 'classes-root' : 'total',
+            period: { preset: 'origin', start: asOfDate, end: asOfDate, label: 'Origem' },
+            scope,
+            benchmark: benchmarkId,
+            views: {
+              total: {
+                title: 'Volatilidade Anualizada',
+                subtitle: 'Sem dados para o período selecionado',
+                mainLabel: 'Volatilidade (Portfólio)',
+                mainValue: '0,00%',
+                mainSub: 'Desvio padrão anual.',
+                secondaryLabel: 'Volatilidade (Benchmark)',
+                secondaryValue: '0,00%',
+                secondarySub: benchmarkId.toUpperCase(),
+                drawdownValue: '0,00%',
+                drawdownPill: 'Risco Baixo',
+                sharpeValue: '0,00',
+                sharpePill: 'Ruim',
+                betaValue: '0,00',
+                betaPill: 'Neutro',
+                chartData: [],
+                details: [],
+              },
+              'classes-root': {
+                title: 'Volatilidade por Classes',
+                subtitle: 'Sem dados para o período selecionado',
+                mainLabel: 'Volatilidade (Classes)',
+                mainValue: '0,00%',
+                mainSub: 'Desvio padrão anual.',
+                secondaryLabel: 'Volatilidade (Benchmark)',
+                secondaryValue: '0,00%',
+                secondarySub: benchmarkId.toUpperCase(),
+                drawdownValue: '0,00%',
+                drawdownPill: 'Risco Baixo',
+                sharpeValue: '0,00',
+                sharpePill: 'Ruim',
+                betaValue: '0,00',
+                betaPill: 'Neutro',
+                chartData: [],
+                details: [],
+              },
+            },
+          },
+        },
+      };
+    }
+
+    let originDate = asOfDate;
+    allAssetIds.forEach((assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || asOfDate;
+      if (firstDate < originDate) originDate = firstDate;
+    });
+
+    const period = resolvePeriodRange({
+      preset: filters.periodPreset,
+      asOfDate,
+      originDate,
+    });
+
+    const businessDates = buildBusinessDateRange(period.start, period.end);
+    if (!businessDates.length) {
+      return {
+        status: 'empty',
+        data: {
+          widget: {
+            rootView: scope === 'classes' ? 'classes-root' : 'total',
+            period,
+            scope,
+            benchmark: benchmarkId,
+            views: {
+              total: {
+                title: 'Volatilidade Anualizada',
+                subtitle: `Período: ${period.label}`,
+                mainLabel: 'Volatilidade (Portfólio)',
+                mainValue: '0,00%',
+                mainSub: 'Desvio padrão anual.',
+                secondaryLabel: 'Volatilidade (Benchmark)',
+                secondaryValue: '0,00%',
+                secondarySub: benchmarkId.toUpperCase(),
+                drawdownValue: '0,00%',
+                drawdownPill: 'Risco Baixo',
+                sharpeValue: '0,00',
+                sharpePill: 'Ruim',
+                betaValue: '0,00',
+                betaPill: 'Neutro',
+                chartData: [],
+                details: [],
+              },
+            },
+          },
+        },
+      };
+    }
+
+    const benchmarkDaily = await buildDailyBenchmarkSeries(benchmarkId, period.start, period.end);
+    const cdiDaily = await buildDailyBenchmarkSeries('cdi', period.start, period.end);
+
+    const benchmarkByDate = new Map(benchmarkDaily.map((item) => [item.date, item]));
+    const cdiByDate = new Map(cdiDaily.map((item) => [item.date, item]));
+
+    const benchmarkDailyReturns = businessDates.slice(1).map((date) => Number(benchmarkByDate.get(date)?.dailyReturn || 0));
+    const benchmarkVolAnnualPct = standardDeviationSample(benchmarkDailyReturns) * Math.sqrt(252) * 100;
+    const cdiPeriodReturn = Number(cdiByDate.get(businessDates[businessDates.length - 1])?.value || 0) / 100;
+
+    const historyCache = new Map();
+    const assetSeries = [];
+
+    for (const assetId of allAssetIds) {
+      const txs = (transactionsByAsset.get(assetId) || []).sort(sortByDateAndCreation);
+      const position = positionByAsset.get(assetId) || null;
+      const asset = assetById.get(assetId) || {
+        assetId,
+        name: assetId,
+        assetClass: position?.assetClass || 'equity',
+        category: position?.category || null,
+        metadata: {},
+      };
+
+      const ticker = resolveTicker(asset);
+      const canUseBrapi = !!ticker && ['equity', 'crypto', 'funds'].includes(asset.assetClass);
+      const history = canUseBrapi
+        ? await getTickerHistory(context, ticker, historyCache)
+        : [];
+
+      const valuesByDate = new Map();
+
+      businessDates.forEach((date) => {
+        const state = buildStateUntilDate(txs, date);
+
+        const quantityAtDate = txs.length
+          ? state.quantity
+          : (position?.referenceDate && position.referenceDate <= date
+            ? safeNumber(position.quantity)
+            : 0);
+
+        let priceAtDate = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
+        if (history.length) {
+          const matched = pickPriceForDate(history, adjustWeekendDate(date));
+          if (matched) priceAtDate = safeNumber(matched.price, priceAtDate);
+        }
+
+        const openValue = quantityAtDate * priceAtDate;
+        const totalValue = openValue + state.realizedCash;
+        valuesByDate.set(date, totalValue);
+      });
+
+      const values = businessDates.map((date) => Number(valuesByDate.get(date) || 0));
+      const metrics = computeRiskMetrics({
+        values,
+        benchmarkDailyReturns,
+        riskFreeCumulativeReturn: cdiPeriodReturn,
+      });
+
+      assetSeries.push({
+        assetId,
+        name: asset.name || assetId,
+        ticker,
+        classKey: classifyAssetGroup(asset.assetClass),
+        classLabel: resolveClassLabel(asset.assetClass),
+        valuesByDate,
+        metrics,
+      });
+    }
+
+    const portfolioValuesByDate = new Map();
+    businessDates.forEach((date) => {
+      const total = assetSeries.reduce((sum, assetItem) => sum + Number(assetItem.valuesByDate.get(date) || 0), 0);
+      portfolioValuesByDate.set(date, total);
+    });
+
+    const portfolioValues = businessDates.map((date) => Number(portfolioValuesByDate.get(date) || 0));
+    const portfolioMetrics = computeRiskMetrics({
+      values: portfolioValues,
+      benchmarkDailyReturns,
+      riskFreeCumulativeReturn: cdiPeriodReturn,
+    });
+
+    const portfolioIndexByDate = new Map();
+    const basePortfolio = Number(portfolioValues[0] || 0);
+    businessDates.forEach((date) => {
+      const value = Number(portfolioValuesByDate.get(date) || 0);
+      const indexValue = basePortfolio > 0 ? (value / basePortfolio) * 100 : 100;
+      portfolioIndexByDate.set(date, indexValue);
+    });
+
+    const benchmarkIndexByDate = new Map();
+    businessDates.forEach((date) => {
+      const benchmarkPct = Number(benchmarkByDate.get(date)?.value || 0);
+      benchmarkIndexByDate.set(date, 100 * (1 + (benchmarkPct / 100)));
+    });
+
+    const rollingBandByDate = buildRollingBandMap(
+      businessDates,
+      portfolioMetrics.returns,
+      portfolioIndexByDate
+    );
+
+    const chartAnchors = buildAdaptiveAnchorDates(period.start, period.end, 24);
+
+    const classRowsByKey = new Map();
+    assetSeries.forEach((assetItem) => {
+      if (!classRowsByKey.has(assetItem.classKey)) {
+        classRowsByKey.set(assetItem.classKey, {
+          classKey: assetItem.classKey,
+          classLabel: assetItem.classLabel,
+          valuesByDate: new Map(),
+          assets: [],
+        });
+      }
+
+      const classEntry = classRowsByKey.get(assetItem.classKey);
+      classEntry.assets.push(assetItem);
+
+      businessDates.forEach((date) => {
+        const previous = Number(classEntry.valuesByDate.get(date) || 0);
+        classEntry.valuesByDate.set(date, previous + Number(assetItem.valuesByDate.get(date) || 0));
+      });
+    });
+
+    const classViews = {};
+
+    const classRootRows = Array.from(classRowsByKey.values())
+      .map((classItem) => {
+        const classValues = businessDates.map((date) => Number(classItem.valuesByDate.get(date) || 0));
+        const classMetrics = computeRiskMetrics({
+          values: classValues,
+          benchmarkDailyReturns,
+          riskFreeCumulativeReturn: cdiPeriodReturn,
+        });
+
+        const classIndexByDate = new Map();
+        const classBase = Number(classValues[0] || 0);
+        businessDates.forEach((date) => {
+          const value = Number(classItem.valuesByDate.get(date) || 0);
+          classIndexByDate.set(date, classBase > 0 ? (value / classBase) * 100 : 100);
+        });
+
+        const classBandByDate = buildRollingBandMap(
+          businessDates,
+          classMetrics.returns,
+          classIndexByDate
+        );
+
+        const classViewId = `class-${classItem.classKey}`;
+        classViews[classViewId] = {
+          title: `Risco: ${classItem.classLabel}`,
+          subtitle: `Volatilidade por classe · ${period.label}`,
+          mainLabel: `Volatilidade (${classItem.classLabel})`,
+          mainValue: formatPercentNoSignal(classMetrics.volatilityAnnualPct),
+          mainSub: 'Desvio padrão anual.',
+          secondaryLabel: 'Volatilidade (Benchmark)',
+          secondaryValue: formatPercentNoSignal(benchmarkVolAnnualPct),
+          secondarySub: benchmarkId.toUpperCase(),
+          drawdownValue: formatPercentNoSignal(classMetrics.maxDrawdownPct),
+          drawdownPill: classifyDrawdownLabel(classMetrics.maxDrawdownPct),
+          sharpeValue: toFixedNumber(classMetrics.sharpe, 2).toFixed(2).replace('.', ','),
+          sharpePill: classifySharpeLabel(classMetrics.sharpe),
+          betaValue: toFixedNumber(classMetrics.beta, 2).toFixed(2).replace('.', ','),
+          betaPill: classifyBetaLabel(classMetrics.beta),
+          chartData: buildVolatilityChartPoints(chartAnchors, classIndexByDate, benchmarkIndexByDate, classBandByDate),
+          details: classItem.assets
+            .map((assetItem) => ({
+              id: '',
+              name: assetItem.name,
+              meta: assetItem.ticker || classItem.classLabel,
+              val: formatPercentNoSignal(assetItem.metrics.volatilityAnnualPct),
+              sub: `Max DD: ${formatPercentNoSignal(assetItem.metrics.maxDrawdownPct)}`,
+            }))
+            .sort((a, b) => {
+              const av = parsePercentValue(a.val) || 0;
+              const bv = parsePercentValue(b.val) || 0;
+              return bv - av;
+            }),
+        };
+
+        return {
+          id: classViewId,
+          name: classItem.classLabel,
+          meta: `Beta: ${toFixedNumber(classMetrics.beta, 2).toFixed(2).replace('.', ',')}`,
+          val: formatPercentNoSignal(classMetrics.volatilityAnnualPct),
+          sub: `Max DD: ${formatPercentNoSignal(classMetrics.maxDrawdownPct)}`,
+          metrics: classMetrics,
+        };
+      })
+      .sort((a, b) => (parsePercentValue(b.val) || 0) - (parsePercentValue(a.val) || 0));
+
+    const rootViewId = scope === 'classes' ? 'classes-root' : 'total';
+
+    const views = {
+      total: {
+        title: 'Volatilidade Anualizada',
+        subtitle: `Oscilação e risco do portfólio (${period.label})`,
+        mainLabel: 'Volatilidade (Portfólio)',
+        mainValue: formatPercentNoSignal(portfolioMetrics.volatilityAnnualPct),
+        mainSub: 'Desvio padrão anual.',
+        secondaryLabel: 'Volatilidade (Benchmark)',
+        secondaryValue: formatPercentNoSignal(benchmarkVolAnnualPct),
+        secondarySub: benchmarkId.toUpperCase(),
+        drawdownValue: formatPercentNoSignal(portfolioMetrics.maxDrawdownPct),
+        drawdownPill: classifyDrawdownLabel(portfolioMetrics.maxDrawdownPct),
+        sharpeValue: toFixedNumber(portfolioMetrics.sharpe, 2).toFixed(2).replace('.', ','),
+        sharpePill: classifySharpeLabel(portfolioMetrics.sharpe),
+        betaValue: toFixedNumber(portfolioMetrics.beta, 2).toFixed(2).replace('.', ','),
+        betaPill: classifyBetaLabel(portfolioMetrics.beta),
+        chartData: buildVolatilityChartPoints(chartAnchors, portfolioIndexByDate, benchmarkIndexByDate, rollingBandByDate),
+        details: classRootRows.map((item) => ({
+          id: item.id,
+          name: item.name,
+          meta: item.meta,
+          val: item.val,
+          sub: item.sub,
+        })),
+      },
+      'classes-root': {
+        title: 'Volatilidade por Classes',
+        subtitle: `Comparativo de risco por classe (${period.label})`,
+        mainLabel: 'Volatilidade (Classes)',
+        mainValue: formatPercentNoSignal(portfolioMetrics.volatilityAnnualPct),
+        mainSub: 'Desvio padrão anual.',
+        secondaryLabel: 'Volatilidade (Benchmark)',
+        secondaryValue: formatPercentNoSignal(benchmarkVolAnnualPct),
+        secondarySub: benchmarkId.toUpperCase(),
+        drawdownValue: formatPercentNoSignal(portfolioMetrics.maxDrawdownPct),
+        drawdownPill: classifyDrawdownLabel(portfolioMetrics.maxDrawdownPct),
+        sharpeValue: toFixedNumber(portfolioMetrics.sharpe, 2).toFixed(2).replace('.', ','),
+        sharpePill: classifySharpeLabel(portfolioMetrics.sharpe),
+        betaValue: toFixedNumber(portfolioMetrics.beta, 2).toFixed(2).replace('.', ','),
+        betaPill: classifyBetaLabel(portfolioMetrics.beta),
+        chartData: buildVolatilityChartPoints(chartAnchors, portfolioIndexByDate, benchmarkIndexByDate, rollingBandByDate),
+        details: classRootRows.map((item) => ({
+          id: item.id,
+          name: item.name,
+          meta: item.meta,
+          val: item.val,
+          sub: item.sub,
+        })),
+      },
+      ...classViews,
+    };
+
+    return {
+      status: 'ok',
+      data: {
+        widget: {
+          rootView: rootViewId,
+          period,
+          scope,
+          benchmark: benchmarkId,
+          views,
+        },
+      },
+    };
+  };
+
+  const volatilityMetricAliases = [
+    'investments.volatility_annualized',
+    'investments.volatility',
+    'investments.volatilidade_anualizada',
+    'investments.portfolio_volatility',
+  ];
+
+  volatilityMetricAliases.forEach((metricId) => {
+    registerMetric({
+      id: metricId,
+      title: 'Volatilidade anualizada',
+      description: 'Calcula volatilidade anualizada, máximo drawdown, Sharpe e beta da carteira com filtros por período, escopo e benchmark.',
+      supportedFilters: ['currencies', 'assetClasses', 'statuses', 'accountIds', 'tags', 'periodPreset', 'volatilityScope', 'volatilityBenchmark', 'asOf'],
+      output: { kind: 'widget' },
+      tags: ['investments', 'dashboard', 'volatilidade', 'risco'],
+      handler: volatilityHandler,
+    });
+  });
+
   const financialResultHandler = async ({ context, filters }) => {
     const transactions = await context.repository.listTransactions({
       userId: context.userId,
@@ -2058,6 +2769,83 @@ function ensureInvestmentsMetricsRegistered() {
       },
     };
   };
+
+  const activitiesHistoryHandler = async ({ filters = {}, context = {} }) => {
+    const activityPeriod = String(filters.activityPeriod || 'all').toLowerCase();
+    const normalizedPeriod = ['30d', '90d', 'all'].includes(activityPeriod) ? activityPeriod : 'all';
+    const limit = Number.isFinite(Number(filters.activityLimit)) ? Math.max(1, Number(filters.activityLimit)) : 50;
+    const activityTypes = Array.isArray(filters.activityTypes)
+      ? filters.activityTypes.map((item) => String(item || '').trim()).filter(Boolean)
+      : [];
+    const assetId = filters.activityAssetId ? String(filters.activityAssetId) : null;
+
+    const dateRange = resolveActivityDateRange(normalizedPeriod);
+    const rows = await context.repository.listActivityLog({
+      userId: context.userId,
+      start: dateRange.start,
+      end: dateRange.end,
+      limit,
+      activityTypes,
+      assetId,
+    });
+
+    const items = rows.map((row) => {
+      const type = classifyActivityType(row);
+      const quantity = safeNumber(row.quantity);
+      const unitPrice = safeNumber(row.unitPrice || row.price);
+      const totalValue = safeNumber(row.totalValue || row.grossAmount);
+
+      return {
+        id: row.activityId || row._id || `${row.assetId || 'na'}-${row.createdAt || row.referenceDate || ''}`,
+        createdAt: row.createdAt || null,
+        referenceDate: row.referenceDate || null,
+        assetId: row.assetId || null,
+        assetName: row.assetName || row.ticker || row.assetId || '—',
+        ticker: row.ticker || null,
+        activityType: type,
+        activityLabel: labelActivityType(type),
+        operation: row.operation || row.activityType || '',
+        quantity,
+        unitPrice,
+        totalValue,
+        currency: row.currency || 'BRL',
+        metadata: row.metadata || {},
+        impact: {
+          value: 0,
+          label: formatCurrencyBRL(0),
+          className: formatActivityImpactClass(0),
+          source: 'investments.financial_result',
+        },
+      };
+    });
+
+    return {
+      status: 'ok',
+      data: {
+        items,
+        paging: {
+          limit,
+          nextCursor: null,
+          hasMore: items.length >= limit,
+        },
+        filters: {
+          activityPeriod: normalizedPeriod,
+          activityTypes,
+          activityAssetId: assetId,
+        },
+      },
+    };
+  };
+
+  registerMetric({
+    id: 'investments.activities_history',
+    title: 'Histórico de atividades de investimentos',
+    description: 'Lista cronológica de movimentações registradas via lançamento manual, preparada para paginação e filtros.',
+    supportedFilters: ['activityPeriod', 'activityTypes', 'activityAssetId', 'activityLimit'],
+    output: { kind: 'table' },
+    tags: ['investments', 'dashboard', 'activities', 'history'],
+    handler: activitiesHistoryHandler,
+  });
 
   const financialResultAliases = [
     'investments.financial_result',

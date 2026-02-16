@@ -327,6 +327,33 @@ function createInvestmentsRouter(deps = {}) {
     }
   });
 
+  /**
+   * DELETE /api/investments/activities/history?scope=30d|90d|all
+   * Limpa somente o histórico de atividades do painel.
+   */
+  router.delete('/activities/history', async (req, res, next) => {
+    const traceId = crypto.randomUUID();
+    const userId = req.user.userId;
+
+    try {
+      const result = await service.clearActivitiesHistory({
+        userId,
+        scope: req.query.scope || 'all',
+      });
+
+      return res.json({
+        ...result,
+        traceId,
+      });
+    } catch (error) {
+      logger.error('InvestmentsRoute', 'system', `Falha em DELETE activities/history: ${error.message}`, {
+        traceId,
+        userId,
+      });
+      next(error);
+    }
+  });
+
   return router;
 }
 

@@ -87,6 +87,13 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         },
 
+        clearActivitiesHistory(scope = 'all') {
+            const params = new URLSearchParams({ scope: String(scope || 'all') });
+            return this._request(`/api/investments/activities/history?${params.toString()}`, {
+                method: 'DELETE',
+            });
+        },
+
         getBrapiQuoteByTicker(ticker, date) {
             const params = new URLSearchParams({ ticker: String(ticker || '') });
             if (date) params.set('date', String(date));
@@ -131,12 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const rentabilidadeFactory = window.YieldInvestmentsRentabilidade?.createRentabilidadeCardController;
     const resultadoFactory = window.YieldInvestmentsResultado?.createResultadoCardController;
     const alocacaoFactory = window.YieldInvestmentsAlocacao?.createAlocacaoCardController;
+    const volatilidadeFactory = window.YieldInvestmentsVolatilidade?.createVolatilidadeCardController;
+    const painelFactory = window.YieldInvestmentsPainel?.createPainelCardController;
     const manualModalFactory = window.YieldInvestmentsManualModal?.createManualAssetModalController;
 
     const patrimonioSlot = document.getElementById('patrimonio-card-slot');
     const resultadoSlot = document.getElementById('resultado-card-slot');
     const alocacaoSlot = document.getElementById('alocacao-card-slot');
     const rentabilidadeSlot = document.getElementById('rentabilidade-card-slot');
+    const volatilidadeSlot = document.getElementById('volatilidade-card-slot');
+    const painelSlot = document.getElementById('painel-atividades-slot');
     const patrimonioCard = typeof patrimonioFactory === 'function'
         ? patrimonioFactory(patrimonioSlot)
         : null;
@@ -148,6 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
         : null;
     const rentabilidadeCard = typeof rentabilidadeFactory === 'function'
         ? rentabilidadeFactory(rentabilidadeSlot)
+        : null;
+    const volatilidadeCard = typeof volatilidadeFactory === 'function'
+        ? volatilidadeFactory(volatilidadeSlot)
+        : null;
+    const painelCard = typeof painelFactory === 'function'
+        ? painelFactory(painelSlot)
         : null;
 
     if (typeof manualModalFactory === 'function') {
@@ -176,6 +193,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (alocacaoCard) {
         window.YieldInvestments.cards.alocacao = alocacaoCard;
         alocacaoCard.fetchAndRenderLiveData().catch(() => {});
+    }
+
+    if (volatilidadeCard) {
+        window.YieldInvestments.cards.volatilidade = volatilidadeCard;
+        volatilidadeCard.fetchAndRenderLiveData().catch(() => {});
+    }
+
+    if (painelCard) {
+        window.YieldInvestments.cards.painel = painelCard;
+        painelCard.fetchAndRenderLiveData().catch(() => {});
     }
 
     window.YieldInvestments.preloadManifest().catch(() => {});
