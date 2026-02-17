@@ -572,8 +572,16 @@
         }
 
         async function refreshConnectedCards() {
-            const cards = Object.values(window.YieldInvestments?.cards || {});
+            const cardsRegistry = window.YieldInvestments?.cards || {};
+            const financialResultCard = cardsRegistry.resultado;
+
+            if (typeof financialResultCard?.fetchAndRenderLiveData === 'function') {
+                await financialResultCard.fetchAndRenderLiveData();
+            }
+
+            const cards = Object.values(cardsRegistry);
             const refreshJobs = cards
+                .filter((card) => card !== financialResultCard)
                 .filter((card) => typeof card?.fetchAndRenderLiveData === 'function')
                 .map((card) => card.fetchAndRenderLiveData());
 

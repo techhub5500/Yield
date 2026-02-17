@@ -160,7 +160,7 @@ function rolling12mStart(isoDate) {
 function resolvePeriodRange({ preset, asOfDate, originDate }) {
   const normalized = normalizePeriodPreset(preset);
   if (normalized === 'mtd') {
-    return { preset: normalized, start: firstBusinessDayOfMonth(asOfDate), end: asOfDate, label: 'MTD' };
+    return { preset: normalized, start: startOfMonth(asOfDate), end: asOfDate, label: 'MTD' };
   }
   if (normalized === 'ytd') {
     return { preset: normalized, start: firstBusinessDayOfYear(asOfDate), end: asOfDate, label: 'YTD' };
@@ -3295,12 +3295,12 @@ function ensureInvestmentsMetricsRegistered() {
       const hasRealizedStatus = txsInPeriod.some((tx) => {
         const status = String(tx.status || '').toLowerCase();
         return ['closed', 'realized', 'settled'].includes(status) || ['manual_sale', 'manual_income'].includes(String(tx.operation || ''));
-      }) || proventosReceived > 0;
+      }) || Math.abs(realizedComponent) > 0.0001 || proventosReceived > 0;
 
       const hasUnrealizedStatus = txsInPeriod.some((tx) => {
         const status = String(tx.status || '').toLowerCase();
         return ['open', 'pending_settlement', 'unrealized'].includes(status);
-      }) || quantityEnd > 0;
+      }) || quantityEnd > 0 || Math.abs(unrealizedComponent) > 0.0001;
 
       const selectedResult = resultType === 'realized'
         ? (hasRealizedStatus ? realizedComponent : 0)
