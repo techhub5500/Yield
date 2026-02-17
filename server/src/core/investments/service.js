@@ -23,6 +23,16 @@ const {
 } = require('./brapi-utils');
 
 const ALLOWED_ASSET_CLASSES = ['fixed_income', 'equity', 'funds', 'crypto', 'cash'];
+const ALLOWED_FIXED_INCOME_INDEXERS = ['PREFIXADO', 'CDI', 'IPCA'];
+
+function normalizeFixedIncomeIndexer(value) {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (normalized === 'PRÉ-FIXADO' || normalized === 'PRE-FIXADO' || normalized === 'PRE FIXADO') {
+    return 'PREFIXADO';
+  }
+  if (normalized === 'SELIC') return null;
+  return ALLOWED_FIXED_INCOME_INDEXERS.includes(normalized) ? normalized : null;
+}
 
 /**
  * @class InvestmentsMetricsService
@@ -284,6 +294,21 @@ class InvestmentsMetricsService {
       ...(payload.metadata || {}),
       ...(ticker ? { ticker } : {}),
     };
+
+    if (assetClass === 'fixed_income') {
+      const normalizedIndexer = normalizeFixedIncomeIndexer(metadata.indexer);
+      if (!normalizedIndexer) {
+        throw new Error('Indexador inválido. Use Prefixado, CDI ou IPCA.');
+      }
+
+      const rate = Number(metadata.rate);
+      if (!Number.isFinite(rate) || rate < 0) {
+        throw new Error('Taxa do ativo inválida na renda fixa');
+      }
+
+      metadata.indexer = normalizedIndexer;
+      metadata.rate = rate;
+    }
 
     const allocationTarget = Number(metadata.allocationTargetPct);
     if (metadata.allocationTargetPct !== null && metadata.allocationTargetPct !== undefined && metadata.allocationTargetPct !== ''

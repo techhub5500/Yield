@@ -28,11 +28,11 @@
         const addFieldsByClass = {
             equity: [
                 { id: 'ticker', label: 'Ticker (código)', placeholder: 'Ex.: PETR4, HGLG11', help: 'Código do ativo na corretora.', required: true },
-                { id: 'operationType', label: 'Tipo de operação', type: 'select', options: ['Compra', 'Venda', 'Bonificação', 'Grupamento/Desdobramento'], help: 'Selecione o evento da nota de corretagem.', required: true },
+                { id: 'operationType', label: 'Tipo de operação', type: 'select', options: ['Comprar', 'Vender'], help: 'Selecione a operação da nota de corretagem.', required: true },
                 { id: 'operationDate', label: 'Data da operação', type: 'date', help: 'Data da nota de corretagem.', required: true },
                 { id: 'quantity', label: 'Quantidade', type: 'number', min: '0', step: '0.0001', help: 'Quantidade de cotas/ações negociadas.', required: true },
                 { id: 'unitPrice', label: 'Preço unitário', type: 'number', min: '0', step: '0.0001', help: 'Preço pago por unidade na operação.', required: true },
-                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 15', help: 'Quanto você planeja ter deste ativo na carteira.' },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 15', help: '' },
                 { id: 'allocationDeviationPct', label: 'Margem de Desvio (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 2,5', help: 'Tolerância para evitar recomendações por desvios pequenos.' },
                 { id: 'fees', label: 'Taxas (opcional)', type: 'number', min: '0', step: '0.0001', help: 'Corretagem e emolumentos para preço médio real.' },
                 { id: 'broker', label: 'Corretora (opcional)', placeholder: 'Ex.: XP, NuInvest', help: 'Ajuda a lembrar onde o ativo está custodiado.' },
@@ -40,12 +40,12 @@
             fixed_income: [
                 { id: 'name', label: 'Nome do ativo/emissor', placeholder: 'Ex.: CDB Banco Inter', help: 'Nome que identifica o título aplicado.', required: true },
                 { id: 'appliedValue', label: 'Valor aplicado (R$)', type: 'number', min: '0', step: '0.01', help: 'Valor investido no dia da aplicação.', required: true },
-                { id: 'indexer', label: 'Indexador', type: 'select', options: ['CDI', 'IPCA', 'Pré-fixado', 'SELIC'], help: 'Base usada para corrigir o rendimento.', required: true },
-                { id: 'rate', label: 'Taxa do ativo', type: 'number', min: '0', step: '0.0001', help: 'Ex.: 110 (% do CDI) ou 6.5 (IPCA + %).', required: true },
+                { id: 'indexer', label: 'Indexador', type: 'select', options: ['Prefixado', 'CDI', 'IPCA'], help: 'Base usada para corrigir o rendimento.', required: true },
+                { id: 'rate', label: 'Taxa do ativo', type: 'number', min: '0', step: '0.0001', help: '', required: true },
                 { id: 'applicationDate', label: 'Data de aplicação', type: 'date', help: 'Dia em que o dinheiro saiu da conta.', required: true },
                 { id: 'maturityDate', label: 'Data de vencimento', type: 'date', help: 'Data em que o valor retorna para sua conta.', required: true },
                 { id: 'liquidity', label: 'Liquidez', type: 'select', options: ['No Vencimento', 'Diária'], help: 'Informa se o resgate é livre ou só no vencimento.', required: true },
-                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 25', help: 'Quanto você planeja ter deste ativo na carteira.' },
+                { id: 'allocationTargetPct', label: 'Alocação Meta (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 25', help: '' },
                 { id: 'allocationDeviationPct', label: 'Margem de Desvio (%)', type: 'number', min: '0', step: '0.01', placeholder: 'Ex.: 2,5', help: 'Tolerância para evitar recomendações por desvios pequenos.' },
                 { id: 'broker', label: 'Instituição (opcional)', placeholder: 'Ex.: Banco Inter', help: 'Onde o título foi contratado.' },
             ],
@@ -289,6 +289,52 @@
             return editFieldsByOperation[state.edit.operation] || [];
         }
 
+        function resolveAllocationScopeLabel(assetClass) {
+            if (assetClass === 'fixed_income') return 'renda fixa';
+            return 'renda variável';
+        }
+
+        function resolveDynamicFieldHelp(field, inputIdPrefix) {
+            if (inputIdPrefix !== 'manual-add') return field.help || '';
+
+            if (field.id === 'allocationTargetPct') {
+                const scopeLabel = resolveAllocationScopeLabel(state.addPayload.assetClass);
+                return `Quanto você planeja ter deste ativo na carteira de ${scopeLabel}.`;
+            }
+
+            if (field.id === 'rate' && state.addPayload.assetClass === 'fixed_income') {
+                const indexer = String(state.addPayload.fields.indexer || '').toUpperCase();
+
+                if (indexer === 'PREFIXADO') {
+                    return 'Informe a taxa fixa anual do ativo.';
+                }
+
+                if (indexer === 'CDI') {
+                    return 'Informe o percentual do CDI. Ex: 110 significa 110% do CDI.';
+                }
+
+                if (indexer === 'IPCA') {
+                    return 'Informe a taxa adicional acima do IPCA. Ex: 6.5 significa IPCA + 6,5%.';
+                }
+
+                return 'Selecione o indexador para ver o formato esperado da taxa.';
+            }
+
+            return field.help || '';
+        }
+
+        function renderInlinePriceConfirmation(field, inputIdPrefix) {
+            if (inputIdPrefix === 'manual-add' && field.id === 'unitPrice') {
+                return `<div class="manual-inline-confirmation">${renderAddBrapiPreview()}</div>`;
+            }
+
+            if (inputIdPrefix === 'manual-edit' && field.id === 'price') {
+                return `<div class="manual-inline-confirmation">${renderEditBrapiHint()}</div>`;
+            }
+
+            return '';
+        }
+
         function openModal() {
             overlay.classList.add('open');
             overlay.setAttribute('aria-hidden', 'false');
@@ -350,6 +396,7 @@
         function renderField(field, value, inputIdPrefix) {
             const inputId = `${inputIdPrefix}-${field.id}`;
             const requiredMark = field.required ? ' *' : '';
+            const helpText = resolveDynamicFieldHelp(field, inputIdPrefix);
             const commonAttrs = [
                 field.min !== undefined ? `min="${escapeHtml(field.min)}"` : '',
                 field.step !== undefined ? `step="${escapeHtml(field.step)}"` : '',
@@ -380,7 +427,8 @@
                 <label class="manual-field" for="${inputId}">
                     <span class="manual-field-label">${escapeHtml(field.label)}${requiredMark}</span>
                     ${inputHtml}
-                    <span class="manual-field-help">${escapeHtml(field.help || '')}</span>
+                    <span class="manual-field-help">${escapeHtml(helpText)}</span>
+                    ${renderInlinePriceConfirmation(field, inputIdPrefix)}
                 </label>
             `;
         }
@@ -437,7 +485,6 @@
                 <div class="manual-form-grid">
                     ${fields.map((field) => renderField(field, state.addPayload.fields[field.id], 'manual-add')).join('')}
                 </div>
-                ${renderAddBrapiPreview()}
                 <div class="manual-row-actions">
                     <button class="manual-back-btn" data-action="back">Voltar</button>
                     <button class="manual-submit-btn" data-action="submit-add" ${state.loading ? 'disabled' : ''}>${state.loading ? 'Salvando...' : 'Salvar ativo'}</button>
@@ -500,7 +547,6 @@
                 <div class="manual-form-grid">
                     ${fields.map((field) => renderField(field, state.edit.fields[field.id], 'manual-edit')).join('')}
                 </div>
-                ${renderEditBrapiHint()}
                 <div class="manual-row-actions">
                     <button class="manual-back-btn" data-action="back">Voltar</button>
                     <button class="manual-submit-btn ${isDelete ? 'danger' : ''}" data-action="submit-edit" ${state.loading ? 'disabled' : ''}>
@@ -1049,6 +1095,10 @@
             if (state.flow === 'add' && state.step === 3) {
                 state.addPayload.fields[fieldId] = rawValue;
 
+                if (fieldId === 'indexer') {
+                    render();
+                }
+
                 if (fieldId === 'ticker' || fieldId === 'operationDate') {
                     state.addPayload.brapi.confirmed = false;
                     requestBrapiForAdd();
@@ -1073,6 +1123,10 @@
 
             if (state.flow === 'add' && state.step === 3) {
                 state.addPayload.fields[fieldId] = rawValue;
+
+                if (fieldId === 'indexer') {
+                    render();
+                }
 
                 if (fieldId === 'ticker' || fieldId === 'operationDate') {
                     state.addPayload.brapi.confirmed = false;

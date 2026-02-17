@@ -704,3 +704,74 @@ O card participa do mesmo ciclo global de refresh dos demais cards:
 - Com isso, a Volatilidade recalcula automaticamente após novas movimentações, sem reload manual da página.
 
 ---
+
+## 14) Ajustes oficiais: Lançamento Manual + Renda Fixa por Indexador (implementado)
+
+### 14.1 Interface do Lançamento Manual
+
+Atualizações aplicadas em `client/js/invest-dash.manual-modal.js` e `client/css/invest-dash.css`:
+
+- **Seletores de data** do modal receberam padronização visual da identidade do sistema.
+- **Dropdowns** do modal receberam padronização visual (mesma linguagem dos inputs).
+- No campo **Tipo de operação** (cadastro de renda variável), opções reduzidas para:
+  - `Comprar`
+  - `Vender`
+- **Confirmação de preço via Brapi** foi movida para imediatamente abaixo do campo de preço:
+  - Cadastro: abaixo de `Preço unitário`
+  - Movimentação (`add_buy` / `add_sell`): abaixo de `Preço unitário` / `Preço de venda`
+- Texto de ajuda de **Alocação Meta (%)** passou a ser dinâmico por classe:
+  - “Quanto você planeja ter deste ativo na carteira de renda variável.”
+  - “Quanto você planeja ter deste ativo na carteira de renda fixa.”
+- Texto de ajuda de **Taxa do ativo** (renda fixa) passou a ser dinâmico por indexador:
+  - Prefixado: “Informe a taxa fixa anual do ativo.”
+  - CDI: “Informe o percentual do CDI. Ex: 110 significa 110% do CDI.”
+  - IPCA: “Informe a taxa adicional acima do IPCA. Ex: 6.5 significa IPCA + 6,5%.”
+
+### 14.2 Indexadores suportados em Renda Fixa
+
+Atualizações aplicadas no fluxo manual (`createManualAsset`):
+
+- Indexadores válidos:
+  - `Prefixado`
+  - `CDI`
+  - `IPCA`
+- `Selic` foi removido do cadastro manual e rejeitado na validação backend.
+- O backend normaliza variações legadas de texto para `PREFIXADO`, `CDI`, `IPCA`.
+
+### 14.3 Regra de cálculo de rendimento por indexador (backend)
+
+Implementado em `src/core/investments/metrics-registry.js` com apoio de `src/core/investments/benchmarks.js`:
+
+1) **Prefixado**
+- Entrada: taxa anual fixa (`metadata.rate`).
+- Cálculo por dias corridos até a data de referência (limitado ao vencimento quando existir):
+  - `rendimento = (1 + taxa_anual)^(dias/365) - 1`
+
+2) **CDI**
+- Entrada: percentual do CDI (`metadata.rate`, ex.: `110` = `110% CDI`).
+- Fonte: `server/docs/md_sistema/taxa_cdi.json` (leitura direta; sem hardcode no JS).
+- Cálculo:
+  - `rendimento = CDI_acumulado_no_período × (percentual_informado / 100)`
+
+3) **IPCA + taxa adicional**
+- Entrada: taxa adicional (`metadata.rate`, ex.: `6.5` para `IPCA + 6,5%`).
+- Fonte: BRAPI (`/api/v2/inflation`) via cliente backend.
+- Cálculo:
+  - `rendimento = IPCA_acumulado_no_período + taxa_adicional`
+- Regra de referência mensal:
+  - até dia 15: considera mês anterior
+  - após dia 15: considera mês atual
+
+### 14.4 Cards impactados e integração
+
+A nova precificação de renda fixa indexada foi integrada na base de valuation compartilhada e passou a alimentar os cards oficiais que dependem de valor de posição no tempo:
+
+- `investments.net_worth` (Patrimônio)
+- `investments.profitability` (Rentabilidade)
+- `investments.allocation_vs_target` (Alocação)
+- `investments.volatility_annualized` (Volatilidade)
+- `investments.financial_result` (Resultado Financeiro)
+
+Com isso, ativos de renda fixa indexados (Prefixado, %CDI, IPCA+taxa) refletem rendimento acumulado no cálculo dos widgets/cards, em vez de depender apenas de atualização manual de saldo/preço.
+
+---

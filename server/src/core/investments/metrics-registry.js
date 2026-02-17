@@ -16,6 +16,8 @@ const {
 const {
   addDays,
   indexSeriesByDate,
+  getMonthlySeries,
+  calculateMonthlyCumulativePct,
   buildCdiBenchmarks,
   buildIbovBenchmarks,
   buildSelicBenchmarks,
@@ -849,6 +851,189 @@ async function resolveCumulativeInflationPct(context, startIso, endIso) {
   }
 }
 
+function normalizeFixedIncomeIndexer(value) {
+  const normalized = String(value || '').trim().toUpperCase();
+  if (['PRÉ-FIXADO', 'PRE-FIXADO', 'PRE FIXADO'].includes(normalized)) return 'PREFIXADO';
+  if (['PREFIXADO', 'CDI', 'IPCA'].includes(normalized)) return normalized;
+  return '';
+}
+
+function toMonthKey(isoDate) {
+  return String(isoDate || '').slice(0, 7);
+}
+
+function shiftMonth(monthKey, deltaMonths) {
+  const [yearText, monthText] = String(monthKey || '').split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!Number.isFinite(year) || !Number.isFinite(month)) return monthKey;
+
+  const date = new Date(Date.UTC(year, month - 1, 1));
+  date.setUTCMonth(date.getUTCMonth() + deltaMonths);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+function iterateMonthRange(startMonth, endMonth) {
+  if (!startMonth || !endMonth || startMonth > endMonth) return [];
+
+  const months = [];
+  for (let current = startMonth; current <= endMonth; current = shiftMonth(current, 1)) {
+    months.push(current);
+    if (months.length > 2400) break;
+  }
+  return months;
+}
+
+function resolveIpcaCutoffMonth(targetIsoDate) {
+  const day = Number(String(targetIsoDate || '').slice(8, 10));
+  const baseMonth = toMonthKey(targetIsoDate);
+  if (!baseMonth) return '';
+  return day <= 15 ? shiftMonth(baseMonth, -1) : baseMonth;
+}
+
+function countDaysBetween(startIso, endIso) {
+  const start = new Date(`${startIso}T00:00:00.000Z`).getTime();
+  const end = new Date(`${endIso}T00:00:00.000Z`).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  return Math.round((end - start) / 86400000);
+}
+
+function resolveAssetOriginDate(assetModel, fallbackDate) {
+  const txs = Array.isArray(assetModel?.transactions) ? assetModel.transactions : [];
+  const firstTxDate = txs[0]?.referenceDate;
+  const positionDate = assetModel?.position?.referenceDate;
+  return firstTxDate || positionDate || fallbackDate;
+}
+
+async function buildFixedIncomeReferenceData(context, startIso, endIso) {
+  const cdiMonthly = await getMonthlySeries('cdi');
+
+  const ipcaMonthlyByMonth = new Map();
+  if (context?.brapiClient && typeof context.brapiClient.getInflationHistory === 'function' && startIso && endIso && startIso <= endIso) {
+    try {
+      const payload = await context.brapiClient.getInflationHistory({
+        country: 'brazil',
+        historical: true,
+        start: toBrapiDate(startIso),
+        end: toBrapiDate(endIso),
+        sortBy: 'date',
+        sortOrder: 'asc',
+      });
+
+      const entries = collapseInflationByMonth(extractInflationEntries(payload));
+      entries.forEach((entry) => {
+        const monthKey = toMonthKey(entry.date);
+        if (!monthKey) return;
+        ipcaMonthlyByMonth.set(monthKey, Number(entry.valuePct || 0));
+      });
+    } catch (_error) {
+    }
+  }
+
+  return {
+    cdiMonthly,
+    ipcaMonthlyByMonth,
+    cdiCache: new Map(),
+    ipcaCache: new Map(),
+  };
+}
+
+function resolveIpcaAccumulatedPct(referenceData, startIso, targetIso) {
+  if (!referenceData || !startIso || !targetIso || targetIso <= startIso) return 0;
+
+  const cacheKey = `${startIso}|${targetIso}`;
+  if (referenceData.ipcaCache.has(cacheKey)) {
+    return Number(referenceData.ipcaCache.get(cacheKey) || 0);
+  }
+
+  const ipcaMonthlyByMonth = referenceData.ipcaMonthlyByMonth || new Map();
+  const startMonth = toMonthKey(startIso);
+  const endMonth = resolveIpcaCutoffMonth(targetIso);
+
+  if (!startMonth || !endMonth || endMonth < startMonth || !ipcaMonthlyByMonth.size) {
+    referenceData.ipcaCache.set(cacheKey, 0);
+    return 0;
+  }
+
+  let factor = 1;
+  iterateMonthRange(startMonth, endMonth).forEach((monthKey) => {
+    const monthPct = Number(ipcaMonthlyByMonth.get(monthKey) || 0);
+    factor *= (1 + (monthPct / 100));
+  });
+
+  const accumulated = (factor - 1) * 100;
+  referenceData.ipcaCache.set(cacheKey, accumulated);
+  return accumulated;
+}
+
+function resolveFixedIncomeGrowthPct(asset, startIso, targetIso, referenceData) {
+  if (!asset || !startIso || !targetIso || targetIso <= startIso) return 0;
+
+  const maturityDate = String(asset?.metadata?.maturityDate || '').trim();
+  const cappedTarget = maturityDate && maturityDate < targetIso ? maturityDate : targetIso;
+  if (!cappedTarget || cappedTarget <= startIso) return 0;
+
+  const indexer = normalizeFixedIncomeIndexer(asset?.metadata?.indexer);
+  const rate = Number(asset?.metadata?.rate || 0);
+
+  if (!indexer || !Number.isFinite(rate) || rate < 0) return 0;
+
+  if (indexer === 'PREFIXADO') {
+    const days = countDaysBetween(startIso, cappedTarget);
+    if (!days) return 0;
+    const annualRate = rate / 100;
+    return (Math.pow(1 + annualRate, days / 365) - 1) * 100;
+  }
+
+  if (indexer === 'CDI') {
+    if (!referenceData?.cdiMonthly) return 0;
+    const baseCacheKey = `${startIso}|${cappedTarget}`;
+    let cdiAccumulatedPct;
+    if (referenceData.cdiCache.has(baseCacheKey)) {
+      cdiAccumulatedPct = Number(referenceData.cdiCache.get(baseCacheKey) || 0);
+    } else {
+      cdiAccumulatedPct = calculateMonthlyCumulativePct(referenceData.cdiMonthly, startIso, cappedTarget);
+      referenceData.cdiCache.set(baseCacheKey, cdiAccumulatedPct);
+    }
+    return cdiAccumulatedPct * (rate / 100);
+  }
+
+  if (indexer === 'IPCA') {
+    const ipcaAccumulatedPct = resolveIpcaAccumulatedPct(referenceData, startIso, cappedTarget);
+    return ipcaAccumulatedPct + rate;
+  }
+
+  return 0;
+}
+
+function resolveUnitPriceAtDate({ assetModel, targetDate, stateAtDate, referenceData, fallbackDate }) {
+  const fallbackPrice = safeNumber(
+    assetModel?.position?.marketPrice,
+    safeNumber(assetModel?.position?.avgPrice)
+  );
+
+  if (!assetModel?.assetClass || assetModel.assetClass !== 'fixed_income') {
+    let marketPrice = fallbackPrice;
+    if (Array.isArray(assetModel?.history) && assetModel.history.length) {
+      const matched = pickPriceForDate(assetModel.history, adjustWeekendDate(targetDate));
+      if (matched) marketPrice = safeNumber(matched.price, marketPrice);
+    }
+    return marketPrice;
+  }
+
+  const baseUnitCost = safeNumber(
+    stateAtDate?.avgCost,
+    safeNumber(assetModel?.position?.avgPrice, fallbackPrice)
+  );
+
+  if (baseUnitCost <= 0) return fallbackPrice;
+
+  const originDate = resolveAssetOriginDate(assetModel, fallbackDate);
+  const growthPct = resolveFixedIncomeGrowthPct(assetModel, originDate, targetDate, referenceData);
+  const adjustedPrice = baseUnitCost * (1 + (growthPct / 100));
+  return Number.isFinite(adjustedPrice) && adjustedPrice > 0 ? adjustedPrice : fallbackPrice;
+}
+
 function buildWidgetModel(input) {
   const {
     assetsModel,
@@ -1062,6 +1247,21 @@ function ensureInvestmentsMetricsRegistered() {
       const chartEndDate = explicitWindow?.end || asOfDate;
       const chartTargetDates = buildAdaptiveAnchorDates(chartStartDate, chartEndDate, 24);
 
+      const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+        const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+        return assetClass === 'fixed_income';
+      });
+
+      const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+        const txs = transactionsByAsset.get(assetId) || [];
+        const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || chartStartDate;
+        return !minDate || firstDate < minDate ? firstDate : minDate;
+      }, null) || chartStartDate;
+
+      const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+        ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, chartEndDate)
+        : null;
+
       const historyCache = new Map();
 
       const assetsModel = [];
@@ -1094,11 +1294,19 @@ function ensureInvestmentsMetricsRegistered() {
           ? await getTickerHistory(context, ticker, historyCache)
           : [];
 
-        let currentPrice = safeNumber(position?.marketPrice, avgCostCurrent);
-        if (history.length) {
-          const matched = pickPriceForDate(history, adjustWeekendDate(asOfDate));
-          if (matched) currentPrice = safeNumber(matched.price, currentPrice);
-        }
+        const currentPrice = resolveUnitPriceAtDate({
+          assetModel: {
+            ...asset,
+            position,
+            assetClass: asset.assetClass,
+            history,
+            transactions: txs,
+          },
+          targetDate: asOfDate,
+          stateAtDate: stateAsOf,
+          referenceData: fixedIncomeReferenceData,
+          fallbackDate: chartStartDate,
+        });
 
         const currentValue = quantityCurrent > 0
           ? quantityCurrent * currentPrice
@@ -1123,6 +1331,7 @@ function ensureInvestmentsMetricsRegistered() {
           name: asset.name || assetId,
           ticker,
           assetClass: asset.assetClass,
+          metadata: asset.metadata || {},
           group,
           currentValue,
           investedOpen,
@@ -1149,11 +1358,13 @@ function ensureInvestmentsMetricsRegistered() {
 
           if (quantityAtDate <= 0) return;
 
-          let priceAtDate = safeNumber(assetModel.position?.marketPrice, safeNumber(assetModel.position?.avgPrice));
-          if (assetModel.history.length) {
-            const matched = pickPriceForDate(assetModel.history, adjustWeekendDate(targetDate));
-            if (matched) priceAtDate = safeNumber(matched.price, priceAtDate);
-          }
+          const priceAtDate = resolveUnitPriceAtDate({
+            assetModel,
+            targetDate,
+            stateAtDate: state,
+            referenceData: fixedIncomeReferenceData,
+            fallbackDate: chartStartDate,
+          });
 
           openValueAtDate += quantityAtDate * priceAtDate;
         });
@@ -1225,6 +1436,21 @@ function ensureInvestmentsMetricsRegistered() {
       ...Array.from(assetById.keys()),
     ]);
 
+    const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+      const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+      return assetClass === 'fixed_income';
+    });
+
+    const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || asOfDate;
+      return !minDate || firstDate < minDate ? firstDate : minDate;
+    }, null) || asOfDate;
+
+    const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+      ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, asOfDate)
+      : null;
+
     if (!allAssetIds.size) {
       return {
         status: 'empty',
@@ -1289,11 +1515,19 @@ function ensureInvestmentsMetricsRegistered() {
         ? await getTickerHistory(context, ticker, historyCache)
         : [];
 
-      let currentPrice = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
-      if (history.length) {
-        const matched = pickPriceForDate(history, adjustWeekendDate(asOfDate));
-        if (matched) currentPrice = safeNumber(matched.price, currentPrice);
-      }
+      const currentPrice = resolveUnitPriceAtDate({
+        assetModel: {
+          ...asset,
+          position,
+          assetClass: asset.assetClass,
+          history,
+          transactions: txs,
+        },
+        targetDate: asOfDate,
+        stateAtDate: stateEnd,
+        referenceData: fixedIncomeReferenceData,
+        fallbackDate: fixedIncomeStartDate,
+      });
 
       const currentValue = quantityEnd > 0
         ? quantityEnd * currentPrice
@@ -1585,6 +1819,21 @@ function ensureInvestmentsMetricsRegistered() {
         originDate,
       });
 
+      const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+        const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+        return assetClass === 'fixed_income';
+      });
+
+      const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+        const txs = transactionsByAsset.get(assetId) || [];
+        const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || period.start;
+        return !minDate || firstDate < minDate ? firstDate : minDate;
+      }, null) || period.start;
+
+      const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+        ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
+        : null;
+
       const anchorDates = buildAdaptiveAnchorDates(period.start, period.end, 24);
       const historyCache = new Map();
 
@@ -1616,11 +1865,19 @@ function ensureInvestmentsMetricsRegistered() {
               ? safeNumber(position.quantity)
               : 0);
 
-          let priceAtDate = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
-          if (history.length) {
-            const matched = pickPriceForDate(history, adjustWeekendDate(targetDate));
-            if (matched) priceAtDate = safeNumber(matched.price, priceAtDate);
-          }
+          const priceAtDate = resolveUnitPriceAtDate({
+            assetModel: {
+              ...asset,
+              position,
+              assetClass: asset.assetClass,
+              history,
+              transactions: txs,
+            },
+            targetDate,
+            stateAtDate: state,
+            referenceData: fixedIncomeReferenceData,
+            fallbackDate: period.start,
+          });
 
           const openValue = quantityAtDate * priceAtDate;
           const totalValue = openValue + state.realizedCash;
@@ -1970,6 +2227,36 @@ function ensureInvestmentsMetricsRegistered() {
       originDate,
     });
 
+    const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+      const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+      return assetClass === 'fixed_income';
+    });
+
+    const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || period.start;
+      return !minDate || firstDate < minDate ? firstDate : minDate;
+    }, null) || period.start;
+
+    const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+      ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
+      : null;
+
+    const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+      const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+      return assetClass === 'fixed_income';
+    });
+
+    const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || period.start;
+      return !minDate || firstDate < minDate ? firstDate : minDate;
+    }, null) || period.start;
+
+    const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+      ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
+      : null;
+
     const businessDates = buildBusinessDateRange(period.start, period.end);
     if (!businessDates.length) {
       return {
@@ -2046,11 +2333,19 @@ function ensureInvestmentsMetricsRegistered() {
             ? safeNumber(position.quantity)
             : 0);
 
-        let priceAtDate = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
-        if (history.length) {
-          const matched = pickPriceForDate(history, adjustWeekendDate(date));
-          if (matched) priceAtDate = safeNumber(matched.price, priceAtDate);
-        }
+        const priceAtDate = resolveUnitPriceAtDate({
+          assetModel: {
+            ...asset,
+            position,
+            assetClass: asset.assetClass,
+            history,
+            transactions: txs,
+          },
+          targetDate: date,
+          stateAtDate: state,
+          referenceData: fixedIncomeReferenceData,
+          fallbackDate: period.start,
+        });
 
         const openValue = quantityAtDate * priceAtDate;
         const totalValue = openValue + state.realizedCash;
@@ -2401,15 +2696,33 @@ function ensureInvestmentsMetricsRegistered() {
         ? await getTickerHistory(context, ticker, historyCache)
         : [];
 
-      let priceStart = safeNumber(position?.avgPrice, safeNumber(position?.marketPrice));
-      let priceEnd = safeNumber(position?.marketPrice, safeNumber(position?.avgPrice));
+      const priceStart = resolveUnitPriceAtDate({
+        assetModel: {
+          ...asset,
+          position,
+          assetClass: asset.assetClass,
+          history,
+          transactions: txs,
+        },
+        targetDate: period.start,
+        stateAtDate: stateStart,
+        referenceData: fixedIncomeReferenceData,
+        fallbackDate: period.start,
+      });
 
-      if (history.length) {
-        const startMatch = pickPriceForDate(history, adjustWeekendDate(period.start));
-        const endMatch = pickPriceForDate(history, adjustWeekendDate(period.end));
-        if (startMatch) priceStart = safeNumber(startMatch.price, priceStart);
-        if (endMatch) priceEnd = safeNumber(endMatch.price, priceEnd);
-      }
+      const priceEnd = resolveUnitPriceAtDate({
+        assetModel: {
+          ...asset,
+          position,
+          assetClass: asset.assetClass,
+          history,
+          transactions: txs,
+        },
+        targetDate: period.end,
+        stateAtDate: stateEnd,
+        referenceData: fixedIncomeReferenceData,
+        fallbackDate: period.start,
+      });
 
       const quantityStart = txs.length
         ? stateStart.quantity

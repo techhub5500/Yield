@@ -125,6 +125,28 @@ function cumulativePctFromMonthlyRange(monthlyMap, startIso, endIso) {
   return (factor - 1) * 100;
 }
 
+async function getMonthlyCumulativePct(kind, startIso, endIso) {
+  const normalized = String(kind || '').toLowerCase();
+  if (!['cdi', 'ibov'].includes(normalized)) return 0;
+
+  const monthly = await readMonthlyJsonSeries(normalized);
+  return cumulativePctFromMonthlyRange(monthly, startIso, endIso);
+}
+
+async function getMonthlySeries(kind) {
+  const normalized = String(kind || '').toLowerCase();
+  if (!['cdi', 'ibov'].includes(normalized)) return new Map();
+  return readMonthlyJsonSeries(normalized);
+}
+
+function calculateMonthlyCumulativePct(monthlyMap, startIso, endIso) {
+  return cumulativePctFromMonthlyRange(monthlyMap, startIso, endIso);
+}
+
+async function getCdiAccumulatedPct(startIso, endIso) {
+  return getMonthlyCumulativePct('cdi', startIso, endIso);
+}
+
 async function buildCdiBenchmarks(anchorDates, startIso) {
   const monthly = await readMonthlyJsonSeries('cdi');
   return anchorDates.map((date) => ({
@@ -350,6 +372,9 @@ async function buildDailyBenchmarkSeries(kind, startIso, endIso) {
 module.exports = {
   addDays,
   indexSeriesByDate,
+  getCdiAccumulatedPct,
+  getMonthlySeries,
+  calculateMonthlyCumulativePct,
   buildCdiBenchmarks,
   buildIbovBenchmarks,
   buildSelicBenchmarks,

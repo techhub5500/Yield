@@ -819,6 +819,45 @@ button.page-item:disabled {
     background: rgba(255, 255, 255, 0.03);
     color: var(--text-primary);
     padding: 9px 10px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.manual-form-grid input:focus,
+.manual-form-grid select:focus {
+    outline: none;
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.manual-form-grid select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%), linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%);
+    background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 32px;
+}
+
+.manual-form-grid input[type="date"] {
+    color-scheme: dark;
+    padding-right: 12px;
+}
+
+.manual-form-grid input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(83%) sepia(15%) saturate(422%) hue-rotate(349deg) brightness(102%) contrast(90%);
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+.manual-inline-confirmation {
+    margin-top: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
 }
 
 .manual-row-actions {
