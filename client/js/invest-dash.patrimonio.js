@@ -53,6 +53,7 @@
             rootView: typeof rawModel.rootView === 'string' ? rawModel.rootView : base.rootView,
             chart: {
                 currency: rawModel.chart?.currency || base.chart.currency,
+                hidden: Boolean(rawModel.chart?.hidden),
                 points: Array.isArray(rawModel.chart?.points) && rawModel.chart.points.length
                     ? rawModel.chart.points
                     : base.chart.points,
@@ -75,6 +76,15 @@
                 secondaryValue: view?.secondaryValue || '—',
                 tertiaryLabel: view?.tertiaryLabel || '—',
                 tertiaryValue: view?.tertiaryValue || '—',
+                chart: {
+                    currency: view?.chart?.currency || rawModel.chart?.currency || base.chart.currency,
+                    hidden: Boolean(view?.chart?.hidden),
+                    points: Array.isArray(view?.chart?.points) && view.chart.points.length
+                        ? view.chart.points
+                        : (Array.isArray(rawModel.chart?.points) && rawModel.chart.points.length
+                            ? rawModel.chart.points
+                            : base.chart.points),
+                },
                 details: normalizeDetails(view?.details),
             };
         });
@@ -567,6 +577,16 @@
         }
 
         function setChartData(chartModel) {
+            const shouldHideChart = Boolean(chartModel?.hidden);
+            chartContainer.style.display = shouldHideChart ? 'none' : 'block';
+            if (shouldHideChart) {
+                state.chartPoints = [];
+                chartTooltip.style.display = 'none';
+                vLine.style.display = 'none';
+                chartDot.style.display = 'none';
+                return;
+            }
+
             const sourcePoints = Array.isArray(chartModel?.points) ? chartModel.points : [];
             const values = sourcePoints.map((point) => sanitizeNumber(point.value));
             const max = values.length ? Math.max(...values) : 0;
@@ -647,6 +667,8 @@
             tertiaryLabel.textContent = viewData.tertiaryLabel;
             tertiaryValue.textContent = viewData.tertiaryValue;
             backNav.style.display = viewId === 'total' ? 'none' : 'flex';
+
+            setChartData(viewData.chart || state.model.chart);
 
             renderDetails(viewData);
             attachRowListeners();

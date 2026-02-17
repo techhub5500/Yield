@@ -713,6 +713,10 @@ Atualizações aplicadas em `client/js/invest-dash.manual-modal.js` e `client/cs
 
 - **Seletores de data** do modal receberam padronização visual da identidade do sistema.
 - **Dropdowns** do modal receberam padronização visual (mesma linguagem dos inputs).
+- Padronização aplicada com contraste fixo (sem dependência de `hover`) para:
+  - `Tipo de operação` (Renda Variável)
+  - `Indexador` e `Liquidez` (Renda Fixa)
+  - Demais `select` do modal de lançamento manual
 - No campo **Tipo de operação** (cadastro de renda variável), opções reduzidas para:
   - `Comprar`
   - `Vender`
@@ -744,25 +748,55 @@ Implementado em `src/core/investments/metrics-registry.js` com apoio de `src/cor
 
 1) **Prefixado**
 - Entrada: taxa anual fixa (`metadata.rate`).
-- Cálculo por dias corridos até a data de referência (limitado ao vencimento quando existir):
-  - `rendimento = (1 + taxa_anual)^(dias/365) - 1`
+- Base obrigatória: **252 dias úteis/ano**.
+- Cálculo com capitalização composta e pro rata de dias úteis:
+  - `Vb = P * (1 + i)^(n/252)`
+  - `i = taxa anual decimal`
+  - `n = dias úteis do período (exclui a data inicial e inclui os dias úteis até a data de referência)`
 
 2) **CDI**
 - Entrada: percentual do CDI (`metadata.rate`, ex.: `110` = `110% CDI`).
 - Fonte: `server/docs/md_sistema/taxa_cdi.json` (leitura direta; sem hardcode no JS).
-- Cálculo:
-  - `rendimento = CDI_acumulado_no_período × (percentual_informado / 100)`
+- Base obrigatória: **252 dias úteis/ano** com capitalização diária composta.
+- Cálculo ANBIMA implementado via taxa diária derivada da série mensal:
+  - `Vb = P * Π(i=1..n)[1 + (CDI_diario_i * K)]`
+  - `K = percentual contratado em decimal (ex.: 1,10)`
+- Regras aplicadas:
+  - sem juros simples
+  - sem soma linear de taxas
+  - sem arredondamento intermediário (apenas no valor final exibido)
+  - meses parciais respeitados por dias úteis do intervalo
 
 3) **IPCA + taxa adicional**
 - Entrada: taxa adicional (`metadata.rate`, ex.: `6.5` para `IPCA + 6,5%`).
 - Fonte: BRAPI (`/api/v2/inflation`) via cliente backend.
-- Cálculo:
-  - `rendimento = IPCA_acumulado_no_período + taxa_adicional`
+- Cálculo composto estrito (IPCA acumulado real do período + spread anual em base 252), sem soma linear de componentes:
+  - `fator_total = fator_ipca_composto * fator_spread_composto`
+  - `rendimento = fator_total - 1`
 - Regra de referência mensal:
   - até dia 15: considera mês anterior
   - após dia 15: considera mês atual
+- Regra estrutural:
+  - composição multiplicativa com semântica de VNA (fatores acumulados por janela)
+  - pro rata em dias úteis para períodos parciais
+  - sem atalho aditivo entre inflação e spread
 
-### 14.4 Cards impactados e integração
+### 14.4 Liquidação automática + mês completo (renda fixa)
+
+Regra estrutural aplicada na camada central de valuation (`metrics-registry`), reutilizada por todos os cards:
+
+- Todo ativo de `fixed_income` é automaticamente **liquidado no vencimento** (`metadata.maturityDate`).
+- O ativo para de render **exatamente** na data de vencimento.
+- Não há projeção até fim do mês quando vence antes.
+- No vencimento:
+  - posição aberta vai para zero
+  - valor final é transferido para `Realizado (Em caixa)`
+  - resultado realizado é atualizado de forma consistente com custo base
+- Regra de mês parcial:
+  - só considera mês cheio quando o ativo permanece ativo até o último dia útil considerado
+  - caso contrário aplica pro rata por dia útil até a data efetiva (inclusive vencimento)
+
+### 14.5 Cards impactados e integração
 
 A nova precificação de renda fixa indexada foi integrada na base de valuation compartilhada e passou a alimentar os cards oficiais que dependem de valor de posição no tempo:
 
@@ -773,5 +807,48 @@ A nova precificação de renda fixa indexada foi integrada na base de valuation 
 - `investments.financial_result` (Resultado Financeiro)
 
 Com isso, ativos de renda fixa indexados (Prefixado, %CDI, IPCA+taxa) refletem rendimento acumulado no cálculo dos widgets/cards, em vez de depender apenas de atualização manual de saldo/preço.
+
+### 14.6 Patrimônio Total: novo nível por ativo
+
+O card `investments.net_worth` passa a expor terceiro nível de drill-down além de Consolidado e Classe:
+
+- **Nível 3: Por Ativo**
+  - Data de início do investimento (primeiro aporte)
+  - Quantidade comprada (posição aberta)
+  - Preço médio pago
+  - Preço atual
+  - Capital investido
+  - Patrimônio atual
+  - Realizado em caixa
+  - Quebra por aporte (`Aporte 1`, `Aporte 2`, ...) com cálculo independente por lote aberto:
+    - data do aporte
+    - quantidade remanescente do lote
+    - valor investido do lote
+    - valor atualizado do lote
+    - rentabilidade individual do lote
+  - Gráfico temporal do ativo
+
+Implementação reaproveita a mesma estrutura de `views` e `chart` do widget, sem lógica paralela no frontend.
+
+### 14.7 Patrimônio: segregação realizado x não realizado (complemento)
+
+A camada central de `investments.net_worth` passa a separar explicitamente ativos abertos e ativos realizados no modelo do widget:
+
+- **Resultado Não Realizado**
+  - visão navegável própria (`nao-realizado`) com somente posições abertas.
+- **Resultado Realizado**
+  - visão navegável própria (`realizado`) com ativos encerrados e eventos de realização.
+- **Detalhe de ativo realizado**
+  - data de liquidação
+  - valor investido no trecho realizado
+  - valor final realizado
+  - resultado realizado em valor e percentual
+  - tipo de fechamento (`Venda parcial`, `Venda total`, `Vencimento`)
+- **Venda parcial (obrigatório)**
+  - o evento é exibido como parcial, com quantidade vendida, percentual vendido e data.
+  - apenas a fração vendida entra no realizado; o saldo remanescente continua no não realizado.
+- **Consistência de ativos de renda fixa liquidados**
+  - ativo liquidado por vencimento não permanece em listas/contagens de ativos ativos da classe.
+  - o valor migra para realizado em caixa e deixa de compor patrimônio ativo.
 
 ---

@@ -16,8 +16,6 @@ const {
 const {
   addDays,
   indexSeriesByDate,
-  getMonthlySeries,
-  calculateMonthlyCumulativePct,
   buildCdiBenchmarks,
   buildIbovBenchmarks,
   buildSelicBenchmarks,
@@ -248,6 +246,212 @@ function buildStateBeforeDate(transactions, targetDate) {
   return buildStateUntilDate(transactions, dayBefore);
 }
 
+function formatIsoDateBr(isoDate) {
+  if (!isoDate) return '—';
+  const [year, month, day] = String(isoDate).split('-');
+  if (!year || !month || !day) return isoDate;
+  return `${day}/${month}/${year}`;
+}
+
+function formatQuantityNumber(value) {
+  return Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 8 });
+}
+
+function summarizeCloseType(types = []) {
+  const unique = Array.from(new Set(types.filter(Boolean)));
+  if (!unique.length) return '—';
+  if (unique.includes('Vencimento')) return 'Vencimento';
+  if (unique.includes('Venda parcial')) return 'Venda parcial';
+  if (unique.includes('Venda total')) return 'Venda total';
+  return unique[0];
+}
+
+function buildAssetFlowDetails({
+  assetModel,
+  asOfDate,
+  snapshotAsOf,
+  referenceData,
+  fallbackDate,
+}) {
+  const transactions = Array.isArray(assetModel?.transactions) ? assetModel.transactions : [];
+  const buyOperations = new Set(['manual_create', 'manual_buy']);
+  const saleOperation = 'manual_sale';
+
+  const lots = [];
+  const realizedEvents = [];
+  let aporteCounter = 0;
+
+  for (const tx of transactions) {
+    const txDate = String(tx.referenceDate || '');
+    if (!txDate || txDate > asOfDate) continue;
+
+    const operation = String(tx.operation || '');
+    const quantity = Math.max(0, safeNumber(tx.quantity));
+    const price = Math.max(0, safeNumber(tx.price));
+    const fees = Math.max(0, safeNumber(tx.fees));
+    const grossAmount = safeNumber(tx.grossAmount);
+
+    if (buyOperations.has(operation)) {
+      if (quantity <= 0) continue;
+      aporteCounter += 1;
+      const buyCost = grossAmount > 0 ? grossAmount : (quantity * price) + fees;
+      const unitCost = quantity > 0 ? buyCost / quantity : 0;
+      lots.push({
+        id: `aporte-${aporteCounter}`,
+        label: `Aporte ${aporteCounter}`,
+        date: txDate,
+        quantityInitial: quantity,
+        quantityRemaining: quantity,
+        unitCost,
+      });
+      continue;
+    }
+
+    if (operation !== saleOperation || quantity <= 0) continue;
+
+    const quantityBeforeSale = lots.reduce((sum, lot) => sum + Math.max(0, lot.quantityRemaining), 0);
+    if (quantityBeforeSale <= 0) continue;
+
+    let quantityToSell = Math.min(quantity, quantityBeforeSale);
+    if (quantityToSell <= 0) continue;
+
+    const totalProceeds = grossAmount > 0 ? grossAmount : (quantityToSell * price) - fees;
+    const allocations = [];
+    let totalCostBasis = 0;
+
+    for (const lot of lots) {
+      if (quantityToSell <= 0) break;
+      const available = Math.max(0, lot.quantityRemaining);
+      if (available <= 0) continue;
+
+      const soldFromLot = Math.min(available, quantityToSell);
+      lot.quantityRemaining = available - soldFromLot;
+      quantityToSell -= soldFromLot;
+
+      const costBasis = soldFromLot * lot.unitCost;
+      const proceeds = totalProceeds * (soldFromLot / Math.min(quantity, quantityBeforeSale));
+      totalCostBasis += costBasis;
+
+      allocations.push({
+        lotLabel: lot.label,
+        lotDate: lot.date,
+        quantity: soldFromLot,
+        costBasis,
+        proceeds,
+      });
+    }
+
+    const quantitySold = allocations.reduce((sum, item) => sum + item.quantity, 0);
+    const quantityAfterSale = lots.reduce((sum, lot) => sum + Math.max(0, lot.quantityRemaining), 0);
+    const partialPct = quantityBeforeSale > 0
+      ? (quantitySold / quantityBeforeSale) * 100
+      : 0;
+    const resultValue = totalProceeds - totalCostBasis;
+
+    realizedEvents.push({
+      date: txDate,
+      closeType: quantityAfterSale > 0 ? 'Venda parcial' : 'Venda total',
+      quantitySold,
+      quantityBeforeSale,
+      partialPct,
+      investedValue: totalCostBasis,
+      finalValue: totalProceeds,
+      resultValue,
+      resultPct: totalCostBasis > 0 ? (resultValue / totalCostBasis) * 100 : 0,
+      allocations,
+    });
+  }
+
+  const maturityDate = String(assetModel?.metadata?.maturityDate || '').trim();
+  const isFixedIncome = assetModel?.assetClass === 'fixed_income';
+  if (isFixedIncome && maturityDate && maturityDate <= asOfDate) {
+    const remainingQuantity = lots.reduce((sum, lot) => sum + Math.max(0, lot.quantityRemaining), 0);
+    if (remainingQuantity > 0) {
+      const stateAtMaturity = buildStateUntilDate(transactions, maturityDate);
+      const maturityUnitPrice = resolveUnitPriceAtDate({
+        assetModel,
+        targetDate: maturityDate,
+        stateAtDate: stateAtMaturity,
+        referenceData,
+        fallbackDate,
+      });
+
+      const quantityBeforeSettlement = remainingQuantity;
+      const allocations = [];
+      let totalCostBasis = 0;
+
+      lots.forEach((lot) => {
+        const quantity = Math.max(0, lot.quantityRemaining);
+        if (quantity <= 0) return;
+        lot.quantityRemaining = 0;
+
+        const costBasis = quantity * lot.unitCost;
+        const proceeds = quantity * maturityUnitPrice;
+        totalCostBasis += costBasis;
+        allocations.push({
+          lotLabel: lot.label,
+          lotDate: lot.date,
+          quantity,
+          costBasis,
+          proceeds,
+        });
+      });
+
+      const totalProceeds = allocations.reduce((sum, item) => sum + item.proceeds, 0);
+      const resultValue = totalProceeds - totalCostBasis;
+
+      realizedEvents.push({
+        date: maturityDate,
+        closeType: 'Vencimento',
+        quantitySold: quantityBeforeSettlement,
+        quantityBeforeSale: quantityBeforeSettlement,
+        partialPct: 100,
+        investedValue: totalCostBasis,
+        finalValue: totalProceeds,
+        resultValue,
+        resultPct: totalCostBasis > 0 ? (resultValue / totalCostBasis) * 100 : 0,
+        allocations,
+      });
+    }
+  }
+
+  const openLots = lots.filter((lot) => lot.quantityRemaining > 0);
+  const unitPriceAsOf = Math.max(0, safeNumber(snapshotAsOf?.unitPrice));
+  const aporteDetails = openLots.map((lot) => {
+    const investedValue = lot.quantityRemaining * lot.unitCost;
+    const updatedValue = lot.quantityRemaining * unitPriceAsOf;
+    const resultPct = investedValue > 0 ? ((updatedValue / investedValue) - 1) * 100 : 0;
+    return {
+      lotLabel: lot.label,
+      lotDate: lot.date,
+      quantity: lot.quantityRemaining,
+      investedValue,
+      updatedValue,
+      resultPct,
+    };
+  });
+
+  const totalRealizedInvested = realizedEvents.reduce((sum, item) => sum + item.investedValue, 0);
+  const totalRealizedFinal = realizedEvents.reduce((sum, item) => sum + item.finalValue, 0);
+  const totalRealizedResult = totalRealizedFinal - totalRealizedInvested;
+  const firstInvestmentDate = transactions.find((tx) => buyOperations.has(String(tx.operation || '')))?.referenceDate
+    || assetModel?.position?.referenceDate
+    || null;
+
+  return {
+    firstInvestmentDate,
+    aporteDetails,
+    realizedEvents,
+    totalRealizedInvested,
+    totalRealizedFinal,
+    totalRealizedResult,
+    closeTypeSummary: summarizeCloseType(realizedEvents.map((item) => item.closeType)),
+    liquidationDate: realizedEvents.length
+      ? realizedEvents[realizedEvents.length - 1].date
+      : null,
+  };
+}
+
 function toFixed2(value) {
   return Number((Number(value || 0)).toFixed(2));
 }
@@ -268,7 +472,7 @@ function buildAssetDetailsRows(assetsModel, groupKey) {
     .sort((a, b) => b.currentValue - a.currentValue)
     .slice(0, 8)
     .map((item) => ({
-      id: '',
+      id: `asset-${item.assetId}`,
       name: item.name,
       meta: item.ticker || item.assetClass,
       value: formatCurrencyBRL(item.currentValue),
@@ -873,29 +1077,11 @@ function shiftMonth(monthKey, deltaMonths) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function iterateMonthRange(startMonth, endMonth) {
-  if (!startMonth || !endMonth || startMonth > endMonth) return [];
-
-  const months = [];
-  for (let current = startMonth; current <= endMonth; current = shiftMonth(current, 1)) {
-    months.push(current);
-    if (months.length > 2400) break;
-  }
-  return months;
-}
-
 function resolveIpcaCutoffMonth(targetIsoDate) {
   const day = Number(String(targetIsoDate || '').slice(8, 10));
   const baseMonth = toMonthKey(targetIsoDate);
   if (!baseMonth) return '';
   return day <= 15 ? shiftMonth(baseMonth, -1) : baseMonth;
-}
-
-function countDaysBetween(startIso, endIso) {
-  const start = new Date(`${startIso}T00:00:00.000Z`).getTime();
-  const end = new Date(`${endIso}T00:00:00.000Z`).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
-  return Math.round((end - start) / 86400000);
 }
 
 function resolveAssetOriginDate(assetModel, fallbackDate) {
@@ -906,7 +1092,11 @@ function resolveAssetOriginDate(assetModel, fallbackDate) {
 }
 
 async function buildFixedIncomeReferenceData(context, startIso, endIso) {
-  const cdiMonthly = await getMonthlySeries('cdi');
+  const cdiDailySeries = await buildDailyBenchmarkSeries('cdi', startIso, endIso);
+  const cdiDailyRateByDate = new Map(
+    cdiDailySeries.map((item) => [item.date, Number(item.dailyReturn || 0)])
+  );
+  const businessDates = buildBusinessDateRange(startIso, endIso);
 
   const ipcaMonthlyByMonth = new Map();
   if (context?.brapiClient && typeof context.brapiClient.getInflationHistory === 'function' && startIso && endIso && startIso <= endIso) {
@@ -931,39 +1121,29 @@ async function buildFixedIncomeReferenceData(context, startIso, endIso) {
   }
 
   return {
-    cdiMonthly,
+    cdiDailyRateByDate,
+    businessDates,
     ipcaMonthlyByMonth,
-    cdiCache: new Map(),
-    ipcaCache: new Map(),
   };
 }
 
-function resolveIpcaAccumulatedPct(referenceData, startIso, targetIso) {
-  if (!referenceData || !startIso || !targetIso || targetIso <= startIso) return 0;
+function countBusinessDaysExclusiveStart(startIso, endIso) {
+  if (!startIso || !endIso || endIso <= startIso) return 0;
+  return buildBusinessDateRange(startIso, endIso).filter((date) => date > startIso).length;
+}
 
-  const cacheKey = `${startIso}|${targetIso}`;
-  if (referenceData.ipcaCache.has(cacheKey)) {
-    return Number(referenceData.ipcaCache.get(cacheKey) || 0);
+function resolveBusinessDatesInRange(referenceData, startIso, endIso) {
+  if (!startIso || !endIso || endIso <= startIso) return [];
+
+  const referenceDates = Array.isArray(referenceData?.businessDates)
+    ? referenceData.businessDates
+    : [];
+
+  if (referenceDates.length) {
+    return referenceDates.filter((date) => date > startIso && date <= endIso);
   }
 
-  const ipcaMonthlyByMonth = referenceData.ipcaMonthlyByMonth || new Map();
-  const startMonth = toMonthKey(startIso);
-  const endMonth = resolveIpcaCutoffMonth(targetIso);
-
-  if (!startMonth || !endMonth || endMonth < startMonth || !ipcaMonthlyByMonth.size) {
-    referenceData.ipcaCache.set(cacheKey, 0);
-    return 0;
-  }
-
-  let factor = 1;
-  iterateMonthRange(startMonth, endMonth).forEach((monthKey) => {
-    const monthPct = Number(ipcaMonthlyByMonth.get(monthKey) || 0);
-    factor *= (1 + (monthPct / 100));
-  });
-
-  const accumulated = (factor - 1) * 100;
-  referenceData.ipcaCache.set(cacheKey, accumulated);
-  return accumulated;
+  return buildBusinessDateRange(startIso, endIso).filter((date) => date > startIso);
 }
 
 function resolveFixedIncomeGrowthPct(asset, startIso, targetIso, referenceData) {
@@ -978,29 +1158,48 @@ function resolveFixedIncomeGrowthPct(asset, startIso, targetIso, referenceData) 
 
   if (!indexer || !Number.isFinite(rate) || rate < 0) return 0;
 
+  const businessDates = resolveBusinessDatesInRange(referenceData, startIso, cappedTarget);
+  const businessDays = businessDates.length;
+
   if (indexer === 'PREFIXADO') {
-    const days = countDaysBetween(startIso, cappedTarget);
-    if (!days) return 0;
+    if (!businessDays) return 0;
     const annualRate = rate / 100;
-    return (Math.pow(1 + annualRate, days / 365) - 1) * 100;
+    return (Math.pow(1 + annualRate, businessDays / 252) - 1) * 100;
   }
 
   if (indexer === 'CDI') {
-    if (!referenceData?.cdiMonthly) return 0;
-    const baseCacheKey = `${startIso}|${cappedTarget}`;
-    let cdiAccumulatedPct;
-    if (referenceData.cdiCache.has(baseCacheKey)) {
-      cdiAccumulatedPct = Number(referenceData.cdiCache.get(baseCacheKey) || 0);
-    } else {
-      cdiAccumulatedPct = calculateMonthlyCumulativePct(referenceData.cdiMonthly, startIso, cappedTarget);
-      referenceData.cdiCache.set(baseCacheKey, cdiAccumulatedPct);
-    }
-    return cdiAccumulatedPct * (rate / 100);
+    if (!businessDays) return 0;
+
+    const contractedFactor = rate / 100;
+    const cdiDailyRateByDate = referenceData?.cdiDailyRateByDate || new Map();
+
+    let factor = 1;
+    businessDates.forEach((date) => {
+      const cdiDaily = Number(cdiDailyRateByDate.get(date) || 0);
+      factor *= (1 + (cdiDaily * contractedFactor));
+    });
+
+    return (factor - 1) * 100;
   }
 
   if (indexer === 'IPCA') {
-    const ipcaAccumulatedPct = resolveIpcaAccumulatedPct(referenceData, startIso, cappedTarget);
-    return ipcaAccumulatedPct + rate;
+    if (!businessDays) return 0;
+
+    const ipcaCutoffMonth = resolveIpcaCutoffMonth(cappedTarget);
+    const ipcaMonthlyByMonth = referenceData?.ipcaMonthlyByMonth || new Map();
+
+    let ipcaFactor = 1;
+    businessDates.forEach((date) => {
+      const monthKey = toMonthKey(date);
+      if (!monthKey || monthKey > ipcaCutoffMonth) return;
+
+      const monthPct = Number(ipcaMonthlyByMonth.get(monthKey) || 0);
+      const monthDailyRate = Math.pow(1 + (monthPct / 100), 1 / 252) - 1;
+      ipcaFactor *= (1 + monthDailyRate);
+    });
+
+    const additionalSpreadFactor = Math.pow(1 + (rate / 100), businessDays / 252);
+    return ((ipcaFactor * additionalSpreadFactor) - 1) * 100;
   }
 
   return 0;
@@ -1034,6 +1233,77 @@ function resolveUnitPriceAtDate({ assetModel, targetDate, stateAtDate, reference
   return Number.isFinite(adjustedPrice) && adjustedPrice > 0 ? adjustedPrice : fallbackPrice;
 }
 
+function resolveAssetSnapshotAtDate({
+  assetModel,
+  targetDate,
+  stateAtDate,
+  referenceData,
+  fallbackDate,
+  fallbackQuantity,
+}) {
+  const baseQuantity = assetModel?.transactions?.length
+    ? safeNumber(stateAtDate?.quantity)
+    : safeNumber(fallbackQuantity);
+
+  const avgCost = assetModel?.transactions?.length
+    ? safeNumber(stateAtDate?.avgCost)
+    : safeNumber(assetModel?.position?.avgPrice);
+
+  let realizedCash = safeNumber(stateAtDate?.realizedCash);
+  let realizedResult = safeNumber(stateAtDate?.realizedResult);
+  let realizedCostBasis = safeNumber(stateAtDate?.realizedCostBasis);
+  let openQuantity = Math.max(0, baseQuantity);
+  let unitPrice = resolveUnitPriceAtDate({
+    assetModel,
+    targetDate,
+    stateAtDate,
+    referenceData,
+    fallbackDate,
+  });
+
+  const maturityDate = String(assetModel?.metadata?.maturityDate || '').trim();
+  const shouldSettleAtMaturity = assetModel?.assetClass === 'fixed_income'
+    && maturityDate
+    && targetDate >= maturityDate
+    && openQuantity > 0;
+
+  if (shouldSettleAtMaturity) {
+    const stateAtMaturity = buildStateUntilDate(assetModel?.transactions || [], maturityDate);
+    const maturityPrice = resolveUnitPriceAtDate({
+      assetModel,
+      targetDate: maturityDate,
+      stateAtDate: stateAtMaturity,
+      referenceData,
+      fallbackDate,
+    });
+
+    const settlementCostBasis = openQuantity * Math.max(0, avgCost);
+    const settlementValue = openQuantity * Math.max(0, maturityPrice);
+
+    realizedCash += settlementValue;
+    realizedResult += (settlementValue - settlementCostBasis);
+    realizedCostBasis += settlementCostBasis;
+
+    openQuantity = 0;
+    unitPrice = 0;
+  }
+
+  const openValue = openQuantity * Math.max(0, unitPrice);
+  const openInvested = openQuantity * Math.max(0, avgCost);
+
+  return {
+    openQuantity,
+    avgCost,
+    unitPrice,
+    openValue,
+    openInvested,
+    realizedCash,
+    realizedResult,
+    realizedCostBasis,
+    totalValue: openValue + realizedCash,
+  };
+}
+
 function buildWidgetModel(input) {
   const {
     assetsModel,
@@ -1052,7 +1322,10 @@ function buildWidgetModel(input) {
   const totalReturnPct = investedBase > 0 ? (totalReturn / investedBase) * 100 : 0;
   const totalPatrimony = openMarketValue + realizedCash;
 
-  const grouped = assetsModel.reduce((acc, item) => {
+  const openAssets = assetsModel.filter((item) => safeNumber(item.openQuantity) > 0 && safeNumber(item.currentValue) > 0);
+  const realizedAssets = assetsModel.filter((item) => Array.isArray(item?.flowDetails?.realizedEvents) && item.flowDetails.realizedEvents.length > 0);
+
+  const grouped = openAssets.reduce((acc, item) => {
     if (!acc[item.group]) acc[item.group] = { total: 0, count: 0 };
     acc[item.group].total += item.currentValue;
     acc[item.group].count += 1;
@@ -1060,6 +1333,189 @@ function buildWidgetModel(input) {
   }, { rv: { total: 0, count: 0 }, rf: { total: 0, count: 0 } });
 
   const openTotal = openMarketValue || 1;
+
+  const buildAporteRows = (assetModel) => {
+    const aporteDetails = Array.isArray(assetModel?.flowDetails?.aporteDetails)
+      ? assetModel.flowDetails.aporteDetails
+      : [];
+
+    return aporteDetails.map((aporte) => ({
+      id: '',
+      name: aporte.lotLabel,
+      meta: `${formatIsoDateBr(aporte.lotDate)} · ${formatQuantityNumber(aporte.quantity)} unidade(s)`,
+      value: formatCurrencyBRL(aporte.investedValue),
+      varText: `${formatPercent(aporte.resultPct)} · Atualizado: ${formatCurrencyBRL(aporte.updatedValue)}`,
+    }));
+  };
+
+  const buildRealizedRows = (assetModel) => {
+    const events = Array.isArray(assetModel?.flowDetails?.realizedEvents)
+      ? assetModel.flowDetails.realizedEvents
+      : [];
+
+    return events.map((event) => ({
+      id: '',
+      name: event.closeType === 'Venda parcial'
+        ? `Venda parcial de ${event.partialPct.toFixed(1).replace('.', ',')}%`
+        : event.closeType,
+      meta: `${formatIsoDateBr(event.date)} · Quantidade: ${formatQuantityNumber(event.quantitySold)}`,
+      value: formatCurrencyBRL(event.resultValue),
+      varText: `Investido: ${formatCurrencyBRL(event.investedValue)} · Final: ${formatCurrencyBRL(event.finalValue)}`,
+    }));
+  };
+
+  const unrealizedViews = openAssets.reduce((acc, assetModel) => {
+    const viewId = `asset-${assetModel.assetId}`;
+    const aporteRows = buildAporteRows(assetModel);
+    const firstInvestmentDate = assetModel?.flowDetails?.firstInvestmentDate;
+
+    acc[viewId] = {
+      title: assetModel.name,
+      subtitle: `${assetModel.ticker || assetModel.assetClass} · Detalhamento por ativo`,
+      label: 'Patrimônio atual',
+      value: formatCurrencyBRL(assetModel.currentValue),
+      variation: `${assetModel.unrealizedPnl >= 0 ? '+' : ''}${formatCurrencyBRL(assetModel.unrealizedPnl)} (não realizado)`,
+      secondaryLabel: 'Capital investido',
+      secondaryValue: formatCurrencyBRL(assetModel.investedOpen),
+      tertiaryLabel: 'Realizado (Em caixa)',
+      tertiaryValue: formatCurrencyBRL(assetModel.realizedCash),
+      chart: {
+        currency: 'BRL',
+        points: Array.isArray(assetModel.chartPoints) && assetModel.chartPoints.length
+          ? assetModel.chartPoints
+          : chartPoints,
+      },
+      details: {
+        left: [
+          {
+            id: '',
+            name: 'Data do investimento',
+            meta: 'Data inicial do ativo',
+            value: formatIsoDateBr(firstInvestmentDate),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Quantidade comprada',
+            meta: 'Posição aberta atual',
+            value: formatQuantityNumber(assetModel.openQuantity),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Preço médio pago',
+            meta: 'Custo médio por unidade',
+            value: formatCurrencyBRL(assetModel.avgCost),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Preço atual',
+            meta: 'Preço na data de referência',
+            value: formatCurrencyBRL(assetModel.unitPrice),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Capital investido',
+            meta: 'Custo das posições abertas',
+            value: formatCurrencyBRL(assetModel.investedOpen),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Patrimônio atual',
+            meta: 'Valor de mercado da posição aberta',
+            value: formatCurrencyBRL(assetModel.currentValue),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Realizado em caixa',
+            meta: 'Vendas, proventos e liquidações',
+            value: formatCurrencyBRL(assetModel.realizedCash),
+            varText: '',
+          },
+        ],
+        right: aporteRows,
+      },
+    };
+    return acc;
+  }, {});
+
+  const realizedAssetViews = realizedAssets.reduce((acc, assetModel) => {
+    const viewId = `asset-realizado-${assetModel.assetId}`;
+    const flowDetails = assetModel.flowDetails || {};
+    const events = Array.isArray(flowDetails.realizedEvents) ? flowDetails.realizedEvents : [];
+    const totalInvested = safeNumber(flowDetails.totalRealizedInvested);
+    const totalFinal = safeNumber(flowDetails.totalRealizedFinal);
+    const totalResult = safeNumber(flowDetails.totalRealizedResult);
+    const totalPct = totalInvested > 0 ? (totalResult / totalInvested) * 100 : 0;
+
+    acc[viewId] = {
+      title: `${assetModel.name} · Realizado`,
+      subtitle: `${assetModel.ticker || assetModel.assetClass} · Histórico de encerramento`,
+      label: 'Resultado final',
+      value: formatCurrencyBRL(totalResult),
+      variation: formatPercent(totalPct),
+      secondaryLabel: 'Valor investido',
+      secondaryValue: formatCurrencyBRL(totalInvested),
+      tertiaryLabel: 'Valor final',
+      tertiaryValue: formatCurrencyBRL(totalFinal),
+      chart: {
+        currency: 'BRL',
+        points: [],
+        hidden: true,
+      },
+      details: {
+        left: [
+          {
+            id: '',
+            name: 'Data(s) de aporte',
+            meta: 'Data inicial do investimento',
+            value: formatIsoDateBr(flowDetails.firstInvestmentDate),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Data de liquidação',
+            meta: 'Último evento realizado',
+            value: formatIsoDateBr(flowDetails.liquidationDate),
+            varText: '',
+          },
+          {
+            id: '',
+            name: 'Tipo de encerramento',
+            meta: 'Vencimento / venda total / parcial',
+            value: flowDetails.closeTypeSummary || '—',
+            varText: '',
+          },
+        ],
+        right: buildRealizedRows(assetModel),
+      },
+    };
+    return acc;
+  }, {});
+
+  const unrealizedListRows = openAssets
+    .sort((a, b) => b.currentValue - a.currentValue)
+    .map((assetModel) => ({
+      id: `asset-${assetModel.assetId}`,
+      name: assetModel.name,
+      meta: assetModel.ticker || assetModel.assetClass,
+      value: formatCurrencyBRL(assetModel.currentValue),
+      varText: `${assetModel.unrealizedPnl >= 0 ? '+' : ''}${formatCurrencyBRL(assetModel.unrealizedPnl)}`,
+    }));
+
+  const realizedListRows = realizedAssets
+    .sort((a, b) => safeNumber(b.flowDetails?.totalRealizedFinal) - safeNumber(a.flowDetails?.totalRealizedFinal))
+    .map((assetModel) => ({
+      id: `asset-realizado-${assetModel.assetId}`,
+      name: assetModel.name,
+      meta: `${assetModel.ticker || assetModel.assetClass} · ${assetModel.flowDetails?.closeTypeSummary || 'Realizado'}`,
+      value: formatCurrencyBRL(assetModel.flowDetails?.totalRealizedFinal || 0),
+      varText: `${safeNumber(assetModel.flowDetails?.totalRealizedResult) >= 0 ? '+' : ''}${formatCurrencyBRL(assetModel.flowDetails?.totalRealizedResult || 0)}`,
+    }));
 
   return {
     rootView: 'total',
@@ -1097,14 +1553,14 @@ function buildWidgetModel(input) {
           ],
           right: [
             {
-              id: '',
+              id: 'realizado',
               name: 'Resultado realizado',
               meta: 'Vendas e proventos',
               value: formatCurrencyBRL(realizedResult),
               varText: '',
             },
             {
-              id: '',
+              id: 'nao-realizado',
               name: 'Resultado não realizado',
               meta: 'Posições abertas',
               value: formatCurrencyBRL(unrealizedPnl),
@@ -1129,8 +1585,12 @@ function buildWidgetModel(input) {
         secondaryLabel: 'Quantidade de ativos',
         secondaryValue: String(grouped.rv.count),
         details: {
-          left: buildAssetDetailsRows(assetsModel, 'rv'),
+          left: buildAssetDetailsRows(openAssets, 'rv'),
           right: [],
+        },
+        chart: {
+          currency: 'BRL',
+          points: chartPoints,
         },
       },
       'renda-fixa': {
@@ -1142,10 +1602,55 @@ function buildWidgetModel(input) {
         secondaryLabel: 'Quantidade de ativos',
         secondaryValue: String(grouped.rf.count),
         details: {
-          left: buildAssetDetailsRows(assetsModel, 'rf'),
+          left: buildAssetDetailsRows(openAssets, 'rf'),
+          right: [],
+        },
+        chart: {
+          currency: 'BRL',
+          points: chartPoints,
+        },
+      },
+      'nao-realizado': {
+        title: 'Resultado Não Realizado',
+        subtitle: 'Posições abertas com resultado em papel',
+        label: 'Patrimônio em aberto',
+        value: formatCurrencyBRL(openMarketValue),
+        variation: `${unrealizedPnl >= 0 ? '+' : ''}${formatCurrencyBRL(unrealizedPnl)}`,
+        secondaryLabel: 'Ativos em posição',
+        secondaryValue: String(unrealizedListRows.length),
+        tertiaryLabel: 'Capital investido',
+        tertiaryValue: formatCurrencyBRL(openInvested),
+        chart: {
+          currency: 'BRL',
+          points: chartPoints,
+        },
+        details: {
+          left: unrealizedListRows,
           right: [],
         },
       },
+      realizado: {
+        title: 'Ativos Realizados',
+        subtitle: 'Posições encerradas por venda ou vencimento',
+        label: 'Realizado (Em caixa)',
+        value: formatCurrencyBRL(realizedCash),
+        variation: `${realizedResult >= 0 ? '+' : ''}${formatCurrencyBRL(realizedResult)}`,
+        secondaryLabel: 'Ativos encerrados',
+        secondaryValue: String(realizedListRows.length),
+        tertiaryLabel: 'Base de custo realizada',
+        tertiaryValue: formatCurrencyBRL(realizedCostBasis),
+        chart: {
+          currency: 'BRL',
+          points: [],
+          hidden: true,
+        },
+        details: {
+          left: realizedListRows,
+          right: [],
+        },
+      },
+      ...unrealizedViews,
+      ...realizedAssetViews,
     },
   };
 }
@@ -1285,35 +1790,39 @@ function ensureInvestmentsMetricsRegistered() {
         const stateAsOf = buildStateUntilDate(txs, asOfDate);
         const group = classifyAssetGroup(asset.assetClass);
 
-        const quantityCurrent = txs.length ? stateAsOf.quantity : safeNumber(position?.quantity);
-        const avgCostCurrent = txs.length ? stateAsOf.avgCost : safeNumber(position?.avgPrice);
-
         const ticker = resolveTicker(asset);
         const canUseBrapi = asset.assetClass === 'equity' && !!ticker;
         const history = canUseBrapi
           ? await getTickerHistory(context, ticker, historyCache)
           : [];
 
-        const currentPrice = resolveUnitPriceAtDate({
-          assetModel: {
-            ...asset,
-            position,
-            assetClass: asset.assetClass,
-            history,
-            transactions: txs,
-          },
+        const assetModelBase = {
+          ...asset,
+          position,
+          assetClass: asset.assetClass,
+          history,
+          transactions: txs,
+        };
+
+        const snapshotAsOf = resolveAssetSnapshotAtDate({
+          assetModel: assetModelBase,
           targetDate: asOfDate,
           stateAtDate: stateAsOf,
           referenceData: fixedIncomeReferenceData,
           fallbackDate: chartStartDate,
+          fallbackQuantity: position?.quantity,
         });
 
-        const currentValue = quantityCurrent > 0
-          ? quantityCurrent * currentPrice
-          : safeNumber(position?.marketValue);
-
-        const investedOpen = quantityCurrent * avgCostCurrent;
+        const currentValue = snapshotAsOf.openValue;
+        const investedOpen = snapshotAsOf.openInvested;
         const unrealizedPnl = currentValue - investedOpen;
+        const flowDetails = buildAssetFlowDetails({
+          assetModel: assetModelBase,
+          asOfDate,
+          snapshotAsOf,
+          referenceData: fixedIncomeReferenceData,
+          fallbackDate: chartStartDate,
+        });
 
         const assetInvestedCapital = txs.length
           ? stateAsOf.investedCapital
@@ -1322,9 +1831,9 @@ function ensureInvestmentsMetricsRegistered() {
         openMarketValue += currentValue;
         openInvested += investedOpen;
         investedCapital += assetInvestedCapital;
-        realizedCash += stateAsOf.realizedCash;
-        realizedResult += stateAsOf.realizedResult;
-        realizedCostBasis += stateAsOf.realizedCostBasis;
+        realizedCash += snapshotAsOf.realizedCash;
+        realizedResult += snapshotAsOf.realizedResult;
+        realizedCostBasis += snapshotAsOf.realizedCostBasis;
 
         assetsModel.push({
           assetId,
@@ -1333,12 +1842,18 @@ function ensureInvestmentsMetricsRegistered() {
           assetClass: asset.assetClass,
           metadata: asset.metadata || {},
           group,
+          openQuantity: snapshotAsOf.openQuantity,
+          avgCost: snapshotAsOf.avgCost,
+          unitPrice: snapshotAsOf.unitPrice,
           currentValue,
           investedOpen,
+          realizedCash: snapshotAsOf.realizedCash,
           unrealizedPnl,
           history,
           transactions: txs,
           position,
+          chartPoints: [],
+          flowDetails,
         });
       }
 
@@ -1348,25 +1863,17 @@ function ensureInvestmentsMetricsRegistered() {
 
         assetsModel.forEach((assetModel) => {
           const state = buildStateUntilDate(assetModel.transactions, targetDate);
-          realizedCashAtDate += state.realizedCash;
-
-          const quantityAtDate = assetModel.transactions.length
-            ? state.quantity
-            : (assetModel.position?.referenceDate && assetModel.position.referenceDate <= targetDate
-              ? safeNumber(assetModel.position.quantity)
-              : 0);
-
-          if (quantityAtDate <= 0) return;
-
-          const priceAtDate = resolveUnitPriceAtDate({
+          const snapshotAtDate = resolveAssetSnapshotAtDate({
             assetModel,
             targetDate,
             stateAtDate: state,
             referenceData: fixedIncomeReferenceData,
             fallbackDate: chartStartDate,
+            fallbackQuantity: assetModel.position?.quantity,
           });
 
-          openValueAtDate += quantityAtDate * priceAtDate;
+          realizedCashAtDate += snapshotAtDate.realizedCash;
+          openValueAtDate += snapshotAtDate.openValue;
         });
 
         const value = openValueAtDate + realizedCashAtDate;
@@ -1376,6 +1883,26 @@ function ensureInvestmentsMetricsRegistered() {
           value,
           currency: 'BRL',
         };
+      });
+
+      assetsModel.forEach((assetModel) => {
+        assetModel.chartPoints = chartTargetDates.map((targetDate) => {
+          const state = buildStateUntilDate(assetModel.transactions, targetDate);
+          const snapshotAtDate = resolveAssetSnapshotAtDate({
+            assetModel,
+            targetDate,
+            stateAtDate: state,
+            referenceData: fixedIncomeReferenceData,
+            fallbackDate: chartStartDate,
+            fallbackQuantity: assetModel.position?.quantity,
+          });
+
+          return {
+            label: toDateLabel(targetDate),
+            value: snapshotAtDate.totalValue,
+            currency: 'BRL',
+          };
+        });
       });
 
       return {
@@ -1503,11 +2030,6 @@ function ensureInvestmentsMetricsRegistered() {
       };
 
       const stateEnd = buildStateUntilDate(txs, asOfDate);
-      const quantityEnd = txs.length
-        ? stateEnd.quantity
-        : safeNumber(position?.quantity);
-
-      if (quantityEnd <= 0 && safeNumber(position?.marketValue) <= 0) continue;
 
       const ticker = resolveTicker(asset);
       const canUseBrapi = !!ticker && ['equity', 'crypto', 'funds'].includes(asset.assetClass);
@@ -1515,33 +2037,35 @@ function ensureInvestmentsMetricsRegistered() {
         ? await getTickerHistory(context, ticker, historyCache)
         : [];
 
-      const currentPrice = resolveUnitPriceAtDate({
-        assetModel: {
-          ...asset,
-          position,
-          assetClass: asset.assetClass,
-          history,
-          transactions: txs,
-        },
+      const assetModelBase = {
+        ...asset,
+        position,
+        assetClass: asset.assetClass,
+        history,
+        transactions: txs,
+      };
+
+      const snapshotEnd = resolveAssetSnapshotAtDate({
+        assetModel: assetModelBase,
         targetDate: asOfDate,
         stateAtDate: stateEnd,
         referenceData: fixedIncomeReferenceData,
         fallbackDate: fixedIncomeStartDate,
+        fallbackQuantity: position?.quantity,
       });
 
-      const currentValue = quantityEnd > 0
-        ? quantityEnd * currentPrice
-        : safeNumber(position?.marketValue);
+      const quantityEnd = snapshotEnd.openQuantity;
+      const currentPrice = snapshotEnd.unitPrice;
+      const currentValue = snapshotEnd.openValue;
+
+      if (quantityEnd <= 0 && safeNumber(position?.marketValue) <= 0 && currentValue <= 0) continue;
 
       if (currentValue <= 0) continue;
 
-      const avgCost = quantityEnd > 0
-        ? (txs.length ? stateEnd.avgCost : safeNumber(position?.avgPrice))
-        : safeNumber(position?.avgPrice);
-
-      const investedOpen = quantityEnd * avgCost;
+      const avgCost = snapshotEnd.avgCost;
+      const investedOpen = snapshotEnd.openInvested;
       const unrealizedPnl = currentValue - investedOpen;
-      const realizedResult = safeNumber(stateEnd.realizedResult);
+      const realizedResult = safeNumber(snapshotEnd.realizedResult);
       const financialResult = unrealizedPnl + realizedResult;
       const lossPct = avgCost > 0
         ? ((currentPrice / avgCost) - 1) * 100
@@ -1855,38 +2379,32 @@ function ensureInvestmentsMetricsRegistered() {
           ? await getTickerHistory(context, ticker, historyCache)
           : [];
 
+        const assetModelBase = {
+          ...asset,
+          position,
+          assetClass: asset.assetClass,
+          history,
+          transactions: txs,
+        };
+
         const pointsByDate = new Map();
 
         anchorDates.forEach((targetDate) => {
           const state = buildStateUntilDate(txs, targetDate);
-          const quantityAtDate = txs.length
-            ? state.quantity
-            : (position?.referenceDate && position.referenceDate <= targetDate
-              ? safeNumber(position.quantity)
-              : 0);
-
-          const priceAtDate = resolveUnitPriceAtDate({
-            assetModel: {
-              ...asset,
-              position,
-              assetClass: asset.assetClass,
-              history,
-              transactions: txs,
-            },
+          const snapshotAtDate = resolveAssetSnapshotAtDate({
+            assetModel: assetModelBase,
             targetDate,
             stateAtDate: state,
             referenceData: fixedIncomeReferenceData,
             fallbackDate: period.start,
+            fallbackQuantity: position?.quantity,
           });
-
-          const openValue = quantityAtDate * priceAtDate;
-          const totalValue = openValue + state.realizedCash;
 
           pointsByDate.set(targetDate, {
             date: targetDate,
-            openValue,
-            realizedCash: state.realizedCash,
-            totalValue,
+            openValue: snapshotAtDate.openValue,
+            realizedCash: snapshotAtDate.realizedCash,
+            totalValue: snapshotAtDate.totalValue,
           });
         });
 
@@ -2242,21 +2760,6 @@ function ensureInvestmentsMetricsRegistered() {
       ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
       : null;
 
-    const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
-      const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
-      return assetClass === 'fixed_income';
-    });
-
-    const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
-      const txs = transactionsByAsset.get(assetId) || [];
-      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || period.start;
-      return !minDate || firstDate < minDate ? firstDate : minDate;
-    }, null) || period.start;
-
-    const fixedIncomeReferenceData = fixedIncomeAssetIds.length
-      ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
-      : null;
-
     const businessDates = buildBusinessDateRange(period.start, period.end);
     if (!businessDates.length) {
       return {
@@ -2322,34 +2825,29 @@ function ensureInvestmentsMetricsRegistered() {
         ? await getTickerHistory(context, ticker, historyCache)
         : [];
 
+      const assetModelBase = {
+        ...asset,
+        position,
+        assetClass: asset.assetClass,
+        history,
+        transactions: txs,
+      };
+
       const valuesByDate = new Map();
 
       businessDates.forEach((date) => {
         const state = buildStateUntilDate(txs, date);
 
-        const quantityAtDate = txs.length
-          ? state.quantity
-          : (position?.referenceDate && position.referenceDate <= date
-            ? safeNumber(position.quantity)
-            : 0);
-
-        const priceAtDate = resolveUnitPriceAtDate({
-          assetModel: {
-            ...asset,
-            position,
-            assetClass: asset.assetClass,
-            history,
-            transactions: txs,
-          },
+        const snapshotAtDate = resolveAssetSnapshotAtDate({
+          assetModel: assetModelBase,
           targetDate: date,
           stateAtDate: state,
           referenceData: fixedIncomeReferenceData,
           fallbackDate: period.start,
+          fallbackQuantity: position?.quantity,
         });
 
-        const openValue = quantityAtDate * priceAtDate;
-        const totalValue = openValue + state.realizedCash;
-        valuesByDate.set(date, totalValue);
+        valuesByDate.set(date, snapshotAtDate.totalValue);
       });
 
       const values = businessDates.map((date) => Number(valuesByDate.get(date) || 0));
@@ -2672,6 +3170,21 @@ function ensureInvestmentsMetricsRegistered() {
       originDate,
     });
 
+    const fixedIncomeAssetIds = Array.from(allAssetIds).filter((assetId) => {
+      const assetClass = assetById.get(assetId)?.assetClass || positionByAsset.get(assetId)?.assetClass;
+      return assetClass === 'fixed_income';
+    });
+
+    const fixedIncomeStartDate = fixedIncomeAssetIds.reduce((minDate, assetId) => {
+      const txs = transactionsByAsset.get(assetId) || [];
+      const firstDate = txs[0]?.referenceDate || positionByAsset.get(assetId)?.referenceDate || period.start;
+      return !minDate || firstDate < minDate ? firstDate : minDate;
+    }, null) || period.start;
+
+    const fixedIncomeReferenceData = fixedIncomeAssetIds.length
+      ? await buildFixedIncomeReferenceData(context, fixedIncomeStartDate, period.end)
+      : null;
+
     const historyCache = new Map();
     const dividendsCache = new Map();
     const assetModels = [];
@@ -2696,50 +3209,42 @@ function ensureInvestmentsMetricsRegistered() {
         ? await getTickerHistory(context, ticker, historyCache)
         : [];
 
-      const priceStart = resolveUnitPriceAtDate({
-        assetModel: {
-          ...asset,
-          position,
-          assetClass: asset.assetClass,
-          history,
-          transactions: txs,
-        },
+      const assetModelBase = {
+        ...asset,
+        position,
+        assetClass: asset.assetClass,
+        history,
+        transactions: txs,
+      };
+
+      const snapshotStart = resolveAssetSnapshotAtDate({
+        assetModel: assetModelBase,
         targetDate: period.start,
         stateAtDate: stateStart,
         referenceData: fixedIncomeReferenceData,
         fallbackDate: period.start,
+        fallbackQuantity: position?.quantity,
       });
 
-      const priceEnd = resolveUnitPriceAtDate({
-        assetModel: {
-          ...asset,
-          position,
-          assetClass: asset.assetClass,
-          history,
-          transactions: txs,
-        },
+      const snapshotEnd = resolveAssetSnapshotAtDate({
+        assetModel: assetModelBase,
         targetDate: period.end,
         stateAtDate: stateEnd,
         referenceData: fixedIncomeReferenceData,
         fallbackDate: period.start,
+        fallbackQuantity: position?.quantity,
       });
 
-      const quantityStart = txs.length
-        ? stateStart.quantity
-        : (position?.referenceDate && position.referenceDate <= period.start ? safeNumber(position.quantity) : 0);
-      const quantityEnd = txs.length
-        ? stateEnd.quantity
-        : (position?.referenceDate && position.referenceDate <= period.end ? safeNumber(position.quantity) : 0);
-
-      const openValueStart = quantityStart * priceStart;
-      const openValueEnd = quantityEnd * priceEnd;
-      const openInvestedStart = quantityStart * stateStart.avgCost;
-      const openInvestedEnd = quantityEnd * stateEnd.avgCost;
+      const openValueStart = snapshotStart.openValue;
+      const openValueEnd = snapshotEnd.openValue;
+      const openInvestedStart = snapshotStart.openInvested;
+      const openInvestedEnd = snapshotEnd.openInvested;
+      const quantityEnd = snapshotEnd.openQuantity;
 
       const unrealizedPnlStart = openValueStart - openInvestedStart;
       const unrealizedPnlEnd = openValueEnd - openInvestedEnd;
       const unrealizedResult = unrealizedPnlEnd - unrealizedPnlStart;
-      const realizedResultRaw = stateEnd.realizedResult - stateStart.realizedResult;
+      const realizedResultRaw = snapshotEnd.realizedResult - snapshotStart.realizedResult;
 
       const manualIncome = txs
         .filter((tx) => tx.referenceDate >= period.start && tx.referenceDate <= period.end && tx.operation === 'manual_income')
@@ -2766,8 +3271,16 @@ function ensureInvestmentsMetricsRegistered() {
           .filter((entry) => entry.date >= period.start && entry.date <= period.end)
           .forEach((entry) => {
             const stateAtDate = buildStateUntilDate(txs, entry.date);
-            if (stateAtDate.quantity > 0) {
-              grossDividendsBrapi += stateAtDate.quantity * entry.amount;
+            const snapshotAtDate = resolveAssetSnapshotAtDate({
+              assetModel: assetModelBase,
+              targetDate: entry.date,
+              stateAtDate,
+              referenceData: fixedIncomeReferenceData,
+              fallbackDate: period.start,
+              fallbackQuantity: position?.quantity,
+            });
+            if (snapshotAtDate.openQuantity > 0) {
+              grossDividendsBrapi += snapshotAtDate.openQuantity * entry.amount;
             }
           });
       }
@@ -2800,7 +3313,7 @@ function ensureInvestmentsMetricsRegistered() {
 
       const investedBase = Math.max(
         0,
-        openInvestedEnd + (stateEnd.realizedCostBasis - stateStart.realizedCostBasis)
+        openInvestedEnd + (snapshotEnd.realizedCostBasis - snapshotStart.realizedCostBasis)
       );
 
       const taxRate = resolveTaxRate(asset);
