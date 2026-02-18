@@ -1,4 +1,8 @@
 (function initAlocacaoModule() {
+    const STORAGE_KEYS = {
+        priorityMode: 'yield.alocacao.priorityMode',
+    };
+
     const EMPTY_WIDGET_MODEL = {
         rootView: 'class-root',
         totalPatrimony: 0,
@@ -33,13 +37,58 @@
         }).format(Number(value || 0));
     }
 
-    function formatSignedPercent(value, digits = 1) {
+    function formatPercent(value, digits = 2, withSign = false) {
         const parsed = Number(value || 0);
-        const sign = parsed > 0 ? '+' : '';
+        const sign = withSign && parsed > 0 ? '+' : '';
         return `${sign}${parsed.toFixed(digits).replace('.', ',')}%`;
     }
 
+    function parsePercentText(rawValue) {
+        const match = String(rawValue || '').replace(',', '.').match(/-?\d+(\.\d+)?/);
+        if (!match) return 0;
+        const parsed = Number(match[0]);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function normalizeText(value) {
+        return String(value || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim()
+            .toLowerCase();
+    }
+
+    function roundCents(value) {
+        return Math.round(Number(value || 0) * 100) / 100;
+    }
+
+    function getStoredValue(key, fallbackValue) {
+        try {
+            const stored = window.sessionStorage.getItem(key);
+            return stored || fallbackValue;
+        } catch (_) {
+            return fallbackValue;
+        }
+    }
+
+    function setStoredValue(key, value) {
+        try {
+            window.sessionStorage.setItem(key, String(value));
+        } catch (_) {
+            // noop
+        }
+    }
+
     function normalizeNode(node) {
+        const quantity = Number(
+            node?.quantity
+            ?? node?.qty
+            ?? node?.positionQty
+            ?? node?.units
+            ?? node?.shares
+            ?? 0
+        );
+
         const normalized = {
             id: String(node?.id || ''),
             parentId: node?.parentId || null,
@@ -54,7 +103,7 @@
             realPct: Number(node?.realPct || 0),
             diffPct: Number(node?.diffPct || 0),
             status: String(node?.status || 'on-track'),
-            actionLabel: String(node?.actionLabel || 'Manter (0,0%)'),
+            actionLabel: String(node?.actionLabel || 'Manter'),
             adjustmentValue: Number(node?.adjustmentValue || 0),
             hasLossAlert: Boolean(node?.hasLossAlert),
             infoMessage: String(node?.infoMessage || ''),
@@ -67,10 +116,13 @@
             realizedResultText: String(node?.realizedResultText || formatCurrency(node?.realizedResult || 0)),
             unrealizedPnlText: String(node?.unrealizedPnlText || formatCurrency(node?.unrealizedPnl || 0)),
             financialResultText: String(node?.financialResultText || formatCurrency(node?.financialResult || 0)),
-            currentValueText: node?.currentValueText || formatCurrency(node?.currentValue || 0),
-            targetPctText: node?.targetPctText || formatSignedPercent(node?.targetPct || 0, 2),
-            diffPctText: node?.diffPctText || formatSignedPercent(node?.diffPct || 0, 2),
+            quantity,
+            estimatedUnitPrice: Number(node?.currentPrice || node?.lastPrice || node?.marketPrice || 0),
         };
+
+        if (!normalized.estimatedUnitPrice && quantity > 0) {
+            normalized.estimatedUnitPrice = normalized.currentValue / quantity;
+        }
 
         return normalized;
     }
@@ -148,7 +200,6 @@
         const shadowRoot = host.attachShadow({ mode: 'open' });
         shadowRoot.innerHTML = buildAlocacaoWidgetTemplate();
 
-        const widgetCard = shadowRoot.querySelector('.widget-card');
         const allocList = shadowRoot.getElementById('allocList');
         const scoreValue = shadowRoot.getElementById('scoreValue');
         const aporteValue = shadowRoot.getElementById('aporteValue');
@@ -156,22 +207,53 @@
         const tradeNetValue = shadowRoot.getElementById('tradeNetValue');
         const tradeBuyValue = shadowRoot.getElementById('tradeBuyValue');
         const tradeSellValue = shadowRoot.getElementById('tradeSellValue');
+        const tradeHint = shadowRoot.getElementById('tradeHint');
         const cardTitle = shadowRoot.getElementById('cardTitle');
         const cardSubtitle = shadowRoot.getElementById('cardSubtitle');
         const backNav = shadowRoot.getElementById('backNav');
+
+        const settingsWrap = shadowRoot.getElementById('allocationSettingsWrap');
+        const settingsBtn = shadowRoot.getElementById('settingsBtn');
+        const settingsMenu = shadowRoot.getElementById('settingsMenu');
+        const rebalanceGuardMessage = shadowRoot.getElementById('rebalanceGuardMessage');
+
+        const expandAporteDetailsBtn = shadowRoot.getElementById('expandAporteDetailsBtn');
+        const aportePlanPanel = shadowRoot.getElementById('aportePlanPanel');
+        const aportePlanAporteTotal = shadowRoot.getElementById('aportePlanAporteTotal');
+        const aportePlanEstimatedTotal = shadowRoot.getElementById('aportePlanEstimatedTotal');
+        const aporteInheritedHint = shadowRoot.getElementById('aporteInheritedHint');
+        const aportePlanTableBody = shadowRoot.getElementById('aportePlanTableBody');
+
+        const expandTradeDetailsBtn = shadowRoot.getElementById('expandTradeDetailsBtn');
+        const tradePlanPanel = shadowRoot.getElementById('tradePlanPanel');
+        const tradePlanSellTotal = shadowRoot.getElementById('tradePlanSellTotal');
+        const tradePlanBuyTotal = shadowRoot.getElementById('tradePlanBuyTotal');
+        const tradePlanTaxAlert = shadowRoot.getElementById('tradePlanTaxAlert');
+        const tradePlanTableBody = shadowRoot.getElementById('tradePlanTableBody');
 
         const state = {
             model: normalizeWidgetModel(null),
             activeFilters: { currencies: ['BRL'] },
             mode: 'class',
+            priorityMode: getStoredValue(STORAGE_KEYS.priorityMode, 'deviation'),
+            expandedPanels: {
+                aporte: false,
+                trade: false,
+            },
             nodesById: new Map(),
             childrenByParent: new Map(),
-            stack: ['class-root'],
+            absoluteTargetCache: new Map(),
+            stack: [{ key: 'class-root', inheritedAporte: 0 }],
+            currentPlans: {
+                aporte: null,
+                trade: null,
+            },
         };
 
         function scaleToContainer() {
             const parent = containerElement;
             if (!parent) return;
+
             const parentWidth = parent.clientWidth || 880;
             const parentHeight = parent.clientHeight || 430;
             const scaleX = parentWidth / 880;
@@ -180,14 +262,15 @@
 
             host.style.transformOrigin = 'top left';
             host.style.transform = `scale(${scale})`;
-            host.style.width = `${880}px`;
-            host.style.height = `${430}px`;
+            host.style.width = '880px';
+            host.style.height = '430px';
             parent.style.minHeight = `${430 * scale}px`;
         }
 
         function rebuildIndexes() {
             state.nodesById = new Map();
             state.childrenByParent = new Map();
+            state.absoluteTargetCache = new Map();
 
             state.model.nodes.forEach((node) => {
                 state.nodesById.set(node.id, node);
@@ -210,16 +293,13 @@
             return 'class-root';
         }
 
-        function getCurrentParentKey() {
-            const current = state.stack[state.stack.length - 1] || getRootForMode(state.mode);
-            if (current.endsWith('-root')) return current;
-            return current;
+        function getCurrentFrame() {
+            return state.stack[state.stack.length - 1] || { key: getRootForMode(state.mode), inheritedAporte: 0 };
         }
 
-        function getRowsForCurrentView() {
-            const key = getCurrentParentKey();
+        function getRowsForKey(key) {
             if (state.childrenByParent.has(key)) {
-                return state.childrenByParent.get(key);
+                return state.childrenByParent.get(key) || [];
             }
 
             if (key === 'subclass-root') {
@@ -234,12 +314,42 @@
                     .sort((a, b) => Number(b.currentValue || 0) - Number(a.currentValue || 0));
             }
 
-            const root = getRootForMode(state.mode);
-            return state.childrenByParent.get(root) || [];
+            return state.childrenByParent.get(getRootForMode(state.mode)) || [];
+        }
+
+        function collectDescendantAssets(nodeId) {
+            const node = state.nodesById.get(nodeId);
+            if (!node) return [];
+            if (node.level === 'asset') return [node];
+
+            const directChildren = state.childrenByParent.get(node.id) || [];
+            if (!directChildren.length) return [];
+
+            return directChildren.flatMap((child) => collectDescendantAssets(child.id));
+        }
+
+        function resolveAbsoluteTargetPct(node) {
+            if (!node || !node.id) return 0;
+            if (state.absoluteTargetCache.has(node.id)) {
+                return state.absoluteTargetCache.get(node.id);
+            }
+
+            if (node.level === 'asset') {
+                const direct = Number(node.targetPct || 0);
+                state.absoluteTargetCache.set(node.id, direct);
+                return direct;
+            }
+
+            const descendants = collectDescendantAssets(node.id);
+            const descendantsTarget = descendants.reduce((sum, asset) => sum + Number(asset.targetPct || 0), 0);
+            const resolved = descendantsTarget > 0 ? descendantsTarget : Number(node.targetPct || 0);
+
+            state.absoluteTargetCache.set(node.id, resolved);
+            return resolved;
         }
 
         function resolveViewText() {
-            const current = state.stack[state.stack.length - 1] || getRootForMode(state.mode);
+            const current = getCurrentFrame().key;
             const node = state.nodesById.get(current);
 
             if (!node) {
@@ -264,36 +374,586 @@
             cardSubtitle.textContent = 'Saúde estratégica da carteira';
         }
 
-        function renderKpis() {
-            const modeKpis = state.model.kpis?.[state.mode] || {
-                score: 100,
-                aporteRebalance: { amount: 0, basisName: null },
-                tradeRebalance: { buyAmount: 0, sellAmount: 0, netAmount: 0 },
+        function extractSignalsMap() {
+            const result = new Map();
+
+            const upsertSignal = (key, type, value) => {
+                if (!key) return;
+                if (!result.has(key)) {
+                    result.set(key, { profitability: null, volatility: null });
+                }
+                const target = result.get(key);
+                if (type === 'profitability' && Number.isFinite(value)) {
+                    target.profitability = value;
+                }
+                if (type === 'volatility' && Number.isFinite(value)) {
+                    target.volatility = value;
+                }
             };
-            const score = Number(modeKpis.score || 0);
-            const aporte = Number(modeKpis.aporteRebalance?.amount || 0);
-            const basisName = modeKpis.aporteRebalance?.basisName || '';
-            const buyAmount = Number(modeKpis.tradeRebalance?.buyAmount || 0);
-            const sellAmount = Number(modeKpis.tradeRebalance?.sellAmount || 0);
-            const netAmount = Number(modeKpis.tradeRebalance?.netAmount || 0);
 
-            scoreValue.textContent = `${score.toFixed(1).replace('.', ',')}/100`;
-            aporteValue.textContent = formatCurrency(aporte);
-            aporteHint.textContent = aporte > 0
-                ? (basisName ? `Aporte recomendado em ${basisName}` : 'Aporte recomendado')
-                : 'Sem aporte necessário';
-            aporteHint.style.color = aporte > 0 ? '#8BA888' : '#9A908A';
+            const cards = window.YieldInvestments?.cards || {};
+            const rentModel = cards.rentabilidade?.getCurrentModel?.();
+            const volModel = cards.volatilidade?.getCurrentModel?.();
 
-            tradeNetValue.textContent = formatCurrency(Math.abs(netAmount));
-            tradeNetValue.style.color = netAmount > 0 ? '#8BA888' : netAmount < 0 ? '#D97757' : '#EAE5E0';
-            tradeBuyValue.textContent = `Comprar: ${formatCurrency(buyAmount)}`;
-            tradeSellValue.textContent = `Vender: ${formatCurrency(sellAmount)}`;
+            if (rentModel?.views && typeof rentModel.views === 'object') {
+                Object.values(rentModel.views).forEach((view) => {
+                    const left = Array.isArray(view?.details?.left) ? view.details.left : [];
+                    const right = Array.isArray(view?.details?.right) ? view.details.right : [];
+
+                    [...left, ...right].forEach((row) => {
+                        const pctValue = parsePercentText(row?.varText || row?.value || row?.meta || '0');
+                        [row?.id, row?.name].forEach((candidate) => {
+                            const key = normalizeText(candidate);
+                            if (key) upsertSignal(key, 'profitability', pctValue);
+                        });
+                    });
+                });
+            }
+
+            if (volModel?.views && typeof volModel.views === 'object') {
+                Object.values(volModel.views).forEach((view) => {
+                    const details = Array.isArray(view?.details) ? view.details : [];
+
+                    details.forEach((row) => {
+                        const volValue = parsePercentText(row?.val || row?.sub || row?.meta || '0');
+                        [row?.id, row?.name].forEach((candidate) => {
+                            const key = normalizeText(candidate);
+                            if (key) upsertSignal(key, 'volatility', volValue);
+                        });
+                    });
+                });
+            }
+
+            return result;
         }
 
-        function renderRows() {
-            const rows = getRowsForCurrentView();
+        function buildPriorityGetter(signalsMap, direction) {
+            const getSignal = (row) => {
+                const keys = [row.id, row.ticker, row.name].map(normalizeText).filter(Boolean);
+                for (const key of keys) {
+                    const signal = signalsMap.get(key);
+                    if (signal) return signal;
+                }
+                return { profitability: null, volatility: null };
+            };
 
-            if (!rows.length) {
+            if (state.priorityMode === 'profitability') {
+                return (row) => {
+                    const profitability = Number(getSignal(row).profitability ?? 0);
+                    if (direction === 'sell') {
+                        return 1 / (1 + Math.max(0, profitability));
+                    }
+                    return Math.max(0.01, profitability + 1);
+                };
+            }
+
+            if (state.priorityMode === 'volatility') {
+                return (row) => {
+                    const volatility = Number(getSignal(row).volatility ?? 0);
+                    if (direction === 'sell') {
+                        return Math.max(0.01, volatility + 1);
+                    }
+                    return 1 / (1 + Math.max(0, volatility));
+                };
+            }
+
+            return (row) => {
+                if (direction === 'sell') {
+                    return Math.max(0.01, row.currentValue - row.desiredValue);
+                }
+                return Math.max(0.01, row.desiredValue - row.currentValue);
+            };
+        }
+
+        function distributeAmount(totalAmount, recipients, getWeight) {
+            const allocations = new Map();
+            const amount = roundCents(Math.max(0, Number(totalAmount || 0)));
+            if (!amount || !recipients.length) return allocations;
+
+            const weights = recipients.map((row) => ({
+                row,
+                weight: Math.max(0.0001, Number(getWeight(row) || 0.0001)),
+            }));
+
+            const totalWeight = weights.reduce((sum, entry) => sum + entry.weight, 0);
+            let distributed = 0;
+
+            weights.forEach((entry, index) => {
+                const isLast = index === weights.length - 1;
+                const raw = isLast
+                    ? amount - distributed
+                    : (amount * entry.weight) / totalWeight;
+                const value = roundCents(raw);
+                allocations.set(entry.row.id, value);
+                distributed = roundCents(distributed + value);
+            });
+
+            const diff = roundCents(amount - distributed);
+            if (diff !== 0) {
+                const targetRow = weights[0]?.row;
+                if (targetRow) {
+                    allocations.set(targetRow.id, roundCents((allocations.get(targetRow.id) || 0) + diff));
+                }
+            }
+
+            return allocations;
+        }
+
+        function buildViewRows(frame, rawRows) {
+            const isRootView = frame.key.endsWith('-root');
+            const isClassRoot = frame.key === 'class-root';
+
+            const portfolioTotal = Number(state.model.totalPatrimony || 0)
+                || roundCents((state.childrenByParent.get('class-root') || []).reduce((sum, row) => sum + Number(row.currentValue || 0), 0));
+
+            const groupTotal = roundCents(rawRows.reduce((sum, row) => sum + Number(row.currentValue || 0), 0));
+            const absoluteTargets = rawRows.map((row) => resolveAbsoluteTargetPct(row));
+            const groupAbsoluteTargetSum = roundCents(absoluteTargets.reduce((sum, value) => sum + Number(value || 0), 0));
+
+            const useInternalScale = !isRootView;
+            const baseTotal = useInternalScale ? groupTotal : portfolioTotal;
+
+            const rows = rawRows.map((row, index) => {
+                const absTargetPct = Number(absoluteTargets[index] || 0);
+                const targetPct = useInternalScale
+                    ? (groupAbsoluteTargetSum > 0 ? (absTargetPct / groupAbsoluteTargetSum) * 100 : 0)
+                    : absTargetPct;
+
+                const currentValue = Number(row.currentValue || 0);
+                const realPct = baseTotal > 0 ? (currentValue / baseTotal) * 100 : 0;
+                const marginPct = Number(row.marginPct || 0);
+                const desiredValue = roundCents((targetPct / 100) * baseTotal);
+                const deltaToTarget = roundCents(desiredValue - currentValue);
+
+                let status = 'on-track';
+                if (realPct > (targetPct + marginPct)) status = 'over';
+                if (realPct < (targetPct - marginPct)) status = 'under';
+
+                return {
+                    ...row,
+                    absTargetPct,
+                    targetPct,
+                    realPct,
+                    marginPct,
+                    baseTotal,
+                    desiredValue,
+                    deltaToTarget,
+                    upperBandPct: targetPct + marginPct,
+                    lowerBandPct: Math.max(0, targetPct - marginPct),
+                    status,
+                };
+            });
+
+            const metaMissing = isClassRoot && groupAbsoluteTargetSum <= 0;
+
+            return {
+                rows,
+                isRootView,
+                isClassRoot,
+                useInternalScale,
+                baseTotal,
+                groupAbsoluteTargetSum,
+                metaMissing,
+            };
+        }
+
+        function buildAportePlan(viewData, frame, signalsMap) {
+            const { rows, baseTotal, useInternalScale, isClassRoot } = viewData;
+
+            if (rows.length <= 1) {
+                return {
+                    id: 'aporte',
+                    blocked: true,
+                    reason: 'Adicione mais ativos para habilitar o rebalanceamento',
+                    inherited: false,
+                    sourceHint: '',
+                    rows,
+                    actions: new Map(),
+                    total: 0,
+                    newTotal: baseTotal,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                };
+            }
+
+            if (viewData.metaMissing) {
+                return {
+                    id: 'aporte',
+                    blocked: false,
+                    reason: 'Configure as metas dos ativos para habilitar o cálculo por classe',
+                    inherited: false,
+                    sourceHint: '',
+                    rows,
+                    actions: new Map(),
+                    total: 0,
+                    newTotal: baseTotal,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                };
+            }
+
+            const actions = new Map();
+            const priority = buildPriorityGetter(signalsMap, 'buy');
+
+            const inheritedAporte = roundCents(Math.max(0, Number(frame.inheritedAporte || 0)));
+            if (inheritedAporte > 0) {
+                const recipients = rows.filter((row) => row.realPct < row.targetPct);
+                if (!recipients.length) {
+                    return {
+                        id: 'aporte',
+                        blocked: false,
+                        reason: 'Sem desvio detectado',
+                        inherited: true,
+                        sourceHint: 'Distribuição do aporte sugerido no nível superior',
+                        rows,
+                        actions,
+                        total: 0,
+                        newTotal: roundCents(baseTotal),
+                        buyTotal: 0,
+                        sellTotal: 0,
+                    };
+                }
+
+                const allocations = distributeAmount(inheritedAporte, recipients, priority);
+                rows.forEach((row) => actions.set(row.id, roundCents(allocations.get(row.id) || 0)));
+
+                return {
+                    id: 'aporte',
+                    blocked: false,
+                    reason: '',
+                    inherited: true,
+                    sourceHint: 'Distribuição do aporte sugerido no nível superior',
+                    rows,
+                    actions,
+                    total: inheritedAporte,
+                    newTotal: roundCents(baseTotal + inheritedAporte),
+                    buyTotal: inheritedAporte,
+                    sellTotal: 0,
+                };
+            }
+
+            const overBand = rows
+                .filter((row) => row.realPct > row.upperBandPct)
+                .sort((a, b) => (b.realPct - b.upperBandPct) - (a.realPct - a.upperBandPct));
+
+            if (!overBand.length) {
+                return {
+                    id: 'aporte',
+                    blocked: false,
+                    reason: 'Sem desvio detectado',
+                    inherited: false,
+                    sourceHint: '',
+                    rows,
+                    actions,
+                    total: 0,
+                    newTotal: baseTotal,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                };
+            }
+
+            const basis = overBand[0];
+            const upperRatio = basis.upperBandPct / 100;
+            if (!(upperRatio > 0)) {
+                return {
+                    id: 'aporte',
+                    blocked: false,
+                    reason: 'Sem desvio detectado',
+                    inherited: false,
+                    sourceHint: '',
+                    rows,
+                    actions,
+                    total: 0,
+                    newTotal: baseTotal,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                };
+            }
+
+            const newTotal = roundCents(Math.max(baseTotal, basis.currentValue / upperRatio));
+            const aporteTotal = roundCents(Math.max(0, newTotal - baseTotal));
+            const recipients = rows.filter((row) => row.realPct < row.targetPct);
+
+            if (!recipients.length || aporteTotal <= 0) {
+                return {
+                    id: 'aporte',
+                    blocked: false,
+                    reason: 'Sem desvio detectado',
+                    inherited: false,
+                    sourceHint: '',
+                    rows,
+                    actions,
+                    total: 0,
+                    newTotal: baseTotal,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                };
+            }
+
+            const allocations = distributeAmount(aporteTotal, recipients, priority);
+
+            rows.forEach((row) => {
+                let amount = roundCents(allocations.get(row.id) || 0);
+                if (useInternalScale && amount > 0) {
+                    const maxInternal = roundCents(Math.max(0, row.desiredValue - row.currentValue));
+                    if (maxInternal > 0) {
+                        amount = Math.min(amount, maxInternal);
+                    }
+                }
+                actions.set(row.id, roundCents(amount));
+            });
+
+            let distributed = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + Math.max(0, value), 0));
+            let remainder = roundCents(aporteTotal - distributed);
+
+            if (remainder > 0) {
+                const ranked = [...recipients].sort((a, b) => priority(b) - priority(a));
+                ranked.forEach((row, index) => {
+                    if (remainder <= 0) return;
+                    const current = roundCents(actions.get(row.id) || 0);
+                    let add = roundCents(index === ranked.length - 1 ? remainder : remainder / (ranked.length - index));
+                    if (useInternalScale) {
+                        const cap = roundCents(Math.max(0, row.desiredValue - row.currentValue - current));
+                        if (cap > 0) {
+                            add = Math.min(add, cap);
+                        }
+                    }
+                    if (add > 0) {
+                        actions.set(row.id, roundCents(current + add));
+                        remainder = roundCents(remainder - add);
+                    }
+                });
+
+                if (remainder > 0 && isClassRoot) {
+                    const target = ranked[0];
+                    if (target) {
+                        actions.set(target.id, roundCents((actions.get(target.id) || 0) + remainder));
+                        remainder = 0;
+                    }
+                }
+            }
+
+            distributed = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + Math.max(0, value), 0));
+
+            return {
+                id: 'aporte',
+                blocked: false,
+                reason: distributed > 0 ? '' : 'Sem desvio detectado',
+                inherited: false,
+                sourceHint: '',
+                rows,
+                actions,
+                total: distributed,
+                newTotal: roundCents(baseTotal + distributed),
+                buyTotal: distributed,
+                sellTotal: 0,
+            };
+        }
+
+        function buildTradePlan(viewData, signalsMap) {
+            const { rows, baseTotal, isClassRoot } = viewData;
+
+            if (rows.length <= 1) {
+                return {
+                    id: 'trade',
+                    blocked: true,
+                    reason: 'Adicione mais ativos para habilitar o rebalanceamento',
+                    rows,
+                    actions: new Map(),
+                    total: 0,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                    newTotal: baseTotal,
+                    hasTaxWarning: false,
+                };
+            }
+
+            if (viewData.metaMissing) {
+                return {
+                    id: 'trade',
+                    blocked: false,
+                    reason: 'Configure as metas dos ativos para habilitar o cálculo por classe',
+                    rows,
+                    actions: new Map(),
+                    total: 0,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                    newTotal: baseTotal,
+                    hasTaxWarning: false,
+                };
+            }
+
+            const actions = new Map();
+
+            const sellers = rows
+                .filter((row) => row.realPct > row.upperBandPct)
+                .map((row) => ({
+                    ...row,
+                    sellToTarget: roundCents(Math.max(0, row.currentValue - row.desiredValue)),
+                }))
+                .filter((row) => row.sellToTarget > 0);
+
+            const sellTotal = roundCents(sellers.reduce((sum, row) => sum + row.sellToTarget, 0));
+            if (sellTotal <= 0) {
+                return {
+                    id: 'trade',
+                    blocked: false,
+                    reason: 'Sem desvio detectado',
+                    rows,
+                    actions,
+                    total: 0,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                    newTotal: baseTotal,
+                    hasTaxWarning: false,
+                };
+            }
+
+            const buyers = rows.filter((row) => row.realPct < row.lowerBandPct);
+            if (!buyers.length) {
+                return {
+                    id: 'trade',
+                    blocked: false,
+                    reason: 'Sem desvio detectado',
+                    rows,
+                    actions,
+                    total: 0,
+                    buyTotal: 0,
+                    sellTotal: 0,
+                    newTotal: baseTotal,
+                    hasTaxWarning: false,
+                };
+            }
+
+            const buyPriority = buildPriorityGetter(signalsMap, 'buy');
+            const sellPriority = buildPriorityGetter(signalsMap, 'sell');
+
+            const buyAllocations = distributeAmount(sellTotal, buyers, buyPriority);
+            const sellerAllocations = distributeAmount(sellTotal, sellers, sellPriority);
+
+            rows.forEach((row) => {
+                let buy = roundCents(buyAllocations.get(row.id) || 0);
+                if (!isClassRoot) {
+                    const cap = roundCents(Math.max(0, row.desiredValue - row.currentValue));
+                    if (cap > 0) buy = Math.min(buy, cap);
+                }
+
+                const sell = roundCents(sellerAllocations.get(row.id) || 0);
+                actions.set(row.id, roundCents(buy - sell));
+            });
+
+            let buyTotal = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + (value > 0 ? value : 0), 0));
+            let sellFinal = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + (value < 0 ? Math.abs(value) : 0), 0));
+
+            if (buyTotal < sellFinal && isClassRoot) {
+                const diff = roundCents(sellFinal - buyTotal);
+                const receiver = buyers.sort((a, b) => buyPriority(b) - buyPriority(a))[0];
+                if (receiver) {
+                    const current = roundCents(actions.get(receiver.id) || 0);
+                    actions.set(receiver.id, roundCents(current + diff));
+                }
+                buyTotal = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + (value > 0 ? value : 0), 0));
+            }
+
+            sellFinal = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + (value < 0 ? Math.abs(value) : 0), 0));
+
+            return {
+                id: 'trade',
+                blocked: false,
+                reason: sellFinal > 0 ? '' : 'Sem desvio detectado',
+                rows,
+                actions,
+                total: sellFinal,
+                buyTotal,
+                sellTotal: sellFinal,
+                newTotal: baseTotal,
+                hasTaxWarning: sellFinal > 0,
+            };
+        }
+
+        function computePlans() {
+            const frame = getCurrentFrame();
+            const rawRows = getRowsForKey(frame.key);
+            const viewData = buildViewRows(frame, rawRows);
+            const signalsMap = extractSignalsMap();
+
+            const aportePlan = buildAportePlan(viewData, frame, signalsMap);
+            const tradePlan = buildTradePlan(viewData, signalsMap);
+
+            state.currentPlans = {
+                aporte: aportePlan,
+                trade: tradePlan,
+            };
+
+            return { viewData, aportePlan, tradePlan };
+        }
+
+        function buildEstimatedUnitsText(row, actionValue) {
+            if (row.level !== 'asset' || !actionValue) return '';
+
+            const inferredPrice = Number(row.estimatedUnitPrice || 0);
+            if (!(inferredPrice > 0)) return '';
+
+            const quantity = Math.abs(actionValue) / inferredPrice;
+            if (!Number.isFinite(quantity) || quantity <= 0) return '';
+
+            return ` (~${quantity.toFixed(4).replace('.', ',')} un.)`;
+        }
+
+        function buildListActionText(row) {
+            if (row.status === 'over') {
+                return {
+                    label: `Vender ${formatCurrency(Math.abs(row.deltaToTarget))}`,
+                    cssClass: 'sell',
+                };
+            }
+
+            if (row.status === 'under') {
+                return {
+                    label: `Alocar ${formatCurrency(Math.abs(row.deltaToTarget))}`,
+                    cssClass: 'buy',
+                };
+            }
+
+            return {
+                label: 'Manter',
+                cssClass: 'hold',
+            };
+        }
+
+        function syncControls() {
+            shadowRoot.querySelectorAll('[data-mode]').forEach((button) => {
+                button.classList.toggle('active', button.getAttribute('data-mode') === state.mode);
+            });
+
+            shadowRoot.querySelectorAll('[data-priority-mode]').forEach((button) => {
+                button.classList.toggle('active', button.getAttribute('data-priority-mode') === state.priorityMode);
+            });
+        }
+
+        function renderScore() {
+            const kpiScore = Number(state.model.kpis?.[state.mode]?.score ?? 100);
+            scoreValue.textContent = `${kpiScore.toFixed(1).replace('.', ',')}/100`;
+        }
+
+        function renderScenarioHeaders(aportePlan, tradePlan) {
+            aporteValue.textContent = formatCurrency(aportePlan.total || 0);
+            aporteHint.textContent = aportePlan.reason || (aportePlan.total > 0 ? 'Aporte recomendado' : 'Sem desvio detectado');
+            aporteHint.style.color = aportePlan.total > 0 ? '#8BA888' : '#9A908A';
+
+            tradeNetValue.textContent = formatCurrency(tradePlan.sellTotal || 0);
+            tradeBuyValue.textContent = `Comprar: ${formatCurrency(tradePlan.buyTotal || 0)}`;
+            tradeSellValue.textContent = `Vender: ${formatCurrency(tradePlan.sellTotal || 0)}`;
+            tradeHint.textContent = tradePlan.reason || (tradePlan.sellTotal > 0 ? 'Ajuste com patrimônio atual' : 'Sem desvio detectado');
+
+            const blocked = Boolean(aportePlan.blocked || tradePlan.blocked);
+            rebalanceGuardMessage.textContent = blocked ? 'Adicione mais ativos para habilitar o rebalanceamento' : '';
+            expandAporteDetailsBtn.disabled = Boolean(aportePlan.blocked);
+            expandTradeDetailsBtn.disabled = Boolean(tradePlan.blocked);
+        }
+
+        function renderRows(viewRows) {
+            if (!viewRows.length) {
                 const emptyState = document.createElement('div');
                 emptyState.className = 'empty-state';
                 emptyState.textContent = 'Nenhum dado de alocação disponível para os filtros atuais.';
@@ -303,134 +963,85 @@
 
             const scaleMax = Math.max(
                 60,
-                ...rows.map((row) => Number(row.realPct || 0)),
-                ...rows.map((row) => Number(row.targetPct || 0))
+                ...viewRows.map((row) => Number(row.realPct || 0)),
+                ...viewRows.map((row) => Number(row.targetPct || 0))
             );
 
             const fragment = document.createDocumentFragment();
 
-            rows.forEach((item) => {
-                const width = Math.max(0, Math.min(100, (Number(item.realPct || 0) / scaleMax) * 100));
-                const targetPos = Math.max(0, Math.min(100, (Number(item.targetPct || 0) / scaleMax) * 100));
-                const hasChildren = (state.childrenByParent.get(item.id) || []).length > 0;
-                const levelMeta = item.level === 'asset'
-                    ? `${item.classLabel || ''}${item.subclassLabel ? ` · ${item.subclassLabel}` : ''}${item.ticker ? ` · ${item.ticker}` : ''}`
-                    : (item.classLabel && item.classLabel !== item.name ? item.classLabel : '');
+            viewRows.forEach((rowData) => {
+                const hasChildren = (state.childrenByParent.get(rowData.id) || []).length > 0;
+                const action = buildListActionText(rowData);
 
-                const adjustmentDirection = Number(item.adjustmentValue || 0) > 0
-                    ? 'buy'
-                    : Number(item.adjustmentValue || 0) < 0
-                        ? 'sell'
-                        : 'hold';
-
-                const adjustmentLabel = Number(item.adjustmentValue || 0) > 0
-                    ? `Comprar ${formatCurrency(Math.abs(item.adjustmentValue || 0))}`
-                    : Number(item.adjustmentValue || 0) < 0
-                        ? `Vender ${formatCurrency(Math.abs(item.adjustmentValue || 0))}`
-                        : 'Manter posição';
+                const width = Math.max(0, Math.min(100, (Number(rowData.realPct || 0) / scaleMax) * 100));
+                const targetPos = Math.max(0, Math.min(100, (Number(rowData.targetPct || 0) / scaleMax) * 100));
 
                 const row = document.createElement('div');
                 row.className = `alloc-row ${hasChildren ? '' : 'no-drill'}`.trim();
-                row.setAttribute('data-node-id', item.id || '');
+                row.setAttribute('data-node-id', rowData.id || '');
                 row.setAttribute('data-drill', hasChildren ? '1' : '0');
-                row.setAttribute('title', item.infoMessage || '');
 
-                const headerTop = document.createElement('div');
-                headerTop.className = 'row-header';
+                const lineTop = document.createElement('div');
+                lineTop.className = 'row-header';
 
-                const nameWrap = document.createElement('span');
-                nameWrap.className = 'row-name-wrap';
+                const name = document.createElement('span');
+                name.className = 'row-title';
+                name.textContent = rowData.name || '—';
 
-                const nameText = document.createElement('span');
-                nameText.textContent = item.name || '—';
-                nameWrap.appendChild(nameText);
+                const current = document.createElement('span');
+                current.className = 'row-current';
+                current.textContent = formatCurrency(rowData.currentValue);
 
-                if (item.hasLossAlert) {
-                    const infoBadge = document.createElement('span');
-                    infoBadge.className = 'info-badge';
-                    infoBadge.setAttribute('aria-label', 'Alerta');
-                    infoBadge.textContent = 'i';
-                    nameWrap.appendChild(infoBadge);
-                }
+                lineTop.appendChild(name);
+                lineTop.appendChild(current);
 
-                const currentValue = document.createElement('span');
-                currentValue.textContent = item.currentValueText || '—';
-
-                headerTop.appendChild(nameWrap);
-                headerTop.appendChild(currentValue);
+                const barAction = document.createElement('div');
+                barAction.className = 'bar-action-line';
 
                 const barContainer = document.createElement('div');
                 barContainer.className = 'bar-container';
 
                 const barFill = document.createElement('div');
-                barFill.className = `bar-fill ${item.status || ''}`.trim();
+                barFill.className = `bar-fill ${rowData.status}`;
                 barFill.style.width = `${width}%`;
 
                 const targetMarker = document.createElement('div');
                 targetMarker.className = 'bar-target-marker';
                 targetMarker.style.left = `${targetPos}%`;
-                targetMarker.setAttribute('title', `Meta: ${item.targetPctText}`);
+                targetMarker.setAttribute('title', `Meta: ${formatPercent(rowData.targetPct, 2)}`);
 
                 barContainer.appendChild(barFill);
                 barContainer.appendChild(targetMarker);
 
-                const headerBottom = document.createElement('div');
-                headerBottom.className = 'row-header';
-                headerBottom.style.marginTop = '6px';
+                const rowAction = document.createElement('span');
+                rowAction.className = `row-action ${action.cssClass}`;
+                rowAction.textContent = action.label;
 
-                const metaLeft = document.createElement('div');
-                metaLeft.className = 'row-meta';
+                barAction.appendChild(barContainer);
+                barAction.appendChild(rowAction);
 
-                const realPct = document.createElement('span');
-                realPct.textContent = `Real: ${formatSignedPercent(item.realPct, 2)}`;
-                metaLeft.appendChild(realPct);
+                const lineBottom = document.createElement('div');
+                lineBottom.className = 'row-header';
+                lineBottom.style.marginTop = '6px';
 
-                const targetPct = document.createElement('span');
-                targetPct.style.opacity = '0.5';
-                targetPct.textContent = `Meta: ${formatSignedPercent(item.targetPct, 2)}`;
-                metaLeft.appendChild(targetPct);
+                const leftMeta = document.createElement('div');
+                leftMeta.className = 'row-meta';
+                leftMeta.textContent = `${formatPercent(rowData.realPct, 2)} vs ${formatPercent(rowData.targetPct, 2)}`;
 
-                if (levelMeta) {
-                    const levelMetaNode = document.createElement('span');
-                    levelMetaNode.style.opacity = '0.65';
-                    levelMetaNode.textContent = levelMeta;
-                    metaLeft.appendChild(levelMetaNode);
-                }
+                const rightMeta = document.createElement('div');
+                rightMeta.className = 'row-meta';
 
-                const metaRight = document.createElement('div');
-                metaRight.className = 'row-meta';
+                const result = document.createElement('span');
+                result.className = `row-result ${rowData.financialResultClass || 'neutral'}`;
+                result.textContent = `Resultado: ${rowData.financialResultText || formatCurrency(rowData.financialResult || 0)}`;
 
-                const diffTag = document.createElement('span');
-                diffTag.className = `diff-tag ${item.status || ''}`.trim();
-                diffTag.textContent = item.actionLabel || '';
-                metaRight.appendChild(diffTag);
+                rightMeta.appendChild(result);
+                lineBottom.appendChild(leftMeta);
+                lineBottom.appendChild(rightMeta);
 
-                const rebalanceChip = document.createElement('span');
-                rebalanceChip.className = `rebalance-chip ${adjustmentDirection}`;
-                rebalanceChip.textContent = adjustmentLabel;
-                metaRight.appendChild(rebalanceChip);
-
-                const realizedChip = document.createElement('span');
-                realizedChip.className = `result-chip ${item.realizedResultClass || ''}`.trim();
-                realizedChip.textContent = `Realizado: ${item.realizedResultText}`;
-                metaRight.appendChild(realizedChip);
-
-                const unrealizedChip = document.createElement('span');
-                unrealizedChip.className = `result-chip ${item.unrealizedPnlClass || ''}`.trim();
-                unrealizedChip.textContent = `Em aberto: ${item.unrealizedPnlText}`;
-                metaRight.appendChild(unrealizedChip);
-
-                const financialChip = document.createElement('span');
-                financialChip.className = `result-chip ${item.financialResultClass || ''}`.trim();
-                financialChip.textContent = `Resultado: ${item.financialResultText}`;
-                metaRight.appendChild(financialChip);
-
-                headerBottom.appendChild(metaLeft);
-                headerBottom.appendChild(metaRight);
-
-                row.appendChild(headerTop);
-                row.appendChild(barContainer);
-                row.appendChild(headerBottom);
+                row.appendChild(lineTop);
+                row.appendChild(barAction);
+                row.appendChild(lineBottom);
                 fragment.appendChild(row);
             });
 
@@ -443,27 +1054,96 @@
 
                     const nodeId = row.getAttribute('data-node-id');
                     if (!nodeId) return;
-                    state.stack.push(nodeId);
+
+                    const inherited = roundCents(Math.max(0, Number(state.currentPlans.aporte?.actions?.get(nodeId) || 0)));
+                    state.stack.push({ key: nodeId, inheritedAporte: inherited });
                     renderCurrentView();
                 });
             });
         }
 
+        function renderPlanTable(plan, targetBody) {
+            targetBody.replaceChildren();
+            const fragment = document.createDocumentFragment();
+
+            plan.rows.forEach((rowData) => {
+                const actionValue = Number(plan.actions.get(rowData.id) || 0);
+                const postValue = roundCents(rowData.currentValue + actionValue);
+                const postTotal = Number(plan.newTotal || rowData.baseTotal || 0);
+                const postPct = postTotal > 0 ? (postValue / postTotal) * 100 : 0;
+
+                const tr = document.createElement('tr');
+
+                let actionText = 'Manter';
+                if (actionValue > 0) {
+                    actionText = plan.id === 'aporte' ? `Alocar ${formatCurrency(actionValue)}` : `Comprar ${formatCurrency(actionValue)}`;
+                }
+                if (actionValue < 0) {
+                    actionText = `Vender ${formatCurrency(Math.abs(actionValue))}`;
+                }
+
+                const unitsText = buildEstimatedUnitsText(rowData, actionValue);
+
+                tr.innerHTML = [
+                    `<td>${rowData.name || '—'}</td>`,
+                    `<td>${formatPercent(rowData.realPct, 2)}</td>`,
+                    `<td>${actionText}${unitsText}</td>`,
+                    `<td>${formatCurrency(Math.abs(actionValue))}</td>`,
+                    `<td>${formatPercent(postPct, 2)}</td>`,
+                ].join('');
+
+                fragment.appendChild(tr);
+            });
+
+            targetBody.appendChild(fragment);
+        }
+
+        function renderAportePanel(aportePlan) {
+            aportePlanAporteTotal.textContent = formatCurrency(aportePlan.total || 0);
+            aportePlanEstimatedTotal.textContent = formatCurrency(aportePlan.newTotal || 0);
+            aporteInheritedHint.textContent = aportePlan.sourceHint || '';
+
+            renderPlanTable(aportePlan, aportePlanTableBody);
+
+            aportePlanPanel.hidden = !state.expandedPanels.aporte;
+            aportePlanPanel.classList.toggle('is-open', state.expandedPanels.aporte);
+            expandAporteDetailsBtn.textContent = state.expandedPanels.aporte ? 'Ocultar' : 'Ver Detalhes';
+        }
+
+        function renderTradePanel(tradePlan) {
+            tradePlanSellTotal.textContent = formatCurrency(tradePlan.sellTotal || 0);
+            tradePlanBuyTotal.textContent = formatCurrency(tradePlan.buyTotal || 0);
+            tradePlanTaxAlert.hidden = !tradePlan.hasTaxWarning;
+
+            renderPlanTable(tradePlan, tradePlanTableBody);
+
+            tradePlanPanel.hidden = !state.expandedPanels.trade;
+            tradePlanPanel.classList.toggle('is-open', state.expandedPanels.trade);
+            expandTradeDetailsBtn.textContent = state.expandedPanels.trade ? 'Ocultar' : 'Ver Detalhes';
+        }
+
         function renderCurrentView() {
             backNav.style.display = state.stack.length > 1 ? 'block' : 'none';
             resolveViewText();
-            renderKpis();
-            renderRows();
+            syncControls();
+            renderScore();
+
+            const { viewData, aportePlan, tradePlan } = computePlans();
+            renderScenarioHeaders(aportePlan, tradePlan);
+            renderRows(viewData.rows);
+            renderAportePanel(aportePlan);
+            renderTradePanel(tradePlan);
         }
 
         function setMode(mode) {
             state.mode = mode;
-            state.stack = [getRootForMode(mode)];
+            state.stack = [{ key: getRootForMode(mode), inheritedAporte: 0 }];
+            renderCurrentView();
+        }
 
-            shadowRoot.querySelectorAll('.filter-btn').forEach((button) => {
-                button.classList.toggle('active', button.getAttribute('data-mode') === mode);
-            });
-
+        function setPriorityMode(mode) {
+            state.priorityMode = mode;
+            setStoredValue(STORAGE_KEYS.priorityMode, mode);
             renderCurrentView();
         }
 
@@ -474,11 +1154,48 @@
             }
         });
 
-        shadowRoot.querySelectorAll('.filter-btn').forEach((button) => {
+        shadowRoot.querySelectorAll('[data-mode]').forEach((button) => {
             button.addEventListener('click', () => {
                 const mode = button.getAttribute('data-mode') || 'class';
                 setMode(mode);
             });
+        });
+
+        shadowRoot.querySelectorAll('[data-priority-mode]').forEach((button) => {
+            button.addEventListener('click', () => {
+                const mode = button.getAttribute('data-priority-mode') || 'deviation';
+                setPriorityMode(mode);
+                settingsMenu.classList.remove('open');
+                settingsMenu.setAttribute('aria-hidden', 'true');
+            });
+        });
+
+        settingsBtn?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const willOpen = !settingsMenu.classList.contains('open');
+            settingsMenu.classList.toggle('open', willOpen);
+            settingsMenu.setAttribute('aria-hidden', willOpen ? 'false' : 'true');
+        });
+
+        shadowRoot.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (settingsWrap && !settingsWrap.contains(target)) {
+                settingsMenu.classList.remove('open');
+                settingsMenu.setAttribute('aria-hidden', 'true');
+            }
+        });
+
+        expandAporteDetailsBtn?.addEventListener('click', () => {
+            if (expandAporteDetailsBtn.disabled) return;
+            state.expandedPanels.aporte = !state.expandedPanels.aporte;
+            renderCurrentView();
+        });
+
+        expandTradeDetailsBtn?.addEventListener('click', () => {
+            if (expandTradeDetailsBtn.disabled) return;
+            state.expandedPanels.trade = !state.expandedPanels.trade;
+            renderCurrentView();
         });
 
         window.addEventListener('resize', scaleToContainer);
@@ -488,7 +1205,12 @@
             state.model = normalizeWidgetModel(widgetModel);
             rebuildIndexes();
 
-            setMode(state.mode || 'class');
+            if (!['class', 'subclass', 'asset'].includes(state.mode)) {
+                state.mode = 'class';
+            }
+
+            state.stack = [{ key: getRootForMode(state.mode), inheritedAporte: 0 }];
+            renderCurrentView();
             scaleToContainer();
         }
 

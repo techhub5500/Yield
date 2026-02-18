@@ -1,191 +1,1884 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alocação - Golden Hour UI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-deep: #12100E;
-            --glass-surface: rgba(40, 35, 30, 0.4);
-            --glass-border: rgba(255, 230, 200, 0.08);
-            --primary-gold: #D4AF37;
-            --terracotta: #D97757;
-            --positive: #8BA888;
-            --text-main: #EAE5E0;
-            --text-muted: #9A908A;
-        }
-        body {
-            background-color: var(--bg-deep);
-            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
-            font-family: 'Manrope', sans-serif;
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0;
-        }
-        .widget-card {
-            width: 100%; max-width: 640px; background: var(--glass-surface);
-            backdrop-filter: blur(16px); border: 1px solid var(--glass-border);
-            border-radius: 20px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-        .header { display: flex; justify-content: space-between; margin-bottom: 24px; }
-        h2 { font-family: 'Playfair Display', serif; margin: 0; font-size: 1.2rem; }
-        .subtitle { font-size: 0.75rem; color: var(--text-muted); }
-        .filters { display: flex; gap: 8px; margin-top: 8px;}
-        .filter-btn {
-            background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border);
-            color: var(--text-muted); padding: 4px 10px; border-radius: 8px;
-            font-size: 0.65rem; cursor: pointer; transition: 0.3s;
-        }
-        .filter-btn.active { background: rgba(255,255,255,0.1); color: var(--primary-gold); }
-        
-        /* KPIs */
-        .kpi-grid { display: flex; gap: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; }
-        .kpi-item { flex: 1; }
-        .kpi-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-        .kpi-value { font-size: 1.4rem; font-weight: 300; line-height: 1.2; }
-        
-        /* Lista/Gráfico Barras */
-        .allocation-list { display: flex; flex-direction: column; gap: 16px; }
-        .alloc-row { cursor: pointer; padding: 8px; border-radius: 8px; transition: background 0.2s; }
-        .alloc-row:hover { background: rgba(255,255,255,0.03); }
-        
-        .row-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.85rem; }
-        .row-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; }
-        
-        /* Barras */
-        .bar-container { position: relative; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-top: 6px; }
-        .bar-target-marker { 
-            position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.5); z-index: 2; 
-        }
-        .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
-        
-        /* Cores de Status */
-        .on-track { background: var(--primary-gold); }
-        .over { background: var(--terracotta); }
-        .under { background: var(--positive); } /* Verde indica oportunidade de aporte */
+    <title>Yield — Clareza com Controle</title>
 
-        .diff-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.3); }
-        
-        #backNav { display: none; cursor: pointer; color: var(--primary-gold); font-size: 1.4rem; margin-bottom: 4px; }
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+    /* ============================================================
+       YIELD — LANDING PAGE
+       Identidade: Premium Naturalista · Golden Hour · Controle
+    ============================================================ */
+
+    :root {
+        --bg:           #0c0a08;
+        --bg-alt:       #0f0d0a;
+        --accent:       #C4713E;
+        --accent-lt:    #E09868;
+        --accent-glow:  rgba(196, 113, 62, 0.22);
+        --accent-border:rgba(196, 113, 62, 0.25);
+        --text:         #F5EDE0;
+        --text-muted:   rgba(245, 237, 224, 0.58);
+        --text-subtle:  rgba(245, 237, 224, 0.32);
+        --glass:        rgba(16, 11, 7, 0.68);
+        --glass-border: rgba(245, 237, 224, 0.1);
+        --glass-top:    rgba(245, 237, 224, 0.16);
+        --max-w:        1200px;
+        --font:         'Outfit', sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: rgba(196,113,62,0.4); border-radius: 3px; }
+
+    /* ── Utilities ───────────────────────────────────────────── */
+    .wrap {
+        max-width: var(--max-w);
+        margin: 0 auto;
+        padding: 0 2.5rem;
+    }
+
+    .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent-lt);
+        border: 1px solid var(--accent-border);
+        padding: 0.32rem 0.9rem;
+        border-radius: 50px;
+        background: var(--accent-glow);
+        backdrop-filter: blur(8px);
+    }
+
+    .tag-dot {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        flex-shrink: 0;
+    }
+
+    .heading {
+        font-size: clamp(2rem, 3.8vw, 3.6rem);
+        font-weight: 700;
+        line-height: 1.02;
+        letter-spacing: -0.025em;
+    }
+
+    .heading .thin {
+        font-weight: 100;
+        display: block;
+        opacity: 0.88;
+    }
+
+    .subtext {
+        font-size: 1rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        font-weight: 300;
+        max-width: 540px;
+    }
+
+    /* Buttons */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 2rem;
+        border-radius: 50px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.22s ease;
+        cursor: pointer;
+        border: none;
+        font-family: var(--font);
+    }
+
+    .btn-solid {
+        background: var(--accent);
+        color: #fff;
+    }
+    .btn-solid:hover {
+        background: var(--accent-lt);
+        transform: translateY(-2px);
+        box-shadow: 0 10px 28px var(--accent-glow);
+    }
+
+    .btn-outline {
+        background: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--glass-border);
+    }
+    .btn-outline:hover {
+        color: var(--text);
+        border-color: rgba(245,237,224,0.28);
+        background: rgba(245,237,224,0.04);
+    }
+
+    /* Reveal animation */
+    .reveal {
+        opacity: 0;
+        transform: translateY(28px);
+        transition: opacity 0.72s ease, transform 0.72s ease;
+    }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: 0.1s; }
+    .d2 { transition-delay: 0.2s; }
+    .d3 { transition-delay: 0.3s; }
+    .d4 { transition-delay: 0.4s; }
+
+    /* ── Navbar ──────────────────────────────────────────────── */
+    #nav {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 200;
+        padding: 1.1rem 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.4s, backdrop-filter 0.4s, border-color 0.4s;
+        border-bottom: 1px solid transparent;
+    }
+
+    #nav.scrolled {
+        background: rgba(10, 8, 6, 0.88);
+        backdrop-filter: blur(22px);
+        border-color: rgba(245,237,224,0.06);
+    }
+
+    .nav-logo {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-size: 1.15rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--text);
+        text-decoration: none;
+    }
+
+    .logo-mark {
+        width: 30px; height: 30px;
+        border: 1.5px solid var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent-glow);
+        color: var(--accent-lt);
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+    }
+
+    .nav-links a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 300;
+        transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+        background: var(--accent);
+        color: #fff;
+        padding: 0.5rem 1.3rem;
+        border-radius: 50px;
+        text-decoration: none;
+        font-size: 0.88rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .nav-cta:hover { background: var(--accent-lt); transform: translateY(-1px); }
+
+    /* ── HERO ────────────────────────────────────────────────── */
+    #hero {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding-bottom: 4rem;
+        overflow: hidden;
+    }
+
+    .hero-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/grand-cy.jpg') center/cover no-repeat;
+        animation: zoomBg 25s ease-in-out infinite alternate;
+        will-change: transform;
+    }
+
+    @keyframes zoomBg {
+        from { transform: scale(1.06); }
+        to   { transform: scale(1.0); }
+    }
+
+    .hero-overlay {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(105deg, rgba(10,8,5,0.94) 0%, rgba(10,8,5,0.7) 48%, rgba(10,8,5,0.15) 100%),
+            linear-gradient(to top, rgba(10,8,5,0.95) 0%, transparent 45%);
+    }
+
+    .hero-body {
+        position: relative;
+        z-index: 2;
+        padding: 0 2.5rem;
+        max-width: 720px;
+        animation: fadeUp 1s 0.1s both;
+    }
+
+    .hero-body .tag { margin-bottom: 2rem; }
+
+    .hero-h1 {
+        font-size: clamp(3rem, 6vw, 5.6rem);
+        font-weight: 700;
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+        margin-bottom: 1.5rem;
+        text-shadow: 0 4px 28px rgba(0,0,0,0.5);
+    }
+
+    .hero-h1 .thin {
+        font-weight: 100;
+        display: block;
+    }
+
+    .hero-desc {
+        font-size: 1.05rem;
+        color: var(--text-muted);
+        max-width: 520px;
+        line-height: 1.65;
+        font-weight: 300;
+        margin-bottom: 2.5rem;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
+
+    .hero-btns { display: flex; gap: 1rem; }
+
+    /* Hero bottom stats */
+    .hero-stats {
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        z-index: 2;
+        display: flex;
+        border-top: 1px solid rgba(245,237,224,0.1);
+        animation: fadeUp 1s 0.6s both;
+    }
+
+    .hstat {
+        flex: 1;
+        padding: 1.6rem 2rem;
+        text-align: center;
+        border-right: 1px solid rgba(245,237,224,0.08);
+    }
+    .hstat:last-child { border-right: none; }
+
+    .hstat-val {
+        display: block;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--accent-lt);
+        margin-bottom: 0.2rem;
+    }
+
+    .hstat-lbl {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    @keyframes fadeUp {
+        from { opacity: 0; transform: translateY(24px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── SECTION: ORGANIZE A BASE ────────────────────────────── */
+    #base {
+        position: relative;
+        padding: 9rem 0;
+        overflow: hidden;
+    }
+
+    .base-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/strada.jpg') center/cover no-repeat;
+    }
+
+    .base-overlay {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(to bottom, rgba(10,8,5,0.88) 0%, rgba(10,8,5,0.72) 50%, rgba(10,8,5,0.9) 100%);
+    }
+
+    #base .wrap { position: relative; z-index: 2; }
+
+    .base-head {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+    .base-head .tag { margin-bottom: 1.5rem; }
+    .base-head .heading { margin-bottom: 1rem; }
+    .base-head .subtext { margin: 0 auto; text-align: center; }
+
+    .base-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 3.5rem;
+    }
+
+    .bcard {
+        background: rgba(14, 10, 6, 0.76);
+        border: 1px solid rgba(245,237,224,0.09);
+        border-top: 1px solid var(--glass-top);
+        backdrop-filter: blur(22px);
+        -webkit-backdrop-filter: blur(22px);
+        border-radius: 22px;
+        padding: 2.4rem 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.32s, border-color 0.32s;
+    }
+
+    .bcard::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(196,113,62,0.45), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .bcard:hover { transform: translateY(-7px); border-color: var(--accent-border); }
+    .bcard:hover::after { opacity: 1; }
+
+    .bcard-num {
+        font-size: 0.7rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 500;
+        margin-bottom: 1.4rem;
+    }
+
+    .bcard h3 {
+        font-size: 1.3rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.75rem;
+    }
+
+    .bcard p {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        line-height: 1.65;
+        font-weight: 300;
+    }
+
+    .chat-pill {
+        display: inline-block;
+        margin-top: 1.25rem;
+        background: rgba(196,113,62,0.14);
+        border: 1px solid rgba(196,113,62,0.28);
+        border-radius: 12px 12px 12px 4px;
+        padding: 0.75rem 1.1rem;
+        font-size: 0.88rem;
+        color: var(--accent-lt);
+        font-style: italic;
+        font-weight: 300;
+    }
+
+    .chat-response {
+        font-size: 0.78rem;
+        color: var(--text-subtle);
+        margin-top: 0.6rem;
+        padding-left: 0.25rem;
+    }
+
+    .base-mantra {
+        text-align: center;
+        font-size: 1.25rem;
+        font-weight: 300;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+    .base-mantra strong { color: var(--text); font-weight: 600; }
+    .base-mantra em { color: var(--accent-lt); font-style: normal; }
+
+    /* ── SECTION: BENEFÍCIOS ─────────────────────────────────── */
+    #benefits {
+        padding: 9rem 0;
+        background: var(--bg);
+    }
+
+    .benefits-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 3rem;
+        margin-bottom: 4rem;
+    }
+
+    .benefits-head .subtext { flex-shrink: 0; max-width: 380px; }
+
+    /* Bento grid */
+    .bento {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.1rem;
+    }
+
+    .bnt {
+        background: rgba(18, 13, 8, 0.95);
+        border: 1px solid rgba(245,237,224,0.07);
+        border-top: 1px solid rgba(245,237,224,0.13);
+        border-radius: 20px;
+        padding: 1.9rem;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .bnt:hover { border-color: var(--accent-border); transform: translateY(-4px); }
+
+    .bnt-bar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), transparent);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .bnt:hover .bnt-bar { opacity: 1; }
+
+    .bnt.span2 { grid-column: span 2; }
+
+    .bnt-icon {
+        width: 40px; height: 40px;
+        background: var(--accent-glow);
+        border: 1px solid var(--accent-border);
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.15rem;
+        color: var(--accent-lt);
+        flex-shrink: 0;
+    }
+
+    .bnt h3 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-bottom: 0.55rem;
+    }
+
+    .bnt p {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        line-height: 1.65;
+        font-weight: 300;
+    }
+
+    .bnt-big {
+        font-size: clamp(2.5rem, 5vw, 4.2rem);
+        font-weight: 700;
+        color: var(--accent-lt);
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-top: 0.75rem;
+    }
+
+    .bnt-big-lbl {
+        font-size: 0.78rem;
+        color: var(--text-subtle);
+        font-weight: 300;
+        margin-top: -0.2rem;
+    }
+
+    /* ── SECTION: PLANILHA ───────────────────────────────────── */
+    #sheets {
+        position: relative;
+        padding: 9rem 0;
+        overflow: hidden;
+    }
+
+    .sheets-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/rio-montanha.jpg') center/cover no-repeat;
+    }
+
+    .sheets-overlay {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(135deg, rgba(10,8,5,0.94) 0%, rgba(10,8,5,0.8) 55%, rgba(10,8,5,0.88) 100%);
+    }
+
+    #sheets .wrap { position: relative; z-index: 2; }
+
+    .sheets-head {
+        margin-bottom: 4rem;
+    }
+    .sheets-head .tag { margin-bottom: 1.5rem; }
+    .sheets-head .heading { margin-bottom: 1rem; max-width: 600px; }
+
+    .sheets-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+    }
+
+    .scard {
+        background: rgba(12, 9, 6, 0.78);
+        border: 1px solid var(--accent-border);
+        border-top: 1px solid rgba(245,237,224,0.12);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2rem;
+        transition: transform 0.3s, border-color 0.3s;
+    }
+
+    .scard:hover { transform: translateY(-5px); border-color: rgba(196,113,62,0.5); }
+
+    .scard-num {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--accent);
+        opacity: 0.22;
+        line-height: 1;
+        margin-bottom: 0.9rem;
+        letter-spacing: -0.04em;
+    }
+
+    .scard h3 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-bottom: 0.55rem;
+    }
+
+    .scard p {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        line-height: 1.65;
+        font-weight: 300;
+    }
+
+    .sheets-mantra {
+        text-align: center;
+        margin-top: 3.5rem;
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.6;
+    }
+    .sheets-mantra strong { color: var(--text); font-weight: 600; }
+
+    /* ── SECTION: MEDO DE ERRAR ──────────────────────────────── */
+    #fear {
+        position: relative;
+        padding: 9rem 0;
+        overflow: hidden;
+    }
+
+    .fear-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/view-6.jpg') center 35%/cover no-repeat;
+    }
+
+    .fear-overlay {
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(to right, rgba(10,8,5,0.97) 0%, rgba(10,8,5,0.78) 55%, rgba(10,8,5,0.35) 100%),
+            linear-gradient(to top, rgba(10,8,5,0.88) 0%, transparent 40%);
+    }
+
+    #fear .wrap { position: relative; z-index: 2; }
+
+    .fear-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5rem;
+        align-items: center;
+    }
+
+    .fear-left .tag { margin-bottom: 1.5rem; }
+    .fear-left .heading { margin-bottom: 1rem; }
+    .fear-left .subtext { margin-bottom: 2rem; }
+
+    .fear-callout {
+        padding: 1.5rem;
+        background: var(--accent-glow);
+        border: 1px solid var(--accent-border);
+        border-radius: 14px;
+    }
+
+    .fear-callout p {
+        font-size: 1rem;
+        color: var(--text);
+        font-weight: 300;
+        line-height: 1.6;
+    }
+
+    .fear-callout strong { color: var(--accent-lt); font-weight: 600; }
+
+    .fear-right {
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+    }
+
+    .fcard {
+        background: rgba(12, 9, 5, 0.74);
+        border: 1px solid rgba(245,237,224,0.09);
+        border-top: 1px solid rgba(245,237,224,0.14);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-radius: 18px;
+        padding: 1.75rem;
+        transition: transform 0.28s, border-color 0.28s;
+    }
+
+    .fcard:hover { transform: translateX(7px); border-color: var(--accent-border); }
+
+    .fcard h3 {
+        font-size: 0.98rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .fcard p {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.65;
+        font-weight: 300;
+    }
+
+    /* ── SECTION: FUNCIONALIDADES ────────────────────────────── */
+    #features {
+        padding: 9rem 0;
+        background: var(--bg-alt);
+    }
+
+    .feat-head {
+        text-align: center;
+        margin-bottom: 4.5rem;
+    }
+    .feat-head .tag { margin-bottom: 1.5rem; }
+    .feat-head .heading { margin-bottom: 1rem; }
+    .feat-head .subtext { margin: 0 auto; text-align: center; }
+
+    .feat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border: 1px solid rgba(245,237,224,0.07);
+        border-radius: 22px;
+        overflow: hidden;
+    }
+
+    .feat-col {
+        padding: 2.5rem;
+        border-right: 1px solid rgba(245,237,224,0.07);
+    }
+    .feat-col:last-child { border-right: none; }
+
+    .feat-col-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(245,237,224,0.07);
+    }
+
+    .feat-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+
+    .feat-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.7rem;
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.5;
+    }
+
+    .feat-chk {
+        width: 18px; height: 18px;
+        background: var(--accent-glow);
+        border: 1px solid var(--accent-border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-top: 1px;
+        color: var(--accent-lt);
+    }
+
+    .feat-chk svg { width: 9px; height: 9px; stroke: currentColor; }
+
+    /* ── SECTION: QUEM DEVE USAR ─────────────────────────────── */
+    #who {
+        padding: 9rem 0;
+        background: var(--bg);
+    }
+
+    .who-head {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+    .who-head .tag { margin-bottom: 1.5rem; }
+    .who-head .heading { margin-bottom: 0.5rem; }
+
+    .who-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.25rem;
+        margin-bottom: 3rem;
+    }
+
+    .who-col {
+        background: rgba(18, 14, 9, 0.95);
+        border-radius: 22px;
+        padding: 2.5rem;
+        border: 1px solid rgba(245,237,224,0.07);
+    }
+
+    .who-col.yes { border-top: 2px solid var(--accent); }
+    .who-col.no  { border-top: 2px solid rgba(245,237,224,0.18); }
+
+    .who-col-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: var(--text);
+    }
+
+    .who-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .wdot-yes { background: var(--accent); }
+    .wdot-no  { background: rgba(245,237,224,0.28); }
+
+    .who-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+    }
+
+    .who-list li {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.5;
+        padding-left: 1.1rem;
+        position: relative;
+    }
+
+    .who-list li::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0.55em;
+        width: 4px; height: 4px;
+        border-radius: 50%;
+    }
+
+    .who-col.yes .who-list li::before { background: var(--accent); }
+    .who-col.no  .who-list li::before { background: rgba(245,237,224,0.22); }
+
+    .who-mantra {
+        text-align: center;
+        font-size: 1.1rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.6;
+    }
+    .who-mantra strong { color: var(--text); font-weight: 600; }
+
+    /* ── SECTION: PRICING ────────────────────────────────────── */
+    #pricing {
+        position: relative;
+        padding: 9rem 0;
+        overflow: hidden;
+    }
+
+    .pricing-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/landscape.jpg') center/cover no-repeat;
+    }
+
+    .pricing-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 8, 6, 0.84);
+    }
+
+    #pricing .wrap { position: relative; z-index: 2; }
+
+    .pricing-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 5rem;
+        align-items: center;
+    }
+
+    .pricing-left .tag { margin-bottom: 1.5rem; }
+    .pricing-left .heading { margin-bottom: 1rem; }
+
+    .price-card {
+        background: rgba(14, 10, 6, 0.82);
+        border: 1px solid var(--accent-border);
+        border-top: 1px solid rgba(245,237,224,0.15);
+        backdrop-filter: blur(26px);
+        -webkit-backdrop-filter: blur(26px);
+        border-radius: 26px;
+        padding: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .price-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    .price-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-subtle);
+        font-weight: 400;
+        text-align: center;
+        margin-bottom: 0.6rem;
+    }
+
+    .price-amount {
+        font-size: 4.5rem;
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        line-height: 1;
+        text-align: center;
+        margin-bottom: 0.3rem;
+    }
+
+    .price-period {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        text-align: center;
+        margin-bottom: 2.5rem;
+        padding-bottom: 2.5rem;
+        border-bottom: 1px solid rgba(245,237,224,0.08);
+    }
+
+    .price-features {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .price-features li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        font-weight: 300;
+    }
+
+    .p-chk {
+        width: 20px; height: 20px;
+        background: var(--accent-glow);
+        border: 1px solid var(--accent-border);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--accent-lt);
+    }
+
+    .p-chk svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.5; }
+
+    .price-cta {
+        display: block;
+        width: 100%;
+        text-align: center;
+        padding: 1rem;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 14px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        font-family: var(--font);
+        transition: all 0.22s;
+    }
+    .price-cta:hover { background: var(--accent-lt); transform: translateY(-2px); box-shadow: 0 8px 22px var(--accent-glow); }
+
+    .price-fine {
+        text-align: center;
+        margin-top: 0.9rem;
+        font-size: 0.78rem;
+        color: var(--text-subtle);
+        font-weight: 300;
+    }
+
+    /* ── SECTION: FAQ ────────────────────────────────────────── */
+    #faq {
+        padding: 9rem 0;
+        background: var(--bg-alt);
+    }
+
+    .faq-head {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+    .faq-head .tag { margin-bottom: 1.5rem; }
+    .faq-head .heading { margin-bottom: 0.5rem; }
+
+    .faq-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .faq-item {
+        background: rgba(20, 15, 9, 0.9);
+        border: 1px solid rgba(245,237,224,0.07);
+        border-radius: 16px;
+        padding: 1.75rem;
+        transition: border-color 0.3s;
+    }
+
+    .faq-item:hover { border-color: var(--accent-border); }
+
+    .faq-q {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 0.65rem;
+    }
+
+    .faq-a {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        line-height: 1.7;
+        font-weight: 300;
+    }
+
+    /* ── SECTION: CTA FINAL ──────────────────────────────────── */
+    #cta {
+        position: relative;
+        padding: 11rem 0;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    .cta-bg {
+        position: absolute;
+        inset: 0;
+        background: url('../imagens/view-11.jpg') center/cover no-repeat;
+    }
+
+    .cta-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(9, 7, 4, 0.87);
+    }
+
+    #cta .wrap { position: relative; z-index: 2; }
+
+    .cta-inner {
+        max-width: 640px;
+        margin: 0 auto;
+    }
+
+    .cta-inner .tag { margin: 0 auto 2rem; width: fit-content; }
+    .cta-inner .heading { margin-bottom: 1.25rem; text-align: center; }
+    .cta-inner .subtext { margin: 0 auto 2.5rem; text-align: center; }
+
+    .cta-btns { display: flex; gap: 1rem; justify-content: center; }
+
+    /* ── FOOTER ──────────────────────────────────────────────── */
+    footer {
+        padding: 4.5rem 0 3rem;
+        background: #080604;
+        border-top: 1px solid rgba(245,237,224,0.05);
+    }
+
+    .footer-inner {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 5rem;
+        margin-bottom: 3rem;
+    }
+
+    .footer-brand-tagline {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        font-weight: 300;
+        line-height: 1.7;
+        margin-top: 1.1rem;
+    }
+
+    .footer-links {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+    }
+
+    .fcol-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--accent);
+        font-weight: 500;
+        margin-bottom: 1rem;
+    }
+
+    .fcol ul { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
+
+    .fcol a {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 300;
+        transition: color 0.2s;
+    }
+    .fcol a:hover { color: var(--text); }
+
+    .footer-bottom {
+        padding-top: 2rem;
+        border-top: 1px solid rgba(245,237,224,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-bottom span {
+        font-size: 0.78rem;
+        color: var(--text-subtle);
+        font-weight: 300;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 960px) {
+        .nav-links { display: none; }
+        .base-cards { grid-template-columns: 1fr; }
+        .bento { grid-template-columns: 1fr 1fr; }
+        .bnt.span2 { grid-column: span 2; }
+        .sheets-grid { grid-template-columns: 1fr; }
+        .fear-layout { grid-template-columns: 1fr; gap: 3rem; }
+        .feat-grid { grid-template-columns: 1fr; }
+        .feat-col { border-right: none; border-bottom: 1px solid rgba(245,237,224,0.07); }
+        .feat-col:last-child { border-bottom: none; }
+        .who-grid { grid-template-columns: 1fr; }
+        .pricing-layout { grid-template-columns: 1fr; gap: 3rem; }
+        .faq-grid { grid-template-columns: 1fr; }
+        .footer-inner { grid-template-columns: 1fr; gap: 3rem; }
+        .footer-links { grid-template-columns: repeat(2, 1fr); }
+        .benefits-head { flex-direction: column; align-items: flex-start; }
+        .hero-stats { flex-wrap: wrap; }
+        .hstat { min-width: 50%; }
+        .cta-btns { flex-direction: column; align-items: center; }
+    }
+
+    @media (max-width: 600px) {
+        .wrap { padding: 0 1.5rem; }
+        .hero-body { padding: 0 1.5rem; }
+        .hero-btns { flex-direction: column; }
+        .bento { grid-template-columns: 1fr; }
+        .bnt.span2 { grid-column: span 1; }
+        .footer-links { grid-template-columns: 1fr 1fr; }
+    }
     </style>
 </head>
 <body>
-    <div class="widget-card">
-        <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Alocação Real vs. Planejada</h2>
-                <div class="subtitle">Saúde estratégica da carteira</div>
-            </div>
-            <div class="filters">
-                <button class="filter-btn active">Classe</button>
-                <button class="filter-btn">Subclasse</button>
-                <button class="filter-btn">Moeda</button>
-            </div>
+
+<!-- ============================================================
+     NAVBAR
+============================================================ -->
+<nav id="nav">
+    <a href="#" class="nav-logo">
+        <div class="logo-mark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </div>
+        Yield
+    </a>
+
+    <ul class="nav-links">
+        <li><a href="#base">Como funciona</a></li>
+        <li><a href="#benefits">Benefícios</a></li>
+        <li><a href="#sheets">Planilha</a></li>
+        <li><a href="#pricing">Preços</a></li>
+        <li><a href="#faq">FAQ</a></li>
+    </ul>
+
+    <a href="#pricing" class="nav-cta">Começar agora</a>
+</nav>
+
+
+<!-- ============================================================
+     1. HERO
+     Imagem: grand-cy.jpg — cânion ao pôr do sol
+     Narrativa: o mercado tem escala e complexidade.
+     Você não precisa se perder nele.
+============================================================ -->
+<section id="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-overlay"></div>
+
+    <div class="hero-body">
+        <div class="tag" style="margin-bottom: 2rem;">
+            <span class="tag-dot"></span>
+            Plataforma de investimentos e finanças pessoais
         </div>
 
-        <div class="kpi-grid">
-            <div class="kpi-item">
-                <div class="kpi-label">Aderência (Score)</div>
-                <div class="kpi-value" style="color: var(--primary-gold);">88/100</div>
-            </div>
-            <div class="kpi-item">
-                <div class="kpi-label">Necessário para Rebalancear</div>
-                <div class="kpi-value">R$ 14.200</div>
-                <div class="subtitle" style="color: var(--positive);">Aporte Recomendado</div>
-            </div>
-        </div>
+        <h1 class="hero-h1">
+            Investir não precisa
+            <span class="thin">ser tão complicado.</span>
+        </h1>
 
-        <div class="allocation-list" id="allocList">
-            </div>
+        <p class="hero-desc">
+            A Yield organiza sua grana, mostra só o que importa e te ajuda a decidir sem stress — sem transformar o mercado em um cockpit de avião e sem tirar o controle das suas mãos.
+        </p>
+
+        <div class="hero-btns">
+            <a href="#pricing" class="btn btn-solid">
+                Começar agora
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </a>
+            <a href="#base" class="btn btn-outline">Ver como funciona</a>
+        </div>
     </div>
 
-    <script>
-        const dataStore = {
-            'root': [
-                { id: 'rv', name: 'Renda Variável', real: 32, target: 30, val: 'R$ 320k', diff: '+2%', status: 'over' },
-                { id: 'rf', name: 'Renda Fixa', real: 45, target: 50, val: 'R$ 450k', diff: '-5%', status: 'under' },
-                { id: 'ext', name: 'Invest. Exterior', real: 18, target: 15, val: 'R$ 180k', diff: '+3%', status: 'over' },
-                { id: 'cx', name: 'Caixa / Oportunidade', real: 5, target: 5, val: 'R$ 50k', diff: '0%', status: 'on-track' }
-            ],
-            'rv': [
-                { id: 'br-equity-alloc', name: 'Ações Brasil', real: 18, target: 15, val: 'R$ 180k', diff: '+3%', status: 'over' },
-                { id: 'fiis-alloc', name: 'FIIs', real: 14, target: 15, val: 'R$ 140k', diff: '-1%', status: 'under' }
-            ],
-            'rf': [
-                { name: 'Tesouro Direto', real: 25, target: 20, val: 'R$ 250k', diff: '+5%', status: 'over' },
-                { name: 'CDB / LC', real: 20, target: 30, val: 'R$ 200k', diff: '-10%', status: 'under' }
-            ],
-            'ext': [
-                { name: 'Stocks (EUA)', real: 12, target: 10, val: 'R$ 120k', diff: '+2%', status: 'over' },
-                { name: 'REITs', real: 6, target: 5, val: 'R$ 60k', diff: '+1%', status: 'over' }
-            ],
-            'cx': [
-                { name: 'Tesouro Selic', real: 3, target: 3, val: 'R$ 30k', diff: '0%', status: 'on-track' },
-                { name: 'Conta Corrente', real: 2, target: 2, val: 'R$ 20k', diff: '0%', status: 'on-track' }
-            ],
-            'br-equity-alloc': [
-                { name: 'VALE3', real: 6, target: 5, val: 'R$ 60k', diff: '+1%', status: 'over' },
-                { name: 'PETR4', real: 7, target: 5, val: 'R$ 70k', diff: '+2%', status: 'over' },
-                { name: 'ITUB4', real: 5, target: 5, val: 'R$ 50k', diff: '0%', status: 'on-track' }
-            ],
-            'fiis-alloc': [
-                { name: 'HGLG11', real: 5, target: 5, val: 'R$ 50k', diff: '0%', status: 'on-track' },
-                { name: 'XPML11', real: 4, target: 5, val: 'R$ 40k', diff: '-1%', status: 'under' },
-                { name: 'KNIP11', real: 5, target: 5, val: 'R$ 50k', diff: '0%', status: 'on-track' }
-            ]
-        };
+    <div class="hero-stats">
+        <div class="hstat">
+            <span class="hstat-val">12</span>
+            <span class="hstat-lbl">Métricas essenciais em uma tela</span>
+        </div>
+        <div class="hstat">
+            <span class="hstat-val">150</span>
+            <span class="hstat-lbl">Versões do histórico no Sheets</span>
+        </div>
+        <div class="hstat">
+            <span class="hstat-val">CDI · IBOV</span>
+            <span class="hstat-lbl">Benchmarks brasileiros reais</span>
+        </div>
+        <div class="hstat">
+            <span class="hstat-val">100%</span>
+            <span class="hstat-lbl">Controle nas suas mãos</span>
+        </div>
+    </div>
+</section>
 
-        const container = document.getElementById('allocList');
-        const backBtn = document.getElementById('backNav');
 
-        function render(viewKey) {
-            const data = dataStore[viewKey] || dataStore['root'];
-            
-            if (viewKey !== 'root') backBtn.style.display = 'block';
-            else backBtn.style.display = 'none';
+<!-- ============================================================
+     2. ORGANIZE A BASE
+     Imagem: strada.jpg — caminho único, árvore solitária, golden hour
+     Narrativa: um caminho claro, uma direção. A base vem antes.
+============================================================ -->
+<section id="base">
+    <div class="base-bg"></div>
+    <div class="base-overlay"></div>
+    <div class="wrap">
 
-            container.innerHTML = data.map(item => {
-                // Cálculo visual da barra (escala baseada em 60% para caber)
-                const width = (item.real / 60) * 100; 
-                const targetPos = (item.target / 60) * 100;
-                
-                let actionText = '';
-                if(item.status === 'over') actionText = 'Vender / Aguardar';
-                if(item.status === 'under') actionText = 'Aportar';
-                if(item.status === 'on-track') actionText = 'Manter';
+        <div class="base-head reveal">
+            <div class="tag">O alicerce</div>
+            <h2 class="heading" style="margin-top: 1.5rem; text-align: center;">
+                Você não consegue investir bem<br>
+                <span class="thin">se sua vida financeira está bagunçada.</span>
+            </h2>
+            <p class="subtext" style="margin-top: 1rem; text-align: center;">
+                A maioria das pessoas pula direto para ações e fundos sem ter a menor ideia de quanto ganha, quanto gasta ou pra onde o dinheiro vai. Resultado? Ansiedade, decisões erradas e a sensação de estar sempre correndo atrás.
+            </p>
+        </div>
 
-                return `
-                <div class="alloc-row" onclick="${item.id ? `render('${item.id}')` : ''}">
-                    <div class="row-header">
-                        <span>${item.name}</span>
-                        <span>${item.val}</span>
+        <div class="base-cards">
+            <div class="bcard reveal d1">
+                <div class="bcard-num">01 — Primeiro</div>
+                <h3>Organize sua vida financeira</h3>
+                <p>Registre suas despesas, receitas, metas e dívidas de forma simples — sem planilha manual, sem preencher formulário chato.</p>
+                <div class="chat-pill">"Gastei 250 no mercado"</div>
+                <p class="chat-response">→ A IA classifica e organiza automaticamente.</p>
+            </div>
+
+            <div class="bcard reveal d2">
+                <div class="bcard-num">02 — Depois</div>
+                <h3>Entenda seus investimentos</h3>
+                <p>Só quando você tem clareza sobre sua base financeira, investir deixa de ser um tiro no escuro. A Yield mostra as métricas que realmente importam e compara com CDI, IBOVESPA e inflação real.</p>
+            </div>
+
+            <div class="bcard reveal d3">
+                <div class="bcard-num">03 — Sempre</div>
+                <h3>Tudo em um único lugar</h3>
+                <p>Não precisa de um app pra gastos, outro pra ações, outro pra calcular IR. Sua vida financeira completa — organizada em uma única plataforma. Simples, clara e sem enrolação.</p>
+            </div>
+        </div>
+
+        <div class="reveal" style="text-align: center;">
+            <p class="base-mantra">
+                <strong>Base financeira sólida primeiro.</strong><br>
+                Investimentos inteligentes depois.<br>
+                <em>Nessa ordem.</em>
+            </p>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- ============================================================
+     3. BENEFÍCIOS — Bento Grid
+     Fundo: escuro. O foco é 100% no conteúdo.
+============================================================ -->
+<section id="benefits">
+    <div class="wrap">
+
+        <div class="benefits-head reveal">
+            <div>
+                <div class="tag">Benefícios</div>
+                <h2 class="heading" style="margin-top: 1.5rem;">
+                    O mercado já é complicado<br>
+                    <span class="thin">o suficiente.</span>
+                </h2>
+            </div>
+            <p class="subtext">
+                Enquanto outros apps multiplicam abas, termos técnicos e telas confusas, a Yield mostra só o essencial — do jeito que faz sentido pra você.
+            </p>
+        </div>
+
+        <div class="bento reveal">
+
+            <!-- Card largo — Métricas -->
+            <div class="bnt span2">
+                <div class="bnt-bar"></div>
+                <div class="bnt-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </div>
+                <h3>Só o que importa, sem poluição</h3>
+                <p>Valuation, dividendos, endividamento, margem, crescimento — organizados em uma única tela limpa. Sem dispersão. Sem excesso. Sem caçar informação em 15 menus diferentes.</p>
+                <div class="bnt-big">12</div>
+                <div class="bnt-big-lbl">métricas essenciais em uma tela</div>
+            </div>
+
+            <!-- Card simples — IA -->
+            <div class="bnt">
+                <div class="bnt-bar"></div>
+                <div class="bnt-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+                </div>
+                <h3>A IA te ajuda a pensar melhor</h3>
+                <p>A Yield não decide por você. Ela sugere alternativas, mostra cenários e compara opções. Você continua no comando. Só fica mais esperto.</p>
+            </div>
+
+            <!-- Card simples — Benchmarks -->
+            <div class="bnt">
+                <div class="bnt-bar"></div>
+                <div class="bnt-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <h3>Benchmarks brasileiros</h3>
+                <p>Compare com CDI, IBOVESPA e inflação real. Nada de comparação com S&P 500 que não faz sentido pro seu bolso.</p>
+            </div>
+
+            <!-- Card simples — IR -->
+            <div class="bnt">
+                <div class="bnt-bar"></div>
+                <div class="bnt-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <h3>Imposto de Renda sem surpresa</h3>
+                <p>Simulador de IR com transparência total. FGC, DARF, isenções — tudo explicado de forma clara. Sem susto na declaração.</p>
+            </div>
+
+            <!-- Card largo — Controle -->
+            <div class="bnt span2">
+                <div class="bnt-bar"></div>
+                <div class="bnt-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <h3>Controle real, não promessa vazia</h3>
+                <p>Tudo o que você faz na Yield pode ser espelhado na sua própria planilha. Você audita tudo. Você mantém seus dados. Você não depende só da gente. Se decidir sair amanhã, seus dados vão com você.</p>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     4. PLANILHA / GOOGLE SHEETS
+     Imagem: rio-montanha.jpg — rio que corre, dados fluindo
+     Narrativa: seus dados sempre fluindo para onde você quer.
+============================================================ -->
+<section id="sheets">
+    <div class="sheets-bg"></div>
+    <div class="sheets-overlay"></div>
+    <div class="wrap">
+
+        <div class="sheets-head reveal">
+            <div class="tag">Integração Google Sheets</div>
+            <h2 class="heading" style="margin-top: 1.5rem;">
+                A Yield não substitui<br>
+                <span class="thin">seu controle. Ela fortalece ele.</span>
+            </h2>
+            <p class="subtext" style="margin-top: 1rem;">
+                Se você já tem uma planilha no Google Sheets e não abre mão dela, conecta com a Yield. Você ganha velocidade e inteligência artificial — sem perder nenhum dado.
+            </p>
+        </div>
+
+        <div class="sheets-grid">
+            <div class="scard reveal d1">
+                <div class="scard-num">01</div>
+                <h3>Espelhamento automático em tempo real</h3>
+                <p>Cada atualização na Yield dispara um webhook que sincroniza automaticamente com sua base pessoal. Você vê tudo na plataforma. E tudo continua na sua planilha. Sem depender 100% de um app.</p>
+            </div>
+
+            <div class="scard reveal d2">
+                <div class="scard-num">02</div>
+                <h3>A IA escreve, você autoriza</h3>
+                <p>O Agente Escritor interpreta seus comandos e traduz para a API do Google Sheets. Mas nada é executado sem sua confirmação. Você vê exatamente o que vai mudar antes de aprovar.</p>
+            </div>
+
+            <div class="scard reveal d1">
+                <div class="scard-num">03</div>
+                <h3>Histórico completo: até 150 versões</h3>
+                <p>Errou alguma coisa? Quer voltar pro estado de ontem? Restaura com um clique. Controle real significa poder desfazer qualquer coisa.</p>
+            </div>
+
+            <div class="scard reveal d2">
+                <div class="scard-num">04</div>
+                <h3>Seus dados continuam seus</h3>
+                <p>Se você decidir sair da Yield amanhã, sua planilha continua intacta. Você exporta tudo. Você leva tudo. Você não fica refém.</p>
+            </div>
+        </div>
+
+        <div class="reveal">
+            <p class="sheets-mantra">
+                <strong>Você mantém o chão firme da sua planilha.</strong><br>
+                E ganha velocidade, precisão e tranquilidade com a inteligência da Yield.
+            </p>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- ============================================================
+     5. PARE DE TER MEDO DE ERRAR
+     Imagem: view-6.jpg — montanha + lago ao entardecer
+     Narrativa: solidez, base firme. O terreno que você pisa.
+============================================================ -->
+<section id="fear">
+    <div class="fear-bg"></div>
+    <div class="fear-overlay"></div>
+    <div class="wrap">
+        <div class="fear-layout">
+
+            <div class="fear-left reveal">
+                <div class="tag">Segurança</div>
+                <h2 class="heading" style="margin-top: 1.5rem;">
+                    A Yield não garante
+                    <span class="thin">que você vai ficar rico.</span>
+                </h2>
+                <p class="subtext" style="margin-top: 1rem; margin-bottom: 2rem;">
+                    Mas garante que você vai entender o que está fazendo — e isso já elimina 80% da ansiedade.
+                </p>
+                <div class="fear-callout">
+                    <p>Investir com clareza não elimina risco.<br>Mas elimina erro bobo — e <strong>erro bobo custa caro.</strong></p>
+                </div>
+            </div>
+
+            <div class="fear-right reveal d1">
+                <div class="fcard">
+                    <h3>Você já perdeu dinheiro por desorganização?</h3>
+                    <p>Esqueceu de vender antes de IR subir? Não sabia quanto tinha exposto em banco pequeno? Descobriu tarde que estava pagando taxa absurda? A Yield te avisa antes.</p>
+                </div>
+
+                <div class="fcard">
+                    <h3>Alertas de risco que importam</h3>
+                    <p>Exposição concentrada em banco de risco (Agibank, Master)? Aviso. Ativo que vai pagar dividendo/JCP amanhã? Aviso. IR atrasado? Aviso. Antes de virar problema.</p>
+                </div>
+
+                <div class="fcard">
+                    <h3>Educação, não jabá</h3>
+                    <p>Quando você pergunta sobre um ativo ou conceito, a Yield explica de verdade. Não é textão copiado do Google. Não é jabá de produto. É explicação clara do que você precisa saber pra decidir sozinho.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     6. FUNCIONALIDADES
+     Fundo: escuro. Lista organizada por categoria.
+============================================================ -->
+<section id="features">
+    <div class="wrap">
+
+        <div class="feat-head reveal">
+            <div class="tag">Funcionalidades</div>
+            <h2 class="heading" style="margin-top: 1.5rem;">
+                Tudo o que você precisa
+                <span class="thin">para investir com método.</span>
+            </h2>
+            <p class="subtext" style="margin-top: 1rem;">
+                Sem excesso. Sem enrolação. Sem ferramenta que você nunca vai usar.
+            </p>
+        </div>
+
+        <div class="feat-grid reveal">
+            <div class="feat-col">
+                <div class="feat-col-label">Gestão Financeira Pessoal</div>
+                <ul class="feat-list">
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Registro por linguagem natural
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Classificação automática de receitas e despesas
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Organização de metas, compromissos e dívidas
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Visão consolidada do seu fluxo de dinheiro
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Agentes especializados por contexto
+                    </li>
+                </ul>
+            </div>
+
+            <div class="feat-col">
+                <div class="feat-col-label">Análise de Investimentos</div>
+                <ul class="feat-list">
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Vitrine das 12 métricas fundamentais
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Comparação com CDI, IBOVESPA e inflação
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Simulador de IR com transparência total
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Análises personalizadas sob demanda
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Sugestão de cenários e alternativas
+                    </li>
+                </ul>
+            </div>
+
+            <div class="feat-col">
+                <div class="feat-col-label">Controle e Segurança</div>
+                <ul class="feat-list">
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Integração opcional com Google Sheets
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Espelhamento automático em tempo real
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Histórico de até 150 versões anteriores
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Alertas de risco e oportunidades relevantes
+                    </li>
+                    <li>
+                        <span class="feat-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
+                        Interface limpa, navegação direta
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- ============================================================
+     7. QUEM DEVE USAR
+     Fundo: escuro. Direto e honesto.
+============================================================ -->
+<section id="who">
+    <div class="wrap">
+
+        <div class="who-head reveal">
+            <div class="tag">Para quem é</div>
+            <h2 class="heading" style="margin-top: 1.5rem;">
+                A Yield não é
+                <span class="thin">pra todo mundo.</span>
+            </h2>
+            <p class="subtext" style="margin-top: 0.5rem; margin: 0.5rem auto 0; text-align: center;">E tudo bem.</p>
+        </div>
+
+        <div class="who-grid reveal">
+            <div class="who-col yes">
+                <div class="who-col-title">
+                    <span class="who-dot wdot-yes"></span>
+                    A Yield é pra você se:
+                </div>
+                <ul class="who-list">
+                    <li>Você já investe (ou quer começar) mas se sente perdido na organização</li>
+                    <li>Você valoriza controle e quer auditar seus próprios dados</li>
+                    <li>Você não quer depender 100% de uma ferramenta fechada</li>
+                    <li>Você está cansado de apps que prometem demais e entregam confusão</li>
+                    <li>Você quer tecnologia que te ajuda a pensar, não que pensa por você</li>
+                    <li>Você prefere clareza e método ao invés de palpite e achismo</li>
+                </ul>
+            </div>
+
+            <div class="who-col no">
+                <div class="who-col-title">
+                    <span class="who-dot wdot-no"></span>
+                    A Yield NÃO é pra você se:
+                </div>
+                <ul class="who-list">
+                    <li>Você quer um robô que investe sozinho no piloto automático</li>
+                    <li>Você busca "fórmula mágica" ou "segredo pra ficar rico rápido"</li>
+                    <li>Você não se importa com organização e controle</li>
+                    <li>Você quer alguém que diga exatamente o que comprar sem você pensar</li>
+                    <li>Você espera que um app resolva sua vida financeira sem você fazer nada</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="reveal" style="text-align: center; margin-top: 3rem;">
+            <p class="who-mantra">
+                <strong>A Yield é ferramenta, não muleta.</strong><br>
+                Ela amplifica sua inteligência — não substitui ela.
+            </p>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- ============================================================
+     8. PRICING
+     Imagem: landscape.jpg
+============================================================ -->
+<section id="pricing">
+    <div class="pricing-bg"></div>
+    <div class="pricing-overlay"></div>
+    <div class="wrap">
+        <div class="pricing-layout">
+
+            <div class="pricing-left reveal">
+                <div class="tag">Preço</div>
+                <h2 class="heading" style="margin-top: 1.5rem;">
+                    Um preço simples.
+                    <span class="thin">Sem pegadinha.</span>
+                </h2>
+                <p class="subtext" style="margin-top: 1rem;">
+                    Tudo o que você precisa pra organizar sua vida financeira e investir com clareza — sem pagar por complexidade desnecessária.
+                </p>
+
+                <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.875rem; color: var(--text-muted); font-weight: 300;">
+                        <span style="color: var(--accent);">✓</span> Sem surpresa. Sem taxa escondida.
                     </div>
-                    <div class="bar-container">
-                        <div class="bar-fill ${item.status}" style="width: ${width}%"></div>
-                        <div class="bar-target-marker" style="left: ${targetPos}%" title="Meta: ${item.target}%"></div>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.875rem; color: var(--text-muted); font-weight: 300;">
+                        <span style="color: var(--accent);">✓</span> Sem upsell. Cancela quando quiser.
                     </div>
-                    <div class="row-header" style="margin-top: 6px;">
-                        <div class="row-meta">
-                            <span>Real: ${item.real}%</span>
-                            <span style="opacity: 0.5">Meta: ${item.target}%</span>
-                        </div>
-                        <div class="row-meta">
-                            <span class="diff-tag" style="color: var(--${item.status === 'under' ? 'positive' : 'terracotta'})">${actionText} (${item.diff})</span>
-                        </div>
+                    <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.875rem; color: var(--text-muted); font-weight: 300;">
+                        <span style="color: var(--accent);">✓</span> Seus dados são seus — sempre.
                     </div>
                 </div>
-                `;
-            }).join('');
-        }
+            </div>
 
-        backBtn.addEventListener('click', () => render('root'));
-        render('root');
-    </script>
+            <div class="reveal d1">
+                <div class="price-card">
+                    <p class="price-label">Plano único — tudo incluído</p>
+                    <div class="price-amount">R$ <span id="pval">—</span></div>
+                    <div class="price-period">por mês</div>
+
+                    <ul class="price-features">
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Gestão financeira pessoal completa
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Análise de investimentos com métricas fundamentais
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Simulador de Imposto de Renda
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Integração com Google Sheets (opcional)
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Sugestões de cenários e alternativas
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Alertas de risco e oportunidades
+                        </li>
+                        <li>
+                            <span class="p-chk"><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></span>
+                            Suporte via chat
+                        </li>
+                    </ul>
+
+                    <a href="#" class="price-cta">Começar agora</a>
+                    <p class="price-fine">Teste grátis por 14 dias. Cancela quando quiser.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     9. FAQ
+============================================================ -->
+<section id="faq">
+    <div class="wrap">
+
+        <div class="faq-head reveal">
+            <div class="tag">Perguntas frequentes</div>
+            <h2 class="heading" style="margin-top: 1.5rem;">
+                Perguntas que
+                <span class="thin">todo mundo faz.</span>
+            </h2>
+        </div>
+
+        <div class="faq-grid reveal">
+            <div class="faq-item">
+                <div class="faq-q">Meus dados ficam seguros?</div>
+                <div class="faq-a">Sim. Usamos criptografia de ponta a ponta e você pode espelhar tudo na sua própria planilha do Google Sheets. Se você sair da Yield amanhã, seus dados vão com você.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-q">Preciso conectar minha conta da corretora?</div>
+                <div class="faq-a">Não. A Yield não acessa suas contas. Você registra suas movimentações manualmente (de forma simples, por linguagem natural) ou importa extratos.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-q">A Yield dá recomendação de compra/venda?</div>
+                <div class="faq-a">Não. A Yield organiza informações, sugere análises e apresenta cenários. A decisão final é sempre sua.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-q">Funciona pra qualquer tipo de investimento?</div>
+                <div class="faq-a">Sim. Ações, FIIs, renda fixa, cripto, previdência, tesouro direto — tudo entra.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-q">E se eu já tenho planilha própria?</div>
+                <div class="faq-a">Perfeito. Você pode conectar sua planilha do Google Sheets e manter tudo sincronizado. A Yield não substitui sua planilha — fortalece ela.</div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-q">Posso cancelar quando quiser?</div>
+                <div class="faq-a">Sim. Sem burocracia, sem taxa de cancelamento. E você leva todos os seus dados com você.</div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+
+<!-- ============================================================
+     10. CTA FINAL
+     Imagem: view-11.jpg — caminho de outono, a jornada começa
+============================================================ -->
+<section id="cta">
+    <div class="cta-bg"></div>
+    <div class="cta-overlay"></div>
+    <div class="wrap">
+        <div class="cta-inner reveal">
+            <div class="tag">Comece agora</div>
+            <h2 class="heading" style="margin-top: 1.5rem;">
+                O mercado vai continuar complexo.
+                <span class="thin">Sua ferramenta não precisa ser.</span>
+            </h2>
+            <p class="subtext" style="margin-top: 1rem; margin-bottom: 2.5rem;">
+                Organize sua grana. Veja o que importa. Decida sem medo.
+            </p>
+            <div class="cta-btns">
+                <a href="#pricing" class="btn btn-solid">
+                    Começar agora
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
+                <a href="#" class="btn btn-outline">Falar com a gente antes</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer>
+    <div class="wrap">
+        <div class="footer-inner">
+            <div>
+                <a href="#" class="nav-logo">
+                    <div class="logo-mark">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    Yield
+                </a>
+                <p class="footer-brand-tagline">
+                    A tecnologia trabalha.<br>O controle fica com você.
+                </p>
+            </div>
+
+            <div class="footer-links">
+                <div class="fcol">
+                    <div class="fcol-label">Produto</div>
+                    <ul>
+                        <li><a href="#">Como funciona</a></li>
+                        <li><a href="#">Funcionalidades</a></li>
+                        <li><a href="#">Preços</a></li>
+                        <li><a href="#">Sobre a Yield</a></li>
+                    </ul>
+                </div>
+                <div class="fcol">
+                    <div class="fcol-label">Legal</div>
+                    <ul>
+                        <li><a href="#">Termos de Uso</a></li>
+                        <li><a href="#">Política de Privacidade</a></li>
+                        <li><a href="#">Segurança</a></li>
+                    </ul>
+                </div>
+                <div class="fcol">
+                    <div class="fcol-label">Contato</div>
+                    <ul>
+                        <li><a href="#">Suporte</a></li>
+                        <li><a href="#">Falar com a gente</a></li>
+                        <li><a href="#">Instagram</a></li>
+                        <li><a href="#">LinkedIn</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <span>© 2025 Yield. Todos os direitos reservados.</span>
+            <span>Clareza é sofisticação.</span>
+        </div>
+    </div>
+</footer>
+
+
+<!-- ============================================================
+     SCRIPTS
+============================================================ -->
+<script>
+    // Navbar scroll
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+        nav.classList.toggle('scrolled', window.scrollY > 60);
+    }, { passive: true });
+
+    // Reveal on scroll
+    const reveals = document.querySelectorAll('.reveal');
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                e.target.classList.add('in');
+                io.unobserve(e.target);
+            }
+        });
+    }, { threshold: 0.1 });
+    reveals.forEach(el => io.observe(el));
+
+    // Smooth anchor
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => {
+            const t = document.querySelector(a.getAttribute('href'));
+            if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        });
+    });
+</script>
+
 </body>
 </html>

@@ -628,6 +628,76 @@ A métrica retorna um widget com:
 
 Isso mantém o frontend focado em renderização/filtros e centraliza a lógica de cálculo no backend.
 
+### 12.10 Evolução estrutural do card (18/02/2026)
+
+Implementação aplicada sem alterar o contrato base do widget e sem criar lógica paralela de métricas:
+
+- `client/js/invest-dash.alocacao.js`
+  - Reescrita do motor de decisão do card para os dois modos de rebalanceamento, preservando consumo de `investments.allocation_vs_target`.
+  - Correção crítica do modo **Desbalanceamento por Aporte**, com cálculo baseado no ativo acima da banda superior:
+    - `Novo Total = Valor Atual do ativo base / (Meta + Desvio)`
+    - `Aporte Total = Novo Total - Patrimônio Atual`
+  - Distribuição do aporte com trava de teto por ativo (não ultrapassa meta), priorização configurável e conservação de soma em centavos.
+  - Rebalanceamento **Venda/Compra** com:
+    - venda apenas de itens acima da banda superior até a meta,
+    - compra apenas de itens abaixo da banda inferior até a meta,
+    - fluxo financeiro fechado (`Total vendido = Total comprado`) e alerta discreto de possível IR quando houver venda.
+  - Cálculo aplicado por nível de navegação (`Classe`, `Subclasse`, `Ativo`) respeitando o contexto atual do funil.
+  - Bloqueio de rebalanceamento quando existir somente 1 item no nível:
+    - "Adicione mais ativos para habilitar o rebalanceamento".
+  - Persistência em sessão das preferências:
+    - modo de rebalanceamento (`aporte`/`trade`)
+    - prioridade (`deviation`/`profitability`/`volatility`)
+  - Consumo de sinais já processados de cards existentes para prioridade da engrenagem:
+    - `window.YieldInvestments.cards.rentabilidade.getCurrentModel()`
+    - `window.YieldInvestments.cards.volatilidade.getCurrentModel()`
+    - sem duplicar cálculo de rentabilidade/volatilidade no card de alocação.
+  - Simplificação da renderização por linha para exibir apenas:
+    - nome, valor atual, `% real vs % meta`, ação recomendada (comprar/vender/alocar/manter) e resultado nominal.
+  - Painel `Ver Mais` com resumo de plano e tabela:
+    - ativo, `% atual`, ação (com quantidade estimada quando possível), valor e `% pós-ajuste estimada`.
+
+- `client/css/invest-dash-dados.css`
+  - Ajustes visuais pontuais do card de alocação para suportar a versão simplificada e estados de botão (`Ver Mais` desabilitado), sem impacto nos demais cards.
+
+### 12.11 Correções de bugs + refatoração UI/UX (18/02/2026)
+
+Implementação complementar aplicada em `client/js/invest-dash.alocacao.js` + template/CSS do card, mantendo contrato backend intacto:
+
+- Correção de meta no nível **Classe** (modo venda/compra)
+  - A meta da classe deixou de usar fallback aproximado e passou a ser derivada da soma de metas dos ativos descendentes.
+  - Regra aplicada:
+    - `metaClasseAbs = soma(targetPct dos ativos filhos)`
+  - Se a soma das metas no contexto de classe for inexistente (`0`), o card exibe aviso para configurar metas dos ativos.
+
+- Correção de drill-down com metas internas proporcionais
+  - Em níveis internos (quando o usuário entra em uma classe/subclasse), o cálculo agora usa escala interna do grupo:
+    - `metaInterna = metaAbsItem / somaMetasAbsGrupo`
+    - `% real interno = valorItem / totalGrupo`
+  - Bandas e ações (`Vender` / `Alocar` / `Manter`) passam a respeitar essa escala interna.
+
+- Herança de aporte entre níveis
+  - Ao navegar para dentro de um grupo, o aporte recomendado no nível superior é propagado para o nível interno como `aporteHerdado`.
+  - O card passa a exibir explicitamente:
+    - "Distribuição do aporte sugerido no nível superior".
+
+- UI/UX: cenários simultâneos e detalhe com 1 clique
+  - Removidas as tabs de modo no topo.
+  - O card passa a calcular e exibir simultaneamente os dois cenários:
+    - `Desbalanceamento por Aporte`
+    - `Rebalanceamento por Venda/Compra`
+  - Cada cenário ganhou botão independente `Ver Detalhes`/`Ocultar`, com painel próprio e abertura em um único clique.
+  - Os dois painéis podem permanecer abertos ao mesmo tempo.
+
+- UI/UX: hierarquia visual e ação por item
+  - `Score` isolado no topo.
+  - Cada linha da lista exibe ação objetiva e imediata por estado:
+    - `Vender R$ X` (over)
+    - `Alocar R$ X` (under)
+    - `Manter` (on-track)
+  - Label de ação foi alinhado ao lado direito da barra (associação direta barra ↔ ação).
+  - Termo `Ver Mais` substituído por `Ver Detalhes` nos pontos de expansão do card de alocação.
+
 ---
 
 ## 13) Card oficial: Volatilidade Anualizada (implementado)

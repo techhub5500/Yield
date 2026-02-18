@@ -18,31 +18,106 @@
                         <h2 id="cardTitle">Alocação Real vs. Planejada</h2>
                         <div class="subtitle" id="cardSubtitle">Saúde estratégica da carteira</div>
                     </div>
-                    <div class="filters">
-                        <button class="filter-btn active" data-mode="class">Classe</button>
-                        <button class="filter-btn" data-mode="subclass">Subclasse</button>
-                        <button class="filter-btn" data-mode="asset">Ativo</button>
+                    <div class="allocation-header-controls">
+                        <div class="filters">
+                            <button class="filter-btn active" data-mode="class">Classe</button>
+                            <button class="filter-btn" data-mode="subclass">Subclasse</button>
+                            <button class="filter-btn" data-mode="asset">Ativo</button>
+                        </div>
+                        <div class="allocation-settings-wrap" id="allocationSettingsWrap">
+                            <button class="settings-btn" id="settingsBtn" type="button" aria-label="Prioridade de rebalanceamento">⚙</button>
+                            <div class="settings-menu" id="settingsMenu" aria-hidden="true">
+                                <button class="settings-option active" data-priority-mode="deviation" type="button">Proporcional ao Desvio</button>
+                                <button class="settings-option" data-priority-mode="profitability" type="button">Maior Rentabilidade (12m)</button>
+                                <button class="settings-option" data-priority-mode="volatility" type="button">Menor Volatilidade (12m)</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="kpi-grid">
-                    <div class="kpi-item">
-                        <div class="kpi-label">Aderência (Score)</div>
-                        <div class="kpi-value" id="scoreValue" style="color:#D4AF37;">100/100</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-label">Rebalanceamento por Aporte</div>
+                <div class="allocation-score-strip">
+                    <div class="kpi-label">Aderência (Score)</div>
+                    <div class="kpi-value" id="scoreValue" style="color:#D4AF37;">100/100</div>
+                </div>
+
+                <div class="allocation-scenarios-grid">
+                    <section class="allocation-scenario-card" data-scenario="aporte">
+                        <div class="kpi-label">Desbalanceamento por Aporte</div>
                         <div class="kpi-value" id="aporteValue">R$ 0,00</div>
-                        <div class="subtitle" id="aporteHint" style="color:#8BA888;">Aporte recomendado</div>
-                    </div>
-                    <div class="kpi-item">
+                        <div class="subtitle" id="aporteHint">Sem desvio detectado</div>
+                        <button class="more-plan-btn" id="expandAporteDetailsBtn" type="button">Ver Detalhes</button>
+
+                        <div class="allocation-plan-panel" id="aportePlanPanel" hidden>
+                            <div class="plan-summary-grid">
+                                <div class="plan-summary-item">
+                                    <span class="kpi-label">Aporte Total</span>
+                                    <strong id="aportePlanAporteTotal">R$ 0,00</strong>
+                                </div>
+                                <div class="plan-summary-item">
+                                    <span class="kpi-label">Novo Total Estimado</span>
+                                    <strong id="aportePlanEstimatedTotal">R$ 0,00</strong>
+                                </div>
+                            </div>
+                            <div class="subtitle" id="aporteInheritedHint"></div>
+                            <div class="plan-table-wrap">
+                                <table class="plan-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ativo</th>
+                                            <th>% Atual</th>
+                                            <th>Ação</th>
+                                            <th>Valor</th>
+                                            <th>% Pós</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="aportePlanTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="allocation-scenario-card" data-scenario="trade">
                         <div class="kpi-label">Rebalanceamento por Venda/Compra</div>
                         <div class="kpi-value" id="tradeNetValue">R$ 0,00</div>
                         <div class="trade-line">
                             <span class="trade-buy" id="tradeBuyValue">Comprar: R$ 0,00</span>
                             <span class="trade-sell" id="tradeSellValue">Vender: R$ 0,00</span>
                         </div>
-                    </div>
+                        <div class="subtitle" id="tradeHint">Sem desvio detectado</div>
+                        <button class="more-plan-btn" id="expandTradeDetailsBtn" type="button">Ver Detalhes</button>
+
+                        <div class="allocation-plan-panel" id="tradePlanPanel" hidden>
+                            <div class="plan-summary-grid">
+                                <div class="plan-summary-item">
+                                    <span class="kpi-label">Total para Vender</span>
+                                    <strong id="tradePlanSellTotal">R$ 0,00</strong>
+                                </div>
+                                <div class="plan-summary-item">
+                                    <span class="kpi-label">Total para Comprar</span>
+                                    <strong id="tradePlanBuyTotal">R$ 0,00</strong>
+                                </div>
+                            </div>
+                            <div class="plan-tax-alert" id="tradePlanTaxAlert" hidden>Venda pode gerar IR sobre lucro.</div>
+                            <div class="plan-table-wrap">
+                                <table class="plan-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Ativo</th>
+                                            <th>% Atual</th>
+                                            <th>Ação</th>
+                                            <th>Valor</th>
+                                            <th>% Pós</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tradePlanTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="allocation-plan-tools">
+                    <div class="subtitle" id="rebalanceGuardMessage"></div>
                 </div>
 
                 <div class="allocation-list" id="allocList"></div>

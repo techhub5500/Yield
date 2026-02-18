@@ -3,102 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IR Provisionado - Golden Hour UI</title>
+    <title>IR Provisionado — Yield Server</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            /* Paleta Crepuscular & Rocha */
             --bg-deep: #12100E;
-            --bg-ambient: #2A211D;
-            --glass-surface: rgba(40, 35, 30, 0.4);
-            --glass-border: rgba(255, 230, 200, 0.08);
-            --glass-shine: rgba(255, 255, 255, 0.03);
-            
-            /* Cores de Acento */
-            --primary-gold: #D4AF37;
-            --terracotta: #D97757;
-            --positive: #8BA888;
-            --text-main: #EAE5E0;
-            --text-muted: #9A908A;
+            --bg-ambient: #1E1915;
+            --surface-1: rgba(38, 32, 27, 0.6);
+            --surface-2: rgba(50, 43, 37, 0.4);
+            --surface-3: rgba(60, 52, 44, 0.3);
+            --border-subtle: rgba(255, 220, 180, 0.07);
+            --border-hover: rgba(255, 220, 180, 0.14);
+            --shine: rgba(255, 255, 255, 0.025);
+
+            --gold: #D4AF37;
+            --gold-dim: rgba(212, 175, 55, 0.15);
+            --gold-line: rgba(212, 175, 55, 0.3);
+            --terracotta: #C96B4A;
+            --terracotta-dim: rgba(201, 107, 74, 0.12);
+            --green: #7FA87C;
+            --green-dim: rgba(127, 168, 124, 0.12);
+            --amber: #E8A44A;
+            --amber-dim: rgba(232, 164, 74, 0.12);
+            --blue-steel: #7EA8C4;
+
+            --text-primary: #EDE8E2;
+            --text-secondary: #B8AFA7;
+            --text-muted: #7A706A;
+            --text-faint: #504840;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-deep);
-            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
+            background: var(--bg-deep);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(80, 55, 35, 0.5) 0%, transparent 70%),
+                radial-gradient(ellipse 40% 30% at 80% 80%, rgba(40, 30, 20, 0.3) 0%, transparent 60%);
             font-family: 'Manrope', sans-serif;
-            color: var(--text-main);
-            height: 100vh;
+            color: var(--text-primary);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
-            padding: 20px;
+            align-items: flex-start;
+            padding: 40px 20px;
         }
 
-        .widget-card {
+        /* ── Card Shell ────────────────────────────── */
+        .card {
             width: 100%;
-            max-width: 680px; 
-            background: var(--glass-surface);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            box-shadow: 
-                0 20px 40px rgba(0,0,0,0.4),
-                inset 0 1px 0 var(--glass-shine);
-            padding: 24px;
+            max-width: 720px;
+            background: var(--surface-1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 22px;
+            box-shadow:
+                0 32px 64px rgba(0,0,0,0.5),
+                0 0 0 1px rgba(255,255,255,0.015),
+                inset 0 1px 0 var(--shine);
+            overflow: hidden;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            max-height: 90vh;
         }
 
-        /* Header */
+        /* Subtle top gradient stripe */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--gold-line), transparent);
+            opacity: 0.6;
+        }
+
+        /* ── Disclaimer Banner ─────────────────────── */
+        .disclaimer {
+            background: rgba(212, 175, 55, 0.06);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+            padding: 8px 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .disclaimer-icon {
+            width: 14px; height: 14px;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.55rem;
+            color: var(--gold);
+            flex-shrink: 0;
+        }
+
+        .disclaimer span {
+            font-size: 0.62rem;
+            color: rgba(212, 175, 55, 0.65);
+            letter-spacing: 0.02em;
+            line-height: 1.4;
+        }
+
+        /* ── Card Body ─────────────────────────────── */
+        .card-body {
+            padding: 24px;
+        }
+
+        /* ── Header ────────────────────────────────── */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            margin-bottom: 22px;
             gap: 16px;
+            flex-wrap: wrap;
         }
 
-        h2 {
-            font-family: 'Playfair Display', serif;
+        .header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .back-btn {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            color: var(--gold);
+            font-size: 0.7rem;
             font-weight: 600;
-            font-size: 1.2rem;
-            letter-spacing: 0.02em;
-            color: var(--text-main);
-            margin-bottom: 2px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-bottom: 6px;
+            opacity: 0.8;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .back-btn:hover { opacity: 1; transform: translateX(-3px); }
+        .back-btn svg { width: 12px; height: 12px; }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            color: var(--text-primary);
         }
 
-        .subtitle {
-            font-size: 0.75rem;
+        .card-subtitle {
+            font-size: 0.67rem;
             color: var(--text-muted);
             font-weight: 400;
+            letter-spacing: 0.04em;
         }
 
-        /* Filtros */
+        /* ── Filters ───────────────────────────────── */
         .filters {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
-        .filter-group {
-            background: rgba(0,0,0,0.2);
-            padding: 2px;
-            border-radius: 10px;
+        .filter-pill {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 2px 3px;
             display: flex;
-            border: 1px solid var(--glass-border);
+            gap: 2px;
         }
 
         .filter-btn {
@@ -106,384 +181,657 @@
             border: none;
             color: var(--text-muted);
             padding: 4px 10px;
-            font-size: 0.65rem;
-            border-radius: 8px;
+            font-size: 0.63rem;
+            border-radius: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
             font-family: 'Manrope', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            transition: all 0.25s ease;
+        }
+        .filter-btn.active {
+            background: rgba(255,255,255,0.08);
+            color: var(--gold);
+        }
+        .filter-btn:hover:not(.active) { color: var(--text-secondary); }
+
+        /* ── KPI Grid ──────────────────────────────── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-card {
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .kpi-card:hover { border-color: var(--border-hover); }
+
+        .kpi-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--shine-color, rgba(255,255,255,0.04)), transparent);
+        }
+
+        .kpi-card.primary { --shine-color: rgba(201,107,74,0.2); }
+        .kpi-card.secondary { --shine-color: rgba(127,168,124,0.2); }
+
+        .kpi-label {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
             font-weight: 600;
         }
 
-        .filter-btn.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--primary-gold);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-
-        /* KPIs Grid */
-        .kpi-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 20px;
-        }
-
-        .kpi-row-secondary {
-            grid-column: 1 / -1;
-            display: flex;
-            gap: 16px;
-            margin-top: 8px;
-            padding-top: 12px;
-            border-top: 1px solid var(--glass-border);
-        }
-
-        .kpi-mini { flex: 1; }
-
-        .label {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .main-value {
-            font-size: 1.85rem;
+        .kpi-value {
+            font-size: 1.75rem;
             font-weight: 300;
-            color: var(--terracotta); /* Destaque para imposto a pagar */
             line-height: 1;
+            margin-bottom: 5px;
         }
 
-        .sub-value {
-            font-size: 1.2rem;
-            color: var(--positive); /* Destaque para resultado líquido */
+        .kpi-value.red { color: var(--terracotta); }
+        .kpi-value.green { color: var(--green); }
+        .kpi-value.gold { color: var(--gold); }
+
+        .kpi-note {
+            font-size: 0.62rem;
+            color: var(--text-muted);
             font-weight: 400;
         }
 
-        .mini-value {
-            font-size: 0.95rem;
-            color: var(--text-main);
+        /* ── KPI Bar (secondary metrics) ──────────── */
+        .kpi-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0;
+            background: var(--surface-2);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .kpi-bar-item {
+            padding: 12px 16px;
+            border-right: 1px solid var(--border-subtle);
+            position: relative;
+        }
+        .kpi-bar-item:last-child { border-right: none; }
+
+        .kpi-bar-item .kpi-label { margin-bottom: 4px; }
+
+        .kpi-bar-value {
+            font-size: 0.9rem;
             font-weight: 600;
+            color: var(--text-primary);
         }
 
-        /* Tabela Estruturada */
+        .kpi-bar-sub {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Colored accents for bar items */
+        .kpi-bar-item.warn .kpi-bar-value { color: var(--amber); }
+        .kpi-bar-item.positive .kpi-bar-value { color: var(--green); }
+
+        /* ── Section Header ────────────────────────── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .section-title {
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .section-hint {
+            font-size: 0.6rem;
+            color: var(--text-faint);
+            font-style: italic;
+        }
+
+        /* ── Data Table ────────────────────────────── */
         .table-wrapper {
-            width: 100%;
             overflow-x: auto;
-            overflow-y: auto;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 16px;
-            flex-grow: 1;
-            /* Estilização da barra de rolagem */
             scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
+            scrollbar-color: rgba(255,255,255,0.07) transparent;
         }
-
-        .table-wrapper::-webkit-scrollbar { width: 4px; height: 4px; }
-        .table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .table-wrapper::-webkit-scrollbar { height: 3px; }
+        .table-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 4px; }
 
         .data-table {
             width: 100%;
             border-collapse: collapse;
-            text-align: right;
-            min-width: 500px;
+            min-width: 540px;
         }
 
-        .data-table th, .data-table td {
-            padding: 10px 12px;
+        .data-table thead th {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text-faint);
+            font-weight: 700;
+            padding: 0 12px 8px;
+            text-align: right;
             white-space: nowrap;
         }
 
-        .data-table th {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--glass-border);
-            font-weight: 600;
-        }
-
-        .data-table th:first-child, .data-table td:first-child {
-            text-align: left;
-        }
+        .data-table thead th:first-child { text-align: left; padding-left: 0; }
+        .data-table thead th:last-child { padding-right: 0; }
 
         .data-table tbody tr {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-            transition: all 0.2s;
+            border-top: 1px solid rgba(255,255,255,0.025);
             cursor: pointer;
+            transition: background 0.18s;
+        }
+        .data-table tbody tr:first-child { border-top: none; }
+        .data-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+
+        .data-table tbody td {
+            padding: 11px 12px;
+            font-size: 0.82rem;
+            text-align: right;
+            white-space: nowrap;
+            color: var(--text-secondary);
+            vertical-align: middle;
         }
 
-        .data-table tbody tr:hover {
-            background: rgba(255, 255, 255, 0.04);
+        .data-table tbody td:first-child { text-align: left; padding-left: 0; }
+        .data-table tbody td:last-child { padding-right: 0; }
+
+        /* Asset Name cell */
+        .asset-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.84rem;
         }
-
-        .data-table tbody tr:last-child {
-            border-bottom: none;
-        }
-
-        .data-table td {
-            font-size: 0.85rem;
-            color: var(--text-main);
-        }
-
-        .asset-name { font-weight: 600; color: var(--text-main); }
-        .asset-meta { font-size: 0.65rem; color: var(--text-muted); }
-        
-        .td-tax { color: var(--terracotta); font-weight: 600; }
-        .td-net { color: var(--positive); }
-        .td-rate { color: var(--text-muted); font-size: 0.75rem !important; }
-
-        #backNav {
-            display: none;
-            cursor: pointer;
-            color: var(--primary-gold);
-            margin-bottom: 4px;
-            font-size: 1.4rem;
+        .asset-tag {
+            display: inline-flex;
             align-items: center;
-            font-weight: 300;
-            width: fit-content;
-            transition: transform 0.2s ease;
+            gap: 4px;
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            margin-top: 2px;
+        }
+        .tag-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
-        #backNav:hover { transform: translateX(-4px); }
+        /* Value cells */
+        .td-base { color: var(--text-muted); font-size: 0.78rem; }
+        .td-rate {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+        .td-tax {
+            color: var(--terracotta);
+            font-weight: 600;
+        }
+        .td-net {
+            color: var(--green);
+            font-weight: 600;
+        }
+        .td-exempt {
+            color: var(--green);
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
 
-        /* Animações */
-        .fade-exit { opacity: 0; transform: translateY(10px); transition: opacity 0.2s, transform 0.2s; }
-        .fade-enter { opacity: 0; transform: translateY(-10px); }
-        .fade-active { opacity: 1; transform: translateY(0); transition: opacity 0.3s, transform 0.3s; }
+        /* Status badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            border-radius: 20px;
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .badge.darf { background: rgba(201,107,74,0.15); color: var(--terracotta); }
+        .badge.retido { background: rgba(127,168,124,0.15); color: var(--green); }
+        .badge.isento { background: rgba(212,175,55,0.12); color: var(--gold); }
+        .badge.comecotas { background: rgba(126,168,196,0.15); color: var(--blue-steel); }
 
-        @media (max-width: 600px) {
-            .kpi-section { grid-template-columns: 1fr; }
-            .kpi-row-secondary { flex-wrap: wrap; gap: 12px;}
-            .kpi-mini { min-width: 45%; }
+        /* ── Prejudice carry row ───────────────────── */
+        .carry-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(127,168,124,0.06);
+            border: 1px solid rgba(127,168,124,0.12);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 16px;
+        }
+        .carry-row-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .carry-row-value {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--green);
+        }
+        .carry-row-sub {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ── Alert row ─────────────────────────────── */
+        .alert-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            background: rgba(232,164,74,0.07);
+            border: 1px solid rgba(232,164,74,0.15);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 12px;
+        }
+        .alert-icon {
+            font-size: 0.75rem;
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+        .alert-text {
+            font-size: 0.67rem;
+            color: rgba(232,164,74,0.9);
+            line-height: 1.5;
+        }
+        .alert-text strong { font-weight: 700; }
+
+        /* ── Animations ────────────────────────────── */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-body { animation: fadeSlideUp 0.3s ease; }
+
+        .view-transition {
+            animation: fadeSlideUp 0.25s ease;
+        }
+
+        /* ── Separator ─────────────────────────────── */
+        .sep { height: 1px; background: var(--border-subtle); margin: 18px 0; }
+
+        /* ── Responsive ────────────────────────────── */
+        @media (max-width: 560px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .kpi-bar { grid-template-columns: 1fr 1fr; }
+            .kpi-bar-item:nth-child(2) { border-right: none; }
+            .kpi-bar-item:nth-child(3) { border-top: 1px solid var(--border-subtle); }
+            .kpi-bar-item:nth-child(4) { border-top: 1px solid var(--border-subtle); }
         }
     </style>
 </head>
 <body>
 
-    <div class="widget-card">
+<div class="card">
+    <!-- Disclaimer sempre visível -->
+    <div class="disclaimer">
+        <div class="disclaimer-icon">i</div>
+        <span>Valores fictícios para fins de layout. Dados reais serão calculados dinamicamente com base nas movimentações do usuário. Consulte um contador para sua declaração oficial.</span>
+    </div>
+
+    <div class="card-body" id="cardBody">
+        <!-- conteúdo injetado via JS -->
+    </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+// VIEW REGISTRY
+// ─────────────────────────────────────────────────────────
+const VIEWS = {
+
+    // ── NÍVEL 1: Consolidado ──────────────────────────────
+    total: {
+        level: 0,
+        title: 'Imposto de Renda',
+        subtitle: 'Provisão Consolidada · Ano em curso (YTD)',
+        kpis: [
+            { label: 'IR Provisionado', value: 'R$ 15.430', note: 'Estimativa total a pagar / reter', class: 'red', size: 'large', type: 'primary' },
+            { label: 'Resultado Líquido', value: 'R$ 84.920', note: 'Rendimentos após impostos estimados', class: 'green', size: 'large', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Base de Cálculo', value: 'R$ 100.350', sub: 'Rendimentos tributáveis', type: '' },
+            { label: 'Já Retido/Pago', value: 'R$ 4.200', sub: 'Fonte + DARF pagos', type: 'positive' },
+            { label: 'A Recolher (DARF)', value: 'R$ 9.230', sub: 'Renda variável', type: 'warn' },
+            { label: 'Alíquota Média', value: '15,4%', sub: 'Ponderada por rendimento', type: '' },
+        ],
+        rows: [
+            { id: 'rf', name: 'Renda Fixa', tag: 'Tabela Regressiva', tagColor: '#7EA8C4', base: 'R$ 32.000', rate: '13,5% (méd.)', tax: 'R$ 4.320', net: 'R$ 27.680', badge: 'retido', badgeLabel: 'Retido Fonte' },
+            { id: 'isentos', name: 'Renda Fixa Isenta', tag: 'LCI · LCA · CRI · CRA', tagColor: '#D4AF37', base: '—', rate: 'Isento', tax: 'R$ 0', net: 'R$ 18.500', badge: 'isento', badgeLabel: 'Isento PF' },
+            { id: 'acoes', name: 'Ações (Swing Trade)', tag: 'Renda Variável · 15%', tagColor: '#C96B4A', base: 'R$ 42.000', rate: '15,0%', tax: 'R$ 6.300', net: 'R$ 35.700', badge: 'darf', badgeLabel: 'DARF' },
+            { id: 'daytrade', name: 'Ações (Day Trade)', tag: 'Renda Variável · 20%', tagColor: '#E8A44A', base: 'R$ 15.500', rate: '20,0%', tax: 'R$ 3.100', net: 'R$ 12.400', badge: 'darf', badgeLabel: 'DARF' },
+            { id: 'fiis', name: 'Fundos Imobiliários', tag: 'Ganho de Capital · 20%', tagColor: '#9B8DCA', base: 'R$ 8.430', rate: '20,0%', tax: 'R$ 1.686', net: 'R$ 6.744', badge: 'darf', badgeLabel: 'DARF' },
+            { id: 'fundos', name: 'Fundos de Investimento', tag: 'Come-Cotas · Longo Prazo', tagColor: '#7EA8C4', base: 'R$ 2.420', rate: '15,0%', tax: 'R$ 363', net: 'R$ 2.057', badge: 'comecotas', badgeLabel: 'Come-Cotas' },
+        ],
+        carry: { value: 'R$ 7.200', label: 'Prejuízo Acumulado Disponível (RV)', sub: 'Compensável contra ganhos futuros em renda variável' },
+        alert: 'Você tem <strong>R$ 9.230 a recolher via DARF</strong> referente a ganhos em renda variável. O vencimento é no último dia útil do mês subsequente ao ganho.'
+    },
+
+    // ── NÍVEL 2: Renda Fixa Tributada ─────────────────────
+    rf: {
+        level: 1,
+        parent: 'total',
+        title: 'Renda Fixa Tributada',
+        subtitle: 'Retido na fonte · Tabela Regressiva',
+        kpis: [
+            { label: 'IR Estimado', value: 'R$ 4.320', note: 'Retido em fonte no resgate/vencimento', class: 'red', type: 'primary' },
+            { label: 'Resultado Líquido', value: 'R$ 27.680', note: 'Rendimento bruto menos IR estimado', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Rendimento Bruto', value: 'R$ 32.000', sub: 'Base de cálculo total', type: '' },
+            { label: 'Já Retido', value: 'R$ 4.200', sub: 'Retido na fonte até hoje', type: 'positive' },
+            { label: 'Residual no Resgate', value: 'R$ 120', sub: 'Diferença a complementar', type: 'warn' },
+            { label: 'Alíquota Média', value: '13,5%', sub: 'Ponderada por prazo', type: '' },
+        ],
+        rows: [
+            { id: null, name: 'Tesouro Selic 2027', tag: 'Venc. · +720 dias · 15%', tagColor: '#7EA8C4', base: 'R$ 12.000', rate: '15,0%', tax: 'R$ 1.800', net: 'R$ 10.200', badge: 'retido', badgeLabel: 'Retido Fonte' },
+            { id: null, name: 'CDB Banco ABC', tag: 'Resgate · 361–720 dias · 17,5%', tagColor: '#C96B4A', base: 'R$ 14.000', rate: '17,5%', tax: 'R$ 2.450', net: 'R$ 11.550', badge: 'retido', badgeLabel: 'Retido Fonte' },
+            { id: null, name: 'Tesouro IPCA+ 2028', tag: 'Venc. · +720 dias · 15%', tagColor: '#7EA8C4', base: 'R$ 6.000', rate: '15,0%', tax: 'R$ 900', net: 'R$ 5.100', badge: 'retido', badgeLabel: 'Retido Fonte' },
+        ],
+        alert: 'Atenção: <strong>CDB Banco ABC muda para a faixa de 15% em 47 dias</strong>. Aguardar o prazo pode economizar aproximadamente R$ 350 em IR.'
+    },
+
+    // ── NÍVEL 2: Renda Fixa Isenta ─────────────────────────
+    isentos: {
+        level: 1,
+        parent: 'total',
+        title: 'Renda Fixa Isenta',
+        subtitle: 'LCI · LCA · CRI · CRA · Debêntures Incentivadas (PF)',
+        kpis: [
+            { label: 'IR Economizado', value: 'R$ 2.775', note: 'Benefício fiscal estimado vs. CDB equivalente', class: 'gold', type: 'primary' },
+            { label: 'Rendimento Líquido', value: 'R$ 18.500', note: '100% isento de IR para PF', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Rendimento Total', value: 'R$ 18.500', sub: 'Isento de IR para PF', type: 'positive' },
+            { label: 'IR Due (equiv. 15%)', value: 'R$ 2.775', sub: 'IR que NÃO foi pago', type: '' },
+            { label: 'Taxa Equivalente', value: '90% CDI', sub: 'Rentabilidade bruta média', type: '' },
+            { label: 'Ativos Isentos', value: '4 ativos', sub: 'LCI, LCA e CRI', type: '' },
+        ],
+        rows: [
+            { id: null, name: 'LCI Banco XYZ', tag: 'LCI · 180+ dias · Isento PF', tagColor: '#D4AF37', base: 'R$ 8.000', rate: 'Isento', tax: 'R$ 0', net: 'R$ 8.000', badge: 'isento', badgeLabel: 'Isento' },
+            { id: null, name: 'LCA Banco Rural', tag: 'LCA · 365+ dias · Isento PF', tagColor: '#D4AF37', base: 'R$ 6.500', rate: 'Isento', tax: 'R$ 0', net: 'R$ 6.500', badge: 'isento', badgeLabel: 'Isento' },
+            { id: null, name: 'CRI Incorporadora', tag: 'CRI · 720+ dias · Isento PF', tagColor: '#D4AF37', base: 'R$ 4.000', rate: 'Isento', tax: 'R$ 0', net: 'R$ 4.000', badge: 'isento', badgeLabel: 'Isento' },
+        ],
+        alert: 'Produtos como <strong>CRI, CRA e Debêntures Incentivadas são isentos para PF</strong>, porém PJ utiliza tabela regressiva padrão. Confirme o enquadramento junto ao seu contador.'
+    },
+
+    // ── NÍVEL 2: Ações Swing ───────────────────────────────
+    acoes: {
+        level: 1,
+        parent: 'total',
+        title: 'Ações – Swing Trade',
+        subtitle: 'Apuração Mensal · Isenção até R$ 20 mil/mês em vendas',
+        kpis: [
+            { label: 'DARF a Recolher', value: 'R$ 6.300', note: 'Estimativa acumulada no período', class: 'red', type: 'primary' },
+            { label: 'Resultado Líquido', value: 'R$ 35.700', note: 'Ganho bruto menos IR estimado', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Vendas no Período', value: 'R$ 68.000', sub: 'Acima do limite de isenção', type: '' },
+            { label: 'Ganho Líquido', value: 'R$ 42.000', sub: 'Após custo de aquisição', type: '' },
+            { label: 'Prejuízo Compensado', value: 'R$ 0', sub: 'Saldo zerado no período', type: 'positive' },
+            { label: 'IRRF (Dedo Duro)', value: 'R$ 3,40', sub: '0,005% retido na fonte', type: '' },
+        ],
+        rows: [
+            { id: null, name: 'PETR4', tag: 'Venda: set/2025 · Acima R$20k', tagColor: '#C96B4A', base: 'R$ 20.000', rate: '15,0%', tax: 'R$ 3.000', net: 'R$ 17.000', badge: 'darf', badgeLabel: 'DARF' },
+            { id: null, name: 'VALE3', tag: 'Venda: out/2025 · Acima R$20k', tagColor: '#C96B4A', base: 'R$ 15.000', rate: '15,0%', tax: 'R$ 2.250', net: 'R$ 12.750', badge: 'darf', badgeLabel: 'DARF' },
+            { id: null, name: 'WEGE3', tag: 'Venda: nov/2025 · Acima R$20k', tagColor: '#C96B4A', base: 'R$ 7.000', rate: '15,0%', tax: 'R$ 1.050', net: 'R$ 5.950', badge: 'darf', badgeLabel: 'DARF' },
+        ],
+        carry: { value: 'R$ 7.200', label: 'Prejuízo Acumulado Disponível', sub: 'Compensável contra ganhos futuros (swing trade)' },
+        alert: 'Vendas acima de <strong>R$ 20 mil no mês</strong> geram obrigação de DARF. O recolhimento deve ser feito até o último dia útil do mês seguinte. Prejuízos acumulados em swing trade compensam apenas ganhos de swing trade.'
+    },
+
+    // ── NÍVEL 2: Day Trade ─────────────────────────────────
+    daytrade: {
+        level: 1,
+        parent: 'total',
+        title: 'Ações – Day Trade',
+        subtitle: 'Apuração Mensal · Alíquota 20% · Sem isenção',
+        kpis: [
+            { label: 'DARF a Recolher', value: 'R$ 3.100', note: 'Estimativa acumulada no período', class: 'red', type: 'primary' },
+            { label: 'Resultado Líquido', value: 'R$ 12.400', note: 'Ganho bruto menos IR estimado', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Ganho Bruto', value: 'R$ 15.500', sub: 'Operações lucrativas DT', type: '' },
+            { label: 'IRRF (Dedo Duro)', value: 'R$ 23,25', sub: '0,015% retido na fonte', type: '' },
+            { label: 'Alíquota', value: '20%', sub: 'Fixa, sem isenção de R$20k', type: 'warn' },
+            { label: 'Saldo Prejuízo DT', value: 'R$ 0', sub: 'Caixinha separada do swing', type: 'positive' },
+        ],
+        rows: [
+            { id: null, name: 'WINJ25 (Mini Índice)', tag: 'Day Trade · nov/2025', tagColor: '#E8A44A', base: 'R$ 10.000', rate: '20,0%', tax: 'R$ 2.000', net: 'R$ 8.000', badge: 'darf', badgeLabel: 'DARF' },
+            { id: null, name: 'WDOJ25 (Mini Dólar)', tag: 'Day Trade · out/2025', tagColor: '#E8A44A', base: 'R$ 5.500', rate: '20,0%', tax: 'R$ 1.100', net: 'R$ 4.400', badge: 'darf', badgeLabel: 'DARF' },
+        ],
+        alert: '<strong>Day trade não tem isenção de R$ 20k</strong> e sua "caixinha" de prejuízo é separada do swing trade. IRRF de 0,015% é descontado em cada operação lucrativa e abate do DARF mensal.'
+    },
+
+    // ── NÍVEL 2: FIIs ──────────────────────────────────────
+    fiis: {
+        level: 1,
+        parent: 'total',
+        title: 'Fundos Imobiliários',
+        subtitle: 'Rendimentos Isentos (PF) · Ganho de Capital 20%',
+        kpis: [
+            { label: 'DARF Ganho de Capital', value: 'R$ 1.686', note: 'Venda de cotas com lucro', class: 'red', type: 'primary' },
+            { label: 'Dividendos Recebidos', value: 'R$ 3.840', note: 'Isentos de IR para PF (condições legais)', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Base (Venda Cotas)', value: 'R$ 8.430', sub: 'Ganho na alienação', type: '' },
+            { label: 'Dividendos (Isentos)', value: 'R$ 3.840', sub: 'Sem alíquota para PF', type: 'positive' },
+            { label: 'Sem isenção R$20k', value: 'N/A', sub: 'FIIs não têm o benefício', type: 'warn' },
+            { label: 'Alíquota (Venda)', value: '20,0%', sub: 'Sobre ganho de capital', type: '' },
+        ],
+        rows: [
+            { id: null, name: 'HGLG11', tag: 'Venda de cotas · dez/2025', tagColor: '#9B8DCA', base: 'R$ 5.000', rate: '20,0%', tax: 'R$ 1.000', net: 'R$ 4.000', badge: 'darf', badgeLabel: 'DARF' },
+            { id: null, name: 'XPML11', tag: 'Venda de cotas · nov/2025', tagColor: '#9B8DCA', base: 'R$ 3.430', rate: '20,0%', tax: 'R$ 686', net: 'R$ 2.744', badge: 'darf', badgeLabel: 'DARF' },
+        ],
+        alert: '<strong>Dividendos de FIIs são isentos de IR para PF</strong>, desde que o fundo tenha 50+ cotistas e o investidor tenha menos de 10% das cotas. Já a venda de cotas com lucro gera DARF de 20%, sem isenção de R$20k.'
+    },
+
+    // ── NÍVEL 2: Fundos ────────────────────────────────────
+    fundos: {
+        level: 1,
+        parent: 'total',
+        title: 'Fundos de Investimento',
+        subtitle: 'Come-Cotas (mai/nov) · Complemento no Resgate',
+        kpis: [
+            { label: 'Come-Cotas Estimado', value: 'R$ 363', note: 'Próximo evento: novembro', class: 'red', type: 'primary' },
+            { label: 'Resultado Líquido', value: 'R$ 2.057', note: 'Após antecipação do IR', class: 'green', type: 'secondary' },
+        ],
+        bar: [
+            { label: 'Rendimento Período', value: 'R$ 2.420', sub: 'Acumulado desde mai/2025', type: '' },
+            { label: 'Alíquota Come-Cotas', value: '15%', sub: 'Fundo de longo prazo', type: '' },
+            { label: 'Próx. Come-Cotas', value: 'nov/2025', sub: 'Antecipação semestral', type: 'warn' },
+            { label: 'Complemento Resgate', value: 'R$ 0', sub: 'Prazo >720 dias', type: 'positive' },
+        ],
+        rows: [
+            { id: null, name: 'Fundo Multimercado XYZ', tag: 'Longo Prazo · Come-Cotas 15%', tagColor: '#7EA8C4', base: 'R$ 2.420', rate: '15,0%', tax: 'R$ 363', net: 'R$ 2.057', badge: 'comecotas', badgeLabel: 'Come-Cotas' },
+        ],
+        alert: 'O <strong>come-cotas é uma antecipação do IR</strong> e reduz a quantidade de cotas do investidor, não debita a conta bancária. No resgate, se houver saldo de imposto (alíquota real > alíquota do come-cotas), a diferença é cobrada na fonte.'
+    },
+};
+
+// ─────────────────────────────────────────────────────────
+// RENDER ENGINE
+// ─────────────────────────────────────────────────────────
+let navStack = ['total'];
+
+function render(viewKey) {
+    const view = VIEWS[viewKey];
+    if (!view) return;
+
+    const body = document.getElementById('cardBody');
+    body.innerHTML = '';
+
+    const frag = document.createDocumentFragment();
+    const wrapper = document.createElement('div');
+    wrapper.className = 'view-transition';
+
+    // ── Header
+    wrapper.innerHTML += `
         <div class="header">
-            <div>
-                <div id="backNav">←</div>
-                <h2 id="cardTitle">Imposto de Renda</h2>
-                <div class="subtitle" id="cardSubtitle">Provisão e Auditoria Fiscal (YTD)</div>
+            <div class="header-left">
+                ${view.level > 0 ? `<div class="back-btn" id="backBtn">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M8 2L4 6l4 4"/>
+                    </svg>
+                    Voltar
+                </div>` : ''}
+                <div class="card-title">${view.title}</div>
+                <div class="card-subtitle">${view.subtitle}</div>
             </div>
-            
             <div class="filters">
-                <div class="filter-group">
+                <div class="filter-pill">
                     <button class="filter-btn">MTD</button>
                     <button class="filter-btn active">YTD</button>
                     <button class="filter-btn">12M</button>
                 </div>
-                <div class="filter-group">
+                <div class="filter-pill">
                     <button class="filter-btn active">A Realizar</button>
                     <button class="filter-btn">Realizado</button>
                 </div>
-                <div class="filter-group">
-                    <button class="filter-btn active">Classes</button>
-                </div>
             </div>
-        </div>
+        </div>`;
 
-        <div class="kpi-section">
-            <div class="kpi-box">
-                <span class="label">IR Provisionado (Devido)</span>
-                <div class="main-value" id="mainValue">R$ 15.430,00</div>
-                <div class="subtitle" id="mainSub">Estimativa a pagar</div>
-            </div>
-            <div class="kpi-box" style="border-left: 1px solid var(--glass-border); padding-left: 20px;">
-                <span class="label">Resultado Líquido</span>
-                <div class="sub-value" id="subValue">R$ 82.500,00</div>
-                <div class="subtitle" id="benchSub">Após impostos</div>
-            </div>
-            
-            <div class="kpi-row-secondary">
-                <div class="kpi-mini">
-                    <span class="label">Base de Cálculo</span>
-                    <div class="mini-value" id="baseCalcValue">R$ 97.930,00</div>
-                </div>
-                <div class="kpi-mini">
-                    <span class="label">IR Já Pago</span>
-                    <div class="mini-value" id="paidValue">R$ 4.200,00</div>
-                </div>
-                <div class="kpi-mini">
-                    <span class="label">Alíquota Média</span>
-                    <div class="mini-value" id="rateValue">15,7%</div>
-                </div>
-            </div>
-        </div>
+    // ── KPI Grid
+    wrapper.innerHTML += `
+        <div class="kpi-grid">
+            ${view.kpis.map(k => `
+            <div class="kpi-card ${k.type}">
+                <div class="kpi-label">${k.label}</div>
+                <div class="kpi-value ${k.class}">${k.value}</div>
+                <div class="kpi-note">${k.note}</div>
+            </div>`).join('')}
+        </div>`;
 
+    // ── KPI Bar
+    wrapper.innerHTML += `
+        <div class="kpi-bar">
+            ${view.bar.map(b => `
+            <div class="kpi-bar-item ${b.type}">
+                <div class="kpi-label">${b.label}</div>
+                <div class="kpi-bar-value">${b.value}</div>
+                <div class="kpi-bar-sub">${b.sub}</div>
+            </div>`).join('')}
+        </div>`;
+
+    // ── Table
+    wrapper.innerHTML += `
+        <div class="section-header">
+            <span class="section-title">${view.level === 0 ? 'Por Categoria' : 'Por Ativo'}</span>
+            <span class="section-hint">Clique para detalhar</span>
+        </div>
         <div class="table-wrapper">
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>Ativo / Classe</th>
-                        <th>Base de Cálculo</th>
+                        <th>Rendimento</th>
                         <th>Alíquota</th>
                         <th>IR Estimado</th>
                         <th>Res. Líquido</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    </tbody>
+                <tbody>
+                    ${view.rows.map(row => `
+                    <tr ${row.id ? `onclick="navigateTo('${row.id}')"` : ''} style="${!row.id ? 'cursor:default' : ''}">
+                        <td>
+                            <div class="asset-name">${row.name}</div>
+                            <div class="asset-tag">
+                                <span class="tag-dot" style="background:${row.tagColor}"></span>
+                                ${row.tag}
+                            </div>
+                        </td>
+                        <td class="td-base">${row.base}</td>
+                        <td class="td-rate">${row.rate}</td>
+                        <td class="td-tax">${row.tax}</td>
+                        <td class="td-net">${row.net}</td>
+                        <td><span class="badge ${row.badge}">${row.badgeLabel}</span></td>
+                    </tr>`).join('')}
+                </tbody>
             </table>
-        </div>
-    </div>
+        </div>`;
 
-    <script>
-        // --- DATA STORE: Imposto de Renda ---
-        const viewStates = {
-            'total': {
-                title: 'Imposto de Renda',
-                subtitle: 'Provisão e Auditoria Fiscal (YTD)',
-                mainValue: 'R$ 15.430,00',
-                subValue: 'R$ 82.500,00',
-                baseCalc: 'R$ 97.930,00',
-                paid: 'R$ 4.200,00',
-                rate: '15,7%',
-                list: [
-                    { id: 'acoes-br', name: 'Ações Brasil (Swing)', meta: 'Tributação 15%', base: 'R$ 42.000,00', rate: '15,0%', tax: 'R$ 6.300,00', net: 'R$ 35.700,00' },
-                    { id: 'day-trade', name: 'Ações Brasil (Day Trade)', meta: 'Tributação 20%', base: 'R$ 15.500,00', rate: '20,0%', tax: 'R$ 3.100,00', net: 'R$ 12.400,00' },
-                    { id: 'fiis', name: 'Fundos Imobiliários', meta: 'Tributação 20% (Ganhos)', base: 'R$ 8.430,00', rate: '20,0%', tax: 'R$ 1.686,00', net: 'R$ 6.744,00' },
-                    { id: 'rf', name: 'Renda Fixa', meta: 'Tabela Regressiva', base: 'R$ 32.000,00', rate: '13,5%', tax: 'R$ 4.344,00', net: 'R$ 27.656,00' }
-                ]
-            },
-            'acoes-br': {
-                title: 'Ações Brasil (Swing Trade)',
-                subtitle: 'Detalhamento de Provisão',
-                mainValue: 'R$ 6.300,00',
-                subValue: 'R$ 35.700,00',
-                baseCalc: 'R$ 42.000,00',
-                paid: 'R$ 0,00',
-                rate: '15,0%',
-                list: [
-                    { name: 'PETR4', meta: 'Lucro Auferido', base: 'R$ 20.000,00', rate: '15,0%', tax: 'R$ 3.000,00', net: 'R$ 17.000,00' },
-                    { name: 'VALE3', meta: 'Lucro Auferido', base: 'R$ 15.000,00', rate: '15,0%', tax: 'R$ 2.250,00', net: 'R$ 12.750,00' },
-                    { name: 'WEGE3', meta: 'Lucro Auferido', base: 'R$ 7.000,00', rate: '15,0%', tax: 'R$ 1.050,00', net: 'R$ 5.950,00' }
-                ]
-            },
-            'rf': {
-                title: 'Renda Fixa',
-                subtitle: 'Retenção na Fonte Estimada',
-                mainValue: 'R$ 4.344,00',
-                subValue: 'R$ 27.656,00',
-                baseCalc: 'R$ 32.000,00',
-                paid: 'R$ 4.200,00', // Exemplo de já retido
-                rate: '13,5%',
-                list: [
-                    { name: 'Tesouro Selic 2027', meta: 'Venc. / +720 dias', base: 'R$ 12.000,00', rate: '15,0%', tax: 'R$ 1.800,00', net: 'R$ 10.200,00' },
-                    { name: 'CDB Banco ABC', meta: 'Resgate / 360-720 dias', base: 'R$ 20.000,00', rate: '17,5%', tax: 'R$ 3.500,00', net: 'R$ 16.500,00' },
-                    { name: 'Compensação IR', meta: 'Ajuste de carteira', base: '-', rate: '-', tax: '- R$ 956,00', net: '-' }
-                ]
-            },
-            'day-trade': {
-                title: 'Ações Brasil (Day Trade)',
-                subtitle: 'Apurado Mensalmente (20%)',
-                mainValue: 'R$ 3.100,00',
-                subValue: 'R$ 12.400,00',
-                baseCalc: 'R$ 15.500,00',
-                paid: 'R$ 0,00',
-                rate: '20,0%',
-                list: [
-                    { name: 'WINJ24', meta: 'Mini Índice', base: 'R$ 10.000,00', rate: '20,0%', tax: 'R$ 2.000,00', net: 'R$ 8.000,00' },
-                    { name: 'WDOJ24', meta: 'Mini Dólar', base: 'R$ 5.500,00', rate: '20,0%', tax: 'R$ 1.100,00', net: 'R$ 4.400,00' }
-                ]
-            },
-            'fiis': {
-                title: 'Fundos Imobiliários',
-                subtitle: 'Ganhos de Capital (Isento em Div.)',
-                mainValue: 'R$ 1.686,00',
-                subValue: 'R$ 6.744,00',
-                baseCalc: 'R$ 8.430,00',
-                paid: 'R$ 0,00',
-                rate: '20,0%',
-                list: [
-                    { name: 'HGLG11', meta: 'Venda de Cotas', base: 'R$ 5.000,00', rate: '20,0%', tax: 'R$ 1.000,00', net: 'R$ 4.000,00' },
-                    { name: 'XPML11', meta: 'Venda de Cotas', base: 'R$ 3.430,00', rate: '20,0%', tax: 'R$ 686,00', net: 'R$ 2.744,00' }
-                ]
-            }
-        };
+    // ── Carry row (se houver)
+    if (view.carry) {
+        wrapper.innerHTML += `
+            <div class="carry-row">
+                <div>
+                    <div class="carry-row-label">${view.carry.label}</div>
+                    <div class="carry-row-sub">${view.carry.sub}</div>
+                </div>
+                <div class="carry-row-value">${view.carry.value}</div>
+            </div>`;
+    }
 
-        const els = {
-            card: document.querySelector('.widget-card'),
-            title: document.getElementById('cardTitle'),
-            sub: document.getElementById('cardSubtitle'),
-            mainVal: document.getElementById('mainValue'),
-            subVal: document.getElementById('subValue'),
-            baseCalc: document.getElementById('baseCalcValue'),
-            paid: document.getElementById('paidValue'),
-            rate: document.getElementById('rateValue'),
-            tbody: document.getElementById('tableBody'),
-            back: document.getElementById('backNav')
-        };
+    // ── Alert (se houver)
+    if (view.alert) {
+        wrapper.innerHTML += `
+            <div class="alert-row">
+                <div class="alert-icon">⚠</div>
+                <div class="alert-text">${view.alert}</div>
+            </div>`;
+    }
 
-        let navHistory = ['total'];
+    body.appendChild(wrapper);
 
-        // --- VIEW UPDATES ---
-        async function updateView(key, isBack = false) {
-            const data = viewStates[key];
-            if (!data) return;
-
-            if (!isBack && key !== 'total') navHistory.push(key);
-            
-            // Animate out
-            els.card.classList.add('fade-exit');
-            await new Promise(r => setTimeout(r, 200));
-
-            // Populate KPIs
-            els.title.innerText = data.title;
-            els.sub.innerText = data.subtitle;
-            els.mainVal.innerText = data.mainValue;
-            els.subVal.innerText = data.subValue;
-            els.baseCalc.innerText = data.baseCalc;
-            els.paid.innerText = data.paid;
-            els.rate.innerText = data.rate;
-
-            els.back.style.display = key === 'total' ? 'none' : 'flex';
-
-            // Populate Table
-            els.tbody.innerHTML = data.list.map(item => `
-                <tr onclick="handleRowClick('${item.id || ''}')">
-                    <td>
-                        <div class="asset-name">${item.name}</div>
-                        <div class="asset-meta">${item.meta}</div>
-                    </td>
-                    <td>${item.base}</td>
-                    <td class="td-rate">${item.rate}</td>
-                    <td class="td-tax">${item.tax}</td>
-                    <td class="td-net">${item.net}</td>
-                </tr>
-            `).join('');
-
-            // Animate in
-            els.card.classList.remove('fade-exit');
-            els.card.classList.add('fade-enter');
-            void els.card.offsetWidth; 
-            els.card.classList.add('fade-active');
-            setTimeout(() => els.card.classList.remove('fade-enter', 'fade-active'), 300);
-        }
-
-        window.handleRowClick = (id) => {
-            if (id && viewStates[id]) updateView(id);
-        };
-
-        els.back.addEventListener('click', () => {
-            if (navHistory.length > 1) {
-                navHistory.pop();
-                updateView(navHistory[navHistory.length - 1], true);
-            }
+    // Events
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            navStack.pop();
+            render(navStack[navStack.length - 1]);
         });
+    }
 
-        // Toggle Buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                this.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.filter-pill').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
         });
+    });
+}
 
-        // Initialize
-        updateView('total');
-    </script>
+window.navigateTo = (key) => {
+    navStack.push(key);
+    render(key);
+};
+
+render('total');
+</script>
 </body>
 </html>
