@@ -157,376 +157,8 @@
     }
 
     function buildResultadoWidgetTemplate() {
-        return `
-            <style>
-                :host {
-                    all: initial;
-                    font-family: 'Inter', sans-serif;
-                }
-
-                .widget-card {
-                    display: flex;
-                    flex-direction: row;
-                    width: 880px;
-                    height: 430px;
-                    background: rgba(40, 35, 30, 0.4);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 20px;
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    overflow: hidden;
-                    color: #EAE5E0;
-                }
-
-                .left-side {
-                    flex: 1;
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .right-side {
-                    width: 280px;
-                    border-left: 0.5px solid rgba(212, 175, 55, 0.11);
-                    padding: 24px 20px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 16px;
-                    gap: 12px;
-                    flex-wrap: wrap;
-                }
-
-                h2 {
-                    font-family: 'Playfair Display', serif;
-                    font-weight: 600;
-                    font-size: 1.2rem;
-                    letter-spacing: 0.02em;
-                    color: #EAE5E0;
-                    margin: 0 0 2px;
-                }
-
-                .subtitle {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                    font-weight: 400;
-                }
-
-                .filters {
-                    display: flex;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-
-                .filter-group {
-                    background: rgba(0,0,0,0.2);
-                    padding: 2px;
-                    border-radius: 10px;
-                    display: flex;
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .filter-btn {
-                    background: transparent;
-                    border: none;
-                    color: #9A908A;
-                    padding: 4px 10px;
-                    font-size: 0.65rem;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                }
-
-                .filter-btn.active {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #D4AF37;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                }
-
-                .kpi-section {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-bottom: 12px;
-                }
-
-                .kpi-row-secondary {
-                    grid-column: 1 / -1;
-                    display: flex;
-                    gap: 16px;
-                    margin-top: 2px;
-                    padding-top: 12px;
-                    border-top: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .kpi-mini {
-                    flex: 1;
-                }
-
-                .label {
-                    font-size: 0.65rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    color: #9A908A;
-                    margin-bottom: 4px;
-                }
-
-                .main-value {
-                    font-size: 1.75rem;
-                    font-weight: 300;
-                    color: #EAE5E0;
-                    line-height: 1;
-                }
-
-                .main-value.positive,
-                .val-main.positive {
-                    color: #8BA888;
-                }
-
-                .main-value.negative,
-                .val-main.negative {
-                    color: #D97757;
-                }
-
-                .sub-value {
-                    font-size: 1.2rem;
-                    color: #EAE5E0;
-                    font-weight: 400;
-                }
-
-                .net-extra-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 10px;
-                    margin-top: 6px;
-                }
-
-                .proventos-chip {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: flex-end;
-                    background: rgba(255,255,255,0.04);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 8px;
-                    padding: 5px 8px;
-                }
-
-                .proventos-label {
-                    font-size: 0.58rem;
-                    text-transform: uppercase;
-                    color: #9A908A;
-                    letter-spacing: 0.06em;
-                    line-height: 1.1;
-                }
-
-                .proventos-value {
-                    font-size: 0.8rem;
-                    color: #D4AF37;
-                    font-weight: 600;
-                    margin-top: 2px;
-                }
-
-                .mini-value {
-                    font-size: 0.95rem;
-                    color: #EAE5E0;
-                    font-weight: 600;
-                }
-
-                .variation-pill {
-                    display: inline-flex;
-                    font-size: 0.7rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    margin-left: 6px;
-                    background: rgba(255,255,255,0.06);
-                    color: #9A908A;
-                }
-
-                .roi-line {
-                    font-size: 0.72rem;
-                    color: #9A908A;
-                    margin-top: 4px;
-                }
-
-                .chart-container {
-                    width: 100%;
-                    height: 138px;
-                    position: relative;
-                    margin-top: 2px;
-                    margin-bottom: 10px;
-                }
-
-                svg {
-                    width: 100%;
-                    height: 100%;
-                    overflow: visible;
-                }
-
-                .bar-positive { fill: #8BA888; opacity: 0.85; }
-                .bar-negative { fill: #D97757; opacity: 0.85; }
-                .bar-total { fill: #D4AF37; opacity: 0.9; }
-
-                .bar-positive:hover, .bar-negative:hover, .bar-total:hover { opacity: 1; cursor: pointer; }
-
-                .connector-line {
-                    stroke: rgba(255, 255, 255, 0.15);
-                    stroke-width: 1;
-                    stroke-dasharray: 2;
-                }
-
-                .axis-label {
-                    font-size: 0.6rem;
-                    fill: #9A908A;
-                    text-anchor: middle;
-                }
-
-                .chart-tooltip {
-                    position: absolute;
-                    background: rgba(25, 20, 18, 0.95);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    font-size: 0.75rem;
-                    pointer-events: none;
-                    display: none;
-                    z-index: 100;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    transform: translate(-50%, -100%);
-                    margin-top: -10px;
-                }
-
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    flex: 1;
-                    overflow-y: auto;
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(212,175,55,0.4) transparent;
-                }
-
-                .asset-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 10px 12px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border-radius: 8px;
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .asset-row:hover {
-                    background: rgba(255, 255, 255, 0.04);
-                    border-color: rgba(255, 230, 200, 0.08);
-                }
-
-                .asset-info { display: flex; flex-direction: column; }
-                .asset-name { font-weight: 600; font-size: 0.85rem; color: #EAE5E0; }
-                .asset-meta { font-size: 0.7rem; color: #9A908A; }
-
-                .asset-value { text-align: right; }
-                .val-main { font-size: 0.9rem; font-weight: 600; color: #EAE5E0; }
-                .val-sub { font-size: 0.7rem; color: #9A908A; }
-
-                #backNav {
-                    display: none;
-                    cursor: pointer;
-                    color: #D4AF37;
-                    margin-bottom: 4px;
-                    font-size: 1.4rem;
-                    align-items: center;
-                    font-weight: 300;
-                    width: fit-content;
-                    transition: transform 0.2s ease;
-                }
-
-                #backNav:hover { transform: translateX(-4px); }
-
-                @media (max-width: 840px) {
-                    .kpi-section { grid-template-columns: 1fr; }
-                    .kpi-row-secondary { flex-direction: column; gap: 12px; }
-                }
-            </style>
-
-            <div class="widget-card">
-                <div class="left-side">
-                    <div class="header">
-                        <div>
-                            <div id="backNav">←</div>
-                            <h2 id="cardTitle">Resultado Financeiro</h2>
-                            <div class="subtitle" id="cardSubtitle">Geração de valor no período</div>
-                        </div>
-
-                        <div class="filters">
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-period="mtd">MTD</button>
-                                <button class="filter-btn" data-period="ytd">YTD</button>
-                                <button class="filter-btn" data-period="12m">12M</button>
-                                <button class="filter-btn" data-period="origin">Origem</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-result-type="both">Ambos</button>
-                                <button class="filter-btn" data-result-type="realized">Realizado</button>
-                                <button class="filter-btn" data-result-type="unrealized">Não Realizado</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-section">
-                        <div class="kpi-box">
-                            <span class="label" id="mainLabel">Resultado Bruto</span>
-                            <div class="main-value" id="mainValue">R$ 0,00</div>
-                            <div class="roi-line" id="roiNominal">ROI Nominal: 0,00%</div>
-                            <div class="roi-line" id="roiReal">ROI Real: 0,00%</div>
-                        </div>
-                        <div class="kpi-box" style="border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 14px;">
-                            <span class="label" id="netLabel">Resultado Líquido (Est.)</span>
-                            <div class="sub-value" id="netValue">R$ 0,00</div>
-                            <div class="net-extra-row">
-                                <div class="subtitle" id="netDescription">Após impostos e taxas</div>
-                                <div class="proventos-chip">
-                                    <span class="proventos-label" id="dividendsLabel">Proventos (Div/JCP)</span>
-                                    <span class="proventos-value" id="dividendsValue">R$ 0,00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="kpi-row-secondary">
-                            <div class="kpi-mini">
-                                <span class="label" id="realizedLabel">Realizado (Caixa)</span>
-                                <div class="mini-value" id="realizedValue">R$ 0,00 <span class="variation-pill" id="realizedShare">0,0%</span></div>
-                            </div>
-                            <div class="kpi-mini">
-                                <span class="label" id="unrealizedLabel">Não Realizado (Papel)</span>
-                                <div class="mini-value" id="unrealizedValue">R$ 0,00 <span class="variation-pill" id="unrealizedShare">0,0%</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="chart-container" id="chartContainer">
-                        <div class="chart-tooltip" id="chartTooltip"></div>
-                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg"></svg>
-                    </div>
-                </div>
-
-                <div class="right-side">
-                    <div class="details-grid" id="detailsGrid"></div>
-                </div>
-            </div>
-        `;
+        const template = document.getElementById('invest-dash-template-resultado-widget');
+        return template ? template.innerHTML : '';
     }
 
     function createResultadoCardController(slotElement) {
@@ -731,10 +363,16 @@
             chartTooltip.style.display = 'block';
             chartTooltip.style.left = `${x}px`;
             chartTooltip.style.top = `${y}px`;
-            chartTooltip.innerHTML = `
-                <div style="color:#9A908A;font-size:0.68rem;">${label}</div>
-                <div style="font-weight:700;color:${value >= 0 ? '#8BA888' : '#D97757'};">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}</div>
-            `;
+
+            const tooltipLabel = document.createElement('div');
+            tooltipLabel.className = 'chart-tooltip-label';
+            tooltipLabel.textContent = label;
+
+            const tooltipValue = document.createElement('div');
+            tooltipValue.className = `chart-tooltip-value ${value >= 0 ? 'positive' : 'negative'}`;
+            tooltipValue.textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+            chartTooltip.replaceChildren(tooltipLabel, tooltipValue);
         }
 
         function hideTooltip() {
@@ -767,22 +405,48 @@
             const details = normalizeDetails(viewData.details);
             const rows = [...details.left, ...details.right];
 
-            detailsGrid.innerHTML = rows.map((row) => {
+            const fragment = document.createDocumentFragment();
+
+            rows.forEach((row) => {
                 const rawValue = parseMoneyText(row.value);
                 const valueClass = colorClassByValue(rawValue);
-                return `
-                    <div class="asset-row" data-view="${row.id || ''}">
-                        <div class="asset-info">
-                            <span class="asset-name">${row.name || '—'}</span>
-                            <span class="asset-meta">${row.meta || ''}</span>
-                        </div>
-                        <div class="asset-value">
-                            <div class="val-main ${valueClass}">${row.value || '—'}</div>
-                            <div class="val-sub">${row.varText || ''}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+
+                const rowNode = document.createElement('div');
+                rowNode.className = 'asset-row';
+                rowNode.setAttribute('data-view', row.id || '');
+
+                const info = document.createElement('div');
+                info.className = 'asset-info';
+
+                const name = document.createElement('span');
+                name.className = 'asset-name';
+                name.textContent = row.name || '—';
+                info.appendChild(name);
+
+                const meta = document.createElement('span');
+                meta.className = 'asset-meta';
+                meta.textContent = row.meta || '';
+                info.appendChild(meta);
+
+                const valueWrap = document.createElement('div');
+                valueWrap.className = 'asset-value';
+
+                const valueMain = document.createElement('div');
+                valueMain.className = `val-main ${valueClass}`;
+                valueMain.textContent = row.value || '—';
+                valueWrap.appendChild(valueMain);
+
+                const valueSub = document.createElement('div');
+                valueSub.className = 'val-sub';
+                valueSub.textContent = row.varText || '';
+                valueWrap.appendChild(valueSub);
+
+                rowNode.appendChild(info);
+                rowNode.appendChild(valueWrap);
+                fragment.appendChild(rowNode);
+            });
+
+            detailsGrid.replaceChildren(fragment);
         }
 
         function attachRowListeners() {
@@ -822,9 +486,22 @@
             dividendsLabel.textContent = viewData.dividendsLabel;
             dividendsValue.textContent = viewData.dividendsValue;
             realizedLabel.textContent = viewData.realizedLabel;
-            realizedValue.innerHTML = `${viewData.realizedValue} <span class="variation-pill">${viewData.realizedShare}</span>`;
+
+            const realizedAmount = document.createElement('span');
+            realizedAmount.textContent = viewData.realizedValue || '—';
+            const realizedShare = document.createElement('span');
+            realizedShare.className = 'variation-pill';
+            realizedShare.textContent = viewData.realizedShare || '';
+            realizedValue.replaceChildren(realizedAmount, document.createTextNode(' '), realizedShare);
+
             unrealizedLabel.textContent = viewData.unrealizedLabel;
-            unrealizedValue.innerHTML = `${viewData.unrealizedValue} <span class="variation-pill">${viewData.unrealizedShare}</span>`;
+
+            const unrealizedAmount = document.createElement('span');
+            unrealizedAmount.textContent = viewData.unrealizedValue || '—';
+            const unrealizedShare = document.createElement('span');
+            unrealizedShare.className = 'variation-pill';
+            unrealizedShare.textContent = viewData.unrealizedShare || '';
+            unrealizedValue.replaceChildren(unrealizedAmount, document.createTextNode(' '), unrealizedShare);
 
             backNav.style.display = viewId === 'total' ? 'none' : 'flex';
 

@@ -105,358 +105,8 @@
     }
 
     function buildVolatilidadeWidgetTemplate() {
-        return `
-            <style>
-                :host {
-                    all: initial;
-                    font-family: 'Inter', sans-serif;
-                }
-
-                .widget-card {
-                    display: flex;
-                    flex-direction: row;
-                    width: 880px;
-                    height: 430px;
-                    background: rgba(40, 35, 30, 0.4);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 20px;
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    overflow: hidden;
-                    color: #EAE5E0;
-                }
-
-                .left-side {
-                    flex: 1;
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .right-side {
-                    width: 280px;
-                    border-left: 0.5px solid rgba(212, 175, 55, 0.11);
-                    padding: 24px 20px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 20px;
-                    gap: 12px;
-                    flex-wrap: wrap;
-                }
-
-                h2 {
-                    font-family: 'Playfair Display', serif;
-                    font-weight: 600;
-                    font-size: 1.2rem;
-                    letter-spacing: 0.02em;
-                    color: #EAE5E0;
-                    margin: 0 0 2px;
-                }
-
-                .subtitle {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                    font-weight: 400;
-                }
-
-                .filters {
-                    display: flex;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                }
-
-                .filter-group {
-                    background: rgba(0,0,0,0.2);
-                    padding: 2px;
-                    border-radius: 10px;
-                    display: flex;
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .filter-btn {
-                    background: transparent;
-                    border: none;
-                    color: #9A908A;
-                    padding: 4px 10px;
-                    font-size: 0.65rem;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                }
-
-                .filter-btn.active {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #D4AF37;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                }
-
-                .kpi-section {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 16px;
-                    margin-bottom: 16px;
-                }
-
-                .kpi-row-secondary {
-                    grid-column: 1 / -1;
-                    display: flex;
-                    gap: 16px;
-                    margin-top: 4px;
-                    padding-top: 12px;
-                    border-top: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .kpi-mini { flex: 1; }
-
-                .label {
-                    font-size: 0.65rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    color: #9A908A;
-                    margin-bottom: 4px;
-                }
-
-                .main-value {
-                    font-size: 1.85rem;
-                    font-weight: 300;
-                    color: #EAE5E0;
-                    line-height: 1;
-                }
-
-                .sub-value {
-                    font-size: 1.2rem;
-                    color: #EAE5E0;
-                    font-weight: 400;
-                }
-
-                .mini-value {
-                    font-size: 0.95rem;
-                    color: #EAE5E0;
-                    font-weight: 600;
-                }
-
-                .variation-pill {
-                    display: inline-flex;
-                    font-size: 0.7rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    margin-left: 6px;
-                    background: rgba(255,255,255,0.05);
-                    color: #9A908A;
-                }
-
-                .variation-pill.negative {
-                    background: rgba(217, 119, 87, 0.12);
-                    color: #D97757;
-                }
-
-                .variation-pill.positive {
-                    background: rgba(139, 168, 136, 0.12);
-                    color: #8BA888;
-                }
-
-                .chart-container {
-                    width: 100%;
-                    height: 160px;
-                    position: relative;
-                    margin-bottom: 12px;
-                    cursor: crosshair;
-                    flex: 1;
-                    min-height: 130px;
-                }
-
-                svg {
-                    width: 100%;
-                    height: 100%;
-                    overflow: visible;
-                }
-
-                .band-path {
-                    fill: rgba(212, 175, 55, 0.12);
-                }
-
-                .line-path {
-                    fill: none;
-                    stroke: #D4AF37;
-                    stroke-width: 2;
-                    stroke-linecap: round;
-                    stroke-linejoin: round;
-                    filter: drop-shadow(0 0 4px rgba(212, 175, 55, 0.22));
-                }
-
-                .bench-path {
-                    fill: none;
-                    stroke: rgba(255, 255, 255, 0.30);
-                    stroke-width: 1.5;
-                    stroke-dasharray: 4, 4;
-                    stroke-linecap: round;
-                }
-
-                .interactive-line {
-                    stroke: rgba(255, 255, 255, 0.2);
-                    stroke-width: 1;
-                    stroke-dasharray: 4;
-                    display: none;
-                }
-
-                .chart-dot {
-                    fill: #D4AF37;
-                    stroke: #12100E;
-                    stroke-width: 2;
-                    display: none;
-                }
-
-                .chart-tooltip {
-                    position: absolute;
-                    background: rgba(25, 20, 18, 0.95);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    font-size: 0.75rem;
-                    pointer-events: none;
-                    display: none;
-                    z-index: 100;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    transform: translate(-50%, -100%);
-                    margin-top: -10px;
-                    white-space: nowrap;
-                }
-
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    flex: 1;
-                    overflow-y: auto;
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(212,175,55,0.4) transparent;
-                }
-
-                .asset-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 10px 12px;
-                    background: rgba(255, 255, 255, 0.02);
-                    border-radius: 8px;
-                    border: 1px solid transparent;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .asset-row:hover {
-                    background: rgba(255, 255, 255, 0.04);
-                    border-color: rgba(255, 230, 200, 0.08);
-                }
-
-                .asset-info { display: flex; flex-direction: column; }
-                .asset-name { font-weight: 600; font-size: 0.85rem; color: #EAE5E0; }
-                .asset-meta { font-size: 0.7rem; color: #9A908A; display: flex; align-items: center; gap: 6px; }
-
-                .status-dot {
-                    width: 6px;
-                    height: 6px;
-                    border-radius: 50%;
-                    display: inline-block;
-                    background-color: #D4AF37;
-                }
-
-                .asset-value { text-align: right; }
-                .val-main { font-size: 0.9rem; font-weight: 600; color: #EAE5E0; }
-                .val-sub { font-size: 0.7rem; color: #9A908A; }
-
-                #backNav {
-                    display: none;
-                    cursor: pointer;
-                    color: #D4AF37;
-                    margin-bottom: 4px;
-                    font-size: 1.4rem;
-                    align-items: center;
-                    font-weight: 300;
-                    width: fit-content;
-                    transition: transform 0.2s ease;
-                }
-
-                #backNav:hover { transform: translateX(-4px); }
-            </style>
-
-            <div class="widget-card">
-                <div class="left-side">
-                    <div class="header">
-                        <div>
-                            <div id="backNav">←</div>
-                            <h2 id="cardTitle">Volatilidade Anualizada</h2>
-                            <div class="subtitle" id="cardSubtitle">Oscilação e risco do portfólio</div>
-                        </div>
-
-                        <div class="filters">
-                            <div class="filter-group">
-                                <button class="filter-btn" data-period="mtd">MTD</button>
-                                <button class="filter-btn" data-period="ytd">YTD</button>
-                                <button class="filter-btn" data-period="12m">12M</button>
-                                <button class="filter-btn active" data-period="origin">Origem</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-scope="consolidated">Consol.</button>
-                                <button class="filter-btn" data-scope="classes">Classes</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-benchmark="ibov">vs IBOV</button>
-                                <button class="filter-btn" data-benchmark="cdi">vs CDI</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-section">
-                        <div class="kpi-box">
-                            <span class="label" id="mainLabel">Volatilidade (Portfólio)</span>
-                            <div class="main-value" id="mainValue">0,00%</div>
-                            <div class="subtitle" id="mainSub">Desvio padrão anual.</div>
-                        </div>
-                        <div class="kpi-box" style="border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px;">
-                            <span class="label" id="secondaryLabel">Volatilidade (Benchmark)</span>
-                            <div class="sub-value" id="benchValue">0,00%</div>
-                            <div class="subtitle" id="benchSub">IBOV</div>
-                        </div>
-
-                        <div class="kpi-row-secondary">
-                            <div class="kpi-mini">
-                                <span class="label">Máximo Drawdown</span>
-                                <div class="mini-value" id="drawdownValue">0,00% <span class="variation-pill" id="drawdownPill">Risco Baixo</span></div>
-                            </div>
-                            <div class="kpi-mini">
-                                <span class="label">Índice Sharpe</span>
-                                <div class="mini-value" id="sharpeValue">0,00 <span class="variation-pill" id="sharpePill">Ruim</span></div>
-                            </div>
-                            <div class="kpi-mini">
-                                <span class="label">Beta</span>
-                                <div class="mini-value" id="betaValue">0,00 <span class="variation-pill" id="betaPill">Neutro</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="chart-container" id="chartContainer">
-                        <div class="chart-tooltip" id="chartTooltip"></div>
-                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg"></svg>
-                    </div>
-                </div>
-
-                <div class="right-side">
-                    <div class="details-grid" id="detailsGrid"></div>
-                </div>
-            </div>
-        `;
+        const template = document.getElementById('invest-dash-template-volatilidade-widget');
+        return template ? template.innerHTML : '';
     }
 
     function createVolatilidadeCardController(slotElement) {
@@ -575,33 +225,90 @@
             const linePath = buildPath(linePoints);
             const benchPath = buildPath(benchPoints);
 
-            chartSvg.innerHTML = `
-                <path class="band-path" d="${bandPath}"></path>
-                <path class="bench-path" d="${benchPath}"></path>
-                <path class="line-path" d="${linePath}"></path>
-                <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine" />
-                <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot" />
-            `;
+            chartSvg.replaceChildren();
+
+            const createSvgElement = (tagName) => document.createElementNS('http://www.w3.org/2000/svg', tagName);
+
+            const band = createSvgElement('path');
+            band.setAttribute('class', 'band-path');
+            band.setAttribute('d', bandPath);
+
+            const benchmark = createSvgElement('path');
+            benchmark.setAttribute('class', 'bench-path');
+            benchmark.setAttribute('d', benchPath);
+
+            const line = createSvgElement('path');
+            line.setAttribute('class', 'line-path');
+            line.setAttribute('d', linePath);
+
+            const verticalLine = createSvgElement('line');
+            verticalLine.setAttribute('x1', '0');
+            verticalLine.setAttribute('y1', '0');
+            verticalLine.setAttribute('x2', '0');
+            verticalLine.setAttribute('y2', '200');
+            verticalLine.setAttribute('class', 'interactive-line');
+            verticalLine.setAttribute('id', 'vLine');
+
+            const dot = createSvgElement('circle');
+            dot.setAttribute('cx', '0');
+            dot.setAttribute('cy', '0');
+            dot.setAttribute('r', '4');
+            dot.setAttribute('class', 'chart-dot');
+            dot.setAttribute('id', 'chartDot');
+
+            chartSvg.appendChild(band);
+            chartSvg.appendChild(benchmark);
+            chartSvg.appendChild(line);
+            chartSvg.appendChild(verticalLine);
+            chartSvg.appendChild(dot);
         }
 
         function renderDetails(viewData) {
             const details = Array.isArray(viewData.details) ? viewData.details : [];
 
-            detailsGrid.innerHTML = details.map((item) => `
-                <div class="asset-row" data-view="${item.id || ''}">
-                    <div class="asset-info">
-                        <span class="asset-name">${item.name || '—'}</span>
-                        <div class="asset-meta">
-                            <span class="status-dot"></span>
-                            ${item.meta || ''}
-                        </div>
-                    </div>
-                    <div class="asset-value">
-                        <div class="val-main">${item.val || '—'}</div>
-                        <div class="val-sub">${item.sub || ''}</div>
-                    </div>
-                </div>
-            `).join('');
+            const fragment = document.createDocumentFragment();
+
+            details.forEach((item) => {
+                const row = document.createElement('div');
+                row.className = 'asset-row';
+                row.setAttribute('data-view', item.id || '');
+
+                const info = document.createElement('div');
+                info.className = 'asset-info';
+
+                const name = document.createElement('span');
+                name.className = 'asset-name';
+                name.textContent = item.name || '—';
+                info.appendChild(name);
+
+                const meta = document.createElement('div');
+                meta.className = 'asset-meta';
+
+                const statusDot = document.createElement('span');
+                statusDot.className = 'status-dot';
+                meta.appendChild(statusDot);
+                meta.appendChild(document.createTextNode(item.meta || ''));
+                info.appendChild(meta);
+
+                const valueWrap = document.createElement('div');
+                valueWrap.className = 'asset-value';
+
+                const valueMain = document.createElement('div');
+                valueMain.className = 'val-main';
+                valueMain.textContent = item.val || '—';
+                valueWrap.appendChild(valueMain);
+
+                const valueSub = document.createElement('div');
+                valueSub.className = 'val-sub';
+                valueSub.textContent = item.sub || '';
+                valueWrap.appendChild(valueSub);
+
+                row.appendChild(info);
+                row.appendChild(valueWrap);
+                fragment.appendChild(row);
+            });
+
+            detailsGrid.replaceChildren(fragment);
 
             shadowRoot.querySelectorAll('.asset-row').forEach((row) => {
                 row.addEventListener('click', () => {
@@ -694,12 +401,24 @@
                 chartTooltip.style.display = 'block';
                 chartTooltip.style.left = `${x}px`;
                 chartTooltip.style.top = `${(svgY / 200) * rect.height}px`;
-                chartTooltip.innerHTML = `
-                    <div style="font-size:0.65rem;color:#9A908A;margin-bottom:4px;">${dataPoint.label || dataPoint.date || 'Período'}</div>
-                    <div style="font-weight:700;color:#D4AF37;">Portfólio: ${Number(dataPoint.val || 0).toFixed(2).replace('.', ',')}</div>
-                    <div style="font-size:0.7rem;color:#9A908A;">Banda: ±${Number(dataPoint.dev || 0).toFixed(2).replace('.', ',')}</div>
-                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.6);margin-top:2px;">Benchmark: ${Number(dataPoint.bench || 0).toFixed(2).replace('.', ',')}</div>
-                `;
+
+                const tooltipTitle = document.createElement('div');
+                tooltipTitle.className = 'chart-tooltip-title';
+                tooltipTitle.textContent = dataPoint.label || dataPoint.date || 'Período';
+
+                const tooltipPortfolio = document.createElement('div');
+                tooltipPortfolio.className = 'chart-tooltip-portfolio';
+                tooltipPortfolio.textContent = `Portfólio: ${Number(dataPoint.val || 0).toFixed(2).replace('.', ',')}`;
+
+                const tooltipBand = document.createElement('div');
+                tooltipBand.className = 'chart-tooltip-band';
+                tooltipBand.textContent = `Banda: ±${Number(dataPoint.dev || 0).toFixed(2).replace('.', ',')}`;
+
+                const tooltipBenchmark = document.createElement('div');
+                tooltipBenchmark.className = 'chart-tooltip-benchmark';
+                tooltipBenchmark.textContent = `Benchmark: ${Number(dataPoint.bench || 0).toFixed(2).replace('.', ',')}`;
+
+                chartTooltip.replaceChildren(tooltipTitle, tooltipPortfolio, tooltipBand, tooltipBenchmark);
             });
 
             chartContainer.addEventListener('mouseleave', () => {

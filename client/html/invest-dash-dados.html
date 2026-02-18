@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invest Dash Dados</title>
+</head>
+<body>
+
+<!-- EXTRAIDO DE: client/js/invest-dash.alocacao.js -->
+<template id="invest-dash-template-alocacao-widget">
+            <link rel="stylesheet" href="../css/invest-dash-dados.css">
+
+            <div class="widget-card" data-widget="alocacao">
+                <div class="header">
+                    <div>
+                        <div id="backNav">←</div>
+                        <h2 id="cardTitle">Alocação Real vs. Planejada</h2>
+                        <div class="subtitle" id="cardSubtitle">Saúde estratégica da carteira</div>
+                    </div>
+                    <div class="filters">
+                        <button class="filter-btn active" data-mode="class">Classe</button>
+                        <button class="filter-btn" data-mode="subclass">Subclasse</button>
+                        <button class="filter-btn" data-mode="asset">Ativo</button>
+                    </div>
+                </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi-item">
+                        <div class="kpi-label">Aderência (Score)</div>
+                        <div class="kpi-value" id="scoreValue" style="color:#D4AF37;">100/100</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-label">Rebalanceamento por Aporte</div>
+                        <div class="kpi-value" id="aporteValue">R$ 0,00</div>
+                        <div class="subtitle" id="aporteHint" style="color:#8BA888;">Aporte recomendado</div>
+                    </div>
+                    <div class="kpi-item">
+                        <div class="kpi-label">Rebalanceamento por Venda/Compra</div>
+                        <div class="kpi-value" id="tradeNetValue">R$ 0,00</div>
+                        <div class="trade-line">
+                            <span class="trade-buy" id="tradeBuyValue">Comprar: R$ 0,00</span>
+                            <span class="trade-sell" id="tradeSellValue">Vender: R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="allocation-list" id="allocList"></div>
+            </div>
+</template>
+
+<!-- EXTRAIDO DE: client/js/invest-dash.patrimonio.js -->
+<template id="invest-dash-template-patrimonio-widget">
+            <link rel="stylesheet" href="../css/invest-dash-dados.css">
+
+            <div class="widget-card">
+                <div class="left-side">
+                    <div class="header">
+                        <div>
+                            <div id="backNav">←</div>
+                            <h2 id="cardTitle">Patrimônio Total</h2>
+                            <div class="subtitle" id="cardSubtitle">Posições ativas marcadas a mercado</div>
+                        </div>
+
+                        <div class="filters">
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-currency="BRL">R$</button>
+                                <button class="filter-btn" data-currency="USD">US$</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-class="all">Todas</button>
+                                <button class="filter-btn" data-class="RV">RV</button>
+                                <button class="filter-btn" data-class="RF">RF</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn" id="timeFilterBtn">Período</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-section">
+                        <div class="kpi-box">
+                            <span class="label" id="mainLabel">Valor Atual</span>
+                            <div class="main-value" id="mainValue">—</div>
+                            <div class="variation" id="mainVariation">—</div>
+                        </div>
+                        <div class="kpi-box secondary">
+                            <span class="label" id="secondaryLabel">Capital investido</span>
+                            <div class="sub-value" id="secondaryValue">—</div>
+                        </div>
+                        <div class="kpi-box tertiary">
+                            <span class="label" id="tertiaryLabel">Realizado (Em caixa)</span>
+                            <div class="sub-value" id="tertiaryValue">—</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" id="chartContainer">
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                            <defs>
+                                <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.4"></stop>
+                                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
+                                </linearGradient>
+                            </defs>
+
+                            <path class="chart-area" id="chartArea"></path>
+                            <path class="chart-line" id="chartLine"></path>
+                            <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
+                            <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="right-side">
+                    <div class="details-grid" id="detailsGrid"></div>
+                </div>
+
+                <div class="modal-overlay" id="timeModal">
+                    <div class="modal-content">
+                        <h3>Selecionar Período</h3>
+                        <div class="period-grid">
+                            <div class="period-opt" data-months="1">1 Mês</div>
+                            <div class="period-opt" data-months="3">3 Meses</div>
+                            <div class="period-opt" data-months="6">6 Meses</div>
+                            <div class="period-opt" data-months="12">1 Ano</div>
+                            <div class="period-opt" data-months="24">2 Anos</div>
+                            <div class="period-opt" data-months="0">Tudo</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+</template>
+
+<!-- EXTRAIDO DE: client/js/invest-dash.rentabilidade.js -->
+<template id="invest-dash-template-rentabilidade-widget">
+            <link rel="stylesheet" href="../css/invest-dash-dados.css">
+
+            <div class="widget-card">
+                <div class="left-side">
+                    <div class="header">
+                        <div>
+                            <div id="backNav">←</div>
+                            <h2 id="cardTitle">Rentabilidade Consolidada</h2>
+                            <div class="subtitle" id="cardSubtitle">Performance ponderada pelo tempo</div>
+                        </div>
+
+                        <div class="filters">
+                            <div class="filter-group">
+                                <button class="filter-btn" data-period="mtd">MTD</button>
+                                <button class="filter-btn" data-period="ytd">YTD</button>
+                                <button class="filter-btn" data-period="12m">12M</button>
+                                <button class="filter-btn active" data-period="origin">Origem</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-currency="BRL">R$</button>
+                                <button class="filter-btn" data-currency="USD">US$</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-section">
+                        <div class="kpi-box">
+                            <span class="label" id="mainLabel">Retorno do Período</span>
+                            <div class="main-value" id="mainValue">0,00%</div>
+                            <div class="variation" id="mainVariation">Alfa: +0,00 p.p.</div>
+                        </div>
+
+                        <div class="kpi-box secondary">
+                            <span class="label">Benchmarks Comparativos</span>
+                            <div class="benchmarks-summary" id="benchmarksSummary"></div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" id="chartContainer">
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
+                            <defs>
+                                <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.3"></stop>
+                                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
+                                </linearGradient>
+                            </defs>
+
+                            <path class="chart-area" id="chartArea"></path>
+                            <path class="chart-line" id="chartLine"></path>
+
+                            <path id="path-cdi" class="benchmark-line bench-cdi"></path>
+                            <path id="path-selic" class="benchmark-line bench-selic"></path>
+                            <path id="path-ibov" class="benchmark-line bench-ibov"></path>
+                            <path id="path-ifix" class="benchmark-line bench-ifix"></path>
+
+                            <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
+                            <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="right-side">
+                    <div class="details-grid" id="detailsGrid"></div>
+                </div>
+            </div>
+</template>
+
+<!-- EXTRAIDO DE: client/js/invest-dash.resultado.js -->
+<template id="invest-dash-template-resultado-widget">
+            <link rel="stylesheet" href="../css/invest-dash-dados.css">
+
+            <div class="widget-card">
+                <div class="left-side">
+                    <div class="header">
+                        <div>
+                            <div id="backNav">←</div>
+                            <h2 id="cardTitle">Resultado Financeiro</h2>
+                            <div class="subtitle" id="cardSubtitle">Geração de valor no período</div>
+                        </div>
+
+                        <div class="filters">
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-period="mtd">MTD</button>
+                                <button class="filter-btn" data-period="ytd">YTD</button>
+                                <button class="filter-btn" data-period="12m">12M</button>
+                                <button class="filter-btn" data-period="origin">Origem</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-result-type="both">Ambos</button>
+                                <button class="filter-btn" data-result-type="realized">Realizado</button>
+                                <button class="filter-btn" data-result-type="unrealized">Não Realizado</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-section">
+                        <div class="kpi-box">
+                            <span class="label" id="mainLabel">Resultado Bruto</span>
+                            <div class="main-value" id="mainValue">R$ 0,00</div>
+                            <div class="roi-line" id="roiNominal">ROI Nominal: 0,00%</div>
+                            <div class="roi-line" id="roiReal">ROI Real: 0,00%</div>
+                        </div>
+                        <div class="kpi-box" style="border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 14px;">
+                            <span class="label" id="netLabel">Resultado Líquido (Est.)</span>
+                            <div class="sub-value" id="netValue">R$ 0,00</div>
+                            <div class="net-extra-row">
+                                <div class="subtitle" id="netDescription">Após impostos e taxas</div>
+                                <div class="proventos-chip">
+                                    <span class="proventos-label" id="dividendsLabel">Proventos (Div/JCP)</span>
+                                    <span class="proventos-value" id="dividendsValue">R$ 0,00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="kpi-row-secondary">
+                            <div class="kpi-mini">
+                                <span class="label" id="realizedLabel">Realizado (Caixa)</span>
+                                <div class="mini-value" id="realizedValue">R$ 0,00 <span class="variation-pill" id="realizedShare">0,0%</span></div>
+                            </div>
+                            <div class="kpi-mini">
+                                <span class="label" id="unrealizedLabel">Não Realizado (Papel)</span>
+                                <div class="mini-value" id="unrealizedValue">R$ 0,00 <span class="variation-pill" id="unrealizedShare">0,0%</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" id="chartContainer">
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg"></svg>
+                    </div>
+                </div>
+
+                <div class="right-side">
+                    <div class="details-grid" id="detailsGrid"></div>
+                </div>
+            </div>
+</template>
+
+<!-- EXTRAIDO DE: client/js/invest-dash.volatilidade.js -->
+<template id="invest-dash-template-volatilidade-widget">
+            <link rel="stylesheet" href="../css/invest-dash-dados.css">
+
+            <div class="widget-card">
+                <div class="left-side">
+                    <div class="header">
+                        <div>
+                            <div id="backNav">←</div>
+                            <h2 id="cardTitle">Volatilidade Anualizada</h2>
+                            <div class="subtitle" id="cardSubtitle">Oscilação e risco do portfólio</div>
+                        </div>
+
+                        <div class="filters">
+                            <div class="filter-group">
+                                <button class="filter-btn" data-period="mtd">MTD</button>
+                                <button class="filter-btn" data-period="ytd">YTD</button>
+                                <button class="filter-btn" data-period="12m">12M</button>
+                                <button class="filter-btn active" data-period="origin">Origem</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-scope="consolidated">Consol.</button>
+                                <button class="filter-btn" data-scope="classes">Classes</button>
+                            </div>
+                            <div class="filter-group">
+                                <button class="filter-btn active" data-benchmark="ibov">vs IBOV</button>
+                                <button class="filter-btn" data-benchmark="cdi">vs CDI</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-section">
+                        <div class="kpi-box">
+                            <span class="label" id="mainLabel">Volatilidade (Portfólio)</span>
+                            <div class="main-value" id="mainValue">0,00%</div>
+                            <div class="subtitle" id="mainSub">Desvio padrão anual.</div>
+                        </div>
+                        <div class="kpi-box" style="border-left: 1px solid rgba(255, 230, 200, 0.08); padding-left: 20px;">
+                            <span class="label" id="secondaryLabel">Volatilidade (Benchmark)</span>
+                            <div class="sub-value" id="benchValue">0,00%</div>
+                            <div class="subtitle" id="benchSub">IBOV</div>
+                        </div>
+
+                        <div class="kpi-row-secondary">
+                            <div class="kpi-mini">
+                                <span class="label">Máximo Drawdown</span>
+                                <div class="mini-value" id="drawdownValue">0,00% <span class="variation-pill" id="drawdownPill">Risco Baixo</span></div>
+                            </div>
+                            <div class="kpi-mini">
+                                <span class="label">Índice Sharpe</span>
+                                <div class="mini-value" id="sharpeValue">0,00 <span class="variation-pill" id="sharpePill">Ruim</span></div>
+                            </div>
+                            <div class="kpi-mini">
+                                <span class="label">Beta</span>
+                                <div class="mini-value" id="betaValue">0,00 <span class="variation-pill" id="betaPill">Neutro</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-container" id="chartContainer">
+                        <div class="chart-tooltip" id="chartTooltip"></div>
+                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg"></svg>
+                    </div>
+                </div>
+
+                <div class="right-side">
+                    <div class="details-grid" id="detailsGrid"></div>
+                </div>
+            </div>
+</template>
+</body>
+</html>

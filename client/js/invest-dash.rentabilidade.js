@@ -104,366 +104,8 @@
     }
 
     function buildRentabilidadeWidgetTemplate() {
-        return `
-            <style>
-                :host {
-                    all: initial;
-                    font-family: 'Inter', sans-serif;
-                }
-
-                .widget-card {
-                    width: 880px;
-                    height: 430px;
-                    background: rgba(40, 35, 30, 0.4);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 20px;
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    position: relative;
-                    overflow: hidden;
-                    box-sizing: border-box;
-                    color: #EAE5E0;
-                    display: flex;
-                    flex-direction: row;
-                }
-
-                .left-side {
-                    flex: 1;
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .right-side {
-                    width: 280px;
-                    border-left: 0.5px solid rgba(212, 175, 55, 0.12);
-                    padding: 24px 20px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 20px;
-                    flex-shrink: 0;
-                    gap: 12px;
-                }
-
-                h2 {
-                    font-family: 'Playfair Display', serif;
-                    font-weight: 600;
-                    font-size: 1.2rem;
-                    letter-spacing: 0.02em;
-                    color: #EAE5E0;
-                    margin: 0 0 2px;
-                }
-
-                .subtitle {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                    font-weight: 400;
-                }
-
-                .filters {
-                    display: flex;
-                    gap: 8px;
-                    flex-wrap: wrap;
-                    justify-content: flex-end;
-                }
-
-                .filter-group {
-                    background: rgba(0,0,0,0.2);
-                    padding: 2px;
-                    border-radius: 10px;
-                    display: flex;
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .filter-btn {
-                    background: transparent;
-                    border: none;
-                    color: #9A908A;
-                    padding: 4px 10px;
-                    font-size: 0.65rem;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                }
-
-                .filter-btn.active {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #D4AF37;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                }
-
-                .kpi-section {
-                    display: grid;
-                    grid-template-columns: 1.5fr 1fr;
-                    gap: 16px;
-                    margin-bottom: 20px;
-                    flex-shrink: 0;
-                }
-
-                .kpi-box {
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                }
-
-                .kpi-box.secondary {
-                    border-left: 1px solid rgba(212, 175, 55, 0.4);
-                    padding-left: 18px;
-                }
-
-                .label {
-                    font-size: 0.65rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    color: #9A908A;
-                    margin-bottom: 4px;
-                }
-
-                .main-value {
-                    font-size: 1.85rem;
-                    font-weight: 300;
-                    color: #EAE5E0;
-                    line-height: 1;
-                }
-
-                .variation {
-                    display: inline-flex;
-                    align-items: center;
-                    font-size: 0.78rem;
-                    font-weight: 600;
-                    margin-top: 6px;
-                    padding: 3px 8px;
-                    border-radius: 6px;
-                    background: rgba(139, 168, 136, 0.1);
-                    color: #8BA888;
-                    width: fit-content;
-                }
-
-                .variation.negative {
-                    background: rgba(217, 119, 87, 0.1);
-                    color: #D97757;
-                }
-
-                .benchmarks-summary {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 10px;
-                    width: 100%;
-                }
-
-                .bench-item {
-                    display: flex;
-                    flex-direction: column;
-                    border-left: 2px solid transparent;
-                    padding-left: 8px;
-                }
-
-                .bench-item.cdi { border-color: rgba(255, 255, 255, 0.45); }
-                .bench-item.selic { border-color: #8BA888; }
-                .bench-item.ibov { border-color: #D4AF37; }
-                .bench-item.ifix { border-color: #D97757; }
-
-                .bench-label {
-                    font-size: 0.58rem;
-                    text-transform: uppercase;
-                    color: #9A908A;
-                }
-
-                .bench-val {
-                    font-size: 0.9rem;
-                    color: #EAE5E0;
-                    font-weight: 600;
-                }
-
-                .chart-container {
-                    width: 100%;
-                    height: 140px;
-                    position: relative;
-                    cursor: crosshair;
-                    flex: 1;
-                }
-
-                svg {
-                    width: 100%;
-                    height: 100%;
-                    overflow: visible;
-                }
-
-                .chart-area {
-                    fill: url(#gradientGolden);
-                    opacity: 0.3;
-                }
-
-                .chart-line {
-                    fill: none;
-                    stroke: #D4AF37;
-                    stroke-width: 2;
-                    stroke-linecap: round;
-                    filter: drop-shadow(0 0 6px rgba(212,175,55,0.2));
-                }
-
-                .benchmark-line {
-                    fill: none;
-                    stroke-width: 1.15;
-                    stroke-dasharray: 4, 3;
-                    stroke-linecap: round;
-                    opacity: 0;
-                    transition: opacity 0.25s ease;
-                }
-
-                .benchmark-line.active { opacity: 1; }
-                .bench-cdi { stroke: rgba(255, 255, 255, 0.45); }
-                .bench-selic { stroke: #8BA888; }
-                .bench-ibov { stroke: #D4AF37; }
-                .bench-ifix { stroke: #D97757; }
-
-                .interactive-line {
-                    stroke: rgba(255,255,255,0.2);
-                    stroke-width: 1;
-                    stroke-dasharray: 4;
-                    display: none;
-                }
-
-                .chart-dot {
-                    fill: #D4AF37;
-                    stroke: #12100E;
-                    stroke-width: 2;
-                    display: none;
-                }
-
-                .chart-tooltip {
-                    position: absolute;
-                    background: rgba(25, 20, 18, 0.95);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    font-size: 0.75rem;
-                    pointer-events: none;
-                    display: none;
-                    z-index: 100;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    transform: translate(-50%, -100%);
-                    margin-top: -10px;
-                    white-space: nowrap;
-                }
-
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    flex: 1;
-                    overflow-y: auto;
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(212,175,55,0.4) transparent;
-                }
-
-                .asset-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 8px 0;
-                    border-bottom: 1px solid rgba(255,255,255,0.03);
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-
-                .asset-row:hover { background: rgba(255,255,255,0.02); }
-                .asset-info { display: flex; flex-direction: column; }
-                .asset-name { font-size: 0.85rem; }
-                .asset-meta { font-size: 0.7rem; color: #9A908A; }
-                .asset-value { text-align: right; font-size: 0.9rem; font-feature-settings: 'tnum'; }
-
-                #backNav {
-                    display: none;
-                    cursor: pointer;
-                    color: #D4AF37;
-                    margin-bottom: 4px;
-                    font-size: 1.4rem;
-                    align-items: center;
-                    font-weight: 300;
-                    width: fit-content;
-                    transition: transform 0.2s ease;
-                }
-
-                #backNav:hover { transform: translateX(-4px); }
-            </style>
-
-            <div class="widget-card">
-                <div class="left-side">
-                    <div class="header">
-                        <div>
-                            <div id="backNav">←</div>
-                            <h2 id="cardTitle">Rentabilidade Consolidada</h2>
-                            <div class="subtitle" id="cardSubtitle">Performance ponderada pelo tempo</div>
-                        </div>
-
-                        <div class="filters">
-                            <div class="filter-group">
-                                <button class="filter-btn" data-period="mtd">MTD</button>
-                                <button class="filter-btn" data-period="ytd">YTD</button>
-                                <button class="filter-btn" data-period="12m">12M</button>
-                                <button class="filter-btn active" data-period="origin">Origem</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-currency="BRL">R$</button>
-                                <button class="filter-btn" data-currency="USD">US$</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-section">
-                        <div class="kpi-box">
-                            <span class="label" id="mainLabel">Retorno do Período</span>
-                            <div class="main-value" id="mainValue">0,00%</div>
-                            <div class="variation" id="mainVariation">Alfa: +0,00 p.p.</div>
-                        </div>
-
-                        <div class="kpi-box secondary">
-                            <span class="label">Benchmarks Comparativos</span>
-                            <div class="benchmarks-summary" id="benchmarksSummary"></div>
-                        </div>
-                    </div>
-
-                    <div class="chart-container" id="chartContainer">
-                        <div class="chart-tooltip" id="chartTooltip"></div>
-                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
-                            <defs>
-                                <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.3"></stop>
-                                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
-                                </linearGradient>
-                            </defs>
-
-                            <path class="chart-area" id="chartArea"></path>
-                            <path class="chart-line" id="chartLine"></path>
-
-                            <path id="path-cdi" class="benchmark-line bench-cdi"></path>
-                            <path id="path-selic" class="benchmark-line bench-selic"></path>
-                            <path id="path-ibov" class="benchmark-line bench-ibov"></path>
-                            <path id="path-ifix" class="benchmark-line bench-ifix"></path>
-
-                            <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
-                            <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="right-side">
-                    <div class="details-grid" id="detailsGrid"></div>
-                </div>
-            </div>
-        `;
+        const template = document.getElementById('invest-dash-template-rentabilidade-widget');
+        return template ? template.innerHTML : '';
     }
 
     function createRentabilidadeCardController(slotElement) {
@@ -606,40 +248,87 @@
 
         function renderBenchmarks(viewData) {
             const items = Array.isArray(viewData.benchmarks) ? viewData.benchmarks : [];
-            benchmarksSummary.innerHTML = items.map((item) => `
-                <div class="bench-item ${item.id}">
-                    <span class="bench-label">${item.name}</span>
-                    <span class="bench-val">${item.value}</span>
-                </div>
-            `).join('');
+            const fragment = document.createDocumentFragment();
+
+            items.forEach((item) => {
+                const benchItem = document.createElement('div');
+                benchItem.className = `bench-item ${item.id || ''}`.trim();
+
+                const benchLabel = document.createElement('span');
+                benchLabel.className = 'bench-label';
+                benchLabel.textContent = item.name || 'Benchmark';
+
+                const benchValue = document.createElement('span');
+                benchValue.className = 'bench-val';
+                benchValue.textContent = item.value || '—';
+
+                benchItem.appendChild(benchLabel);
+                benchItem.appendChild(benchValue);
+                fragment.appendChild(benchItem);
+            });
+
+            benchmarksSummary.replaceChildren(fragment);
 
             state.activeBenchmarkIds = items.map((item) => item.id).filter(Boolean);
         }
 
         function renderDetails(viewData) {
             const details = normalizeDetails(viewData.details);
-            const buildSection = (title, rows) => {
-                if (!rows.length) return '';
+            const fragment = document.createDocumentFragment();
 
-                const htmlRows = rows.map((row) => `
-                    <div class="asset-row" data-view="${row.id || ''}">
-                        <div class="asset-info">
-                            <span class="asset-name">${row.name || '—'}</span>
-                            <span class="asset-meta">${row.meta || ''}</span>
-                        </div>
-                        <div class="asset-value">
-                            <div>${row.value || '—'}</div>
-                            <div style="font-size:0.7rem;color:#9A908A;">${row.varText || ''}</div>
-                        </div>
-                    </div>
-                `).join('');
+            const appendSection = (title, rows) => {
+                if (!rows.length) return;
 
-                return `<div><span class="label" style="opacity:0.7;display:block;margin-bottom:6px;">${title}</span>${htmlRows}</div>`;
+                const section = document.createElement('div');
+
+                const titleNode = document.createElement('span');
+                titleNode.className = 'label detail-section-title';
+                titleNode.textContent = title;
+                section.appendChild(titleNode);
+
+                rows.forEach((row) => {
+                    const rowNode = document.createElement('div');
+                    rowNode.className = 'asset-row';
+                    rowNode.setAttribute('data-view', row.id || '');
+
+                    const info = document.createElement('div');
+                    info.className = 'asset-info';
+
+                    const name = document.createElement('span');
+                    name.className = 'asset-name';
+                    name.textContent = row.name || '—';
+                    info.appendChild(name);
+
+                    const meta = document.createElement('span');
+                    meta.className = 'asset-meta';
+                    meta.textContent = row.meta || '';
+                    info.appendChild(meta);
+
+                    const valueWrap = document.createElement('div');
+                    valueWrap.className = 'asset-value';
+
+                    const mainValue = document.createElement('div');
+                    mainValue.textContent = row.value || '—';
+                    valueWrap.appendChild(mainValue);
+
+                    const subValue = document.createElement('div');
+                    subValue.className = 'asset-value-sub';
+                    subValue.textContent = row.varText || '';
+                    valueWrap.appendChild(subValue);
+
+                    rowNode.appendChild(info);
+                    rowNode.appendChild(valueWrap);
+                    section.appendChild(rowNode);
+                });
+
+                fragment.appendChild(section);
             };
 
             const leftTitle = state.currentView === 'total' ? 'Renda Variável' : 'Ativos';
             const rightTitle = state.currentView === 'total' ? 'Renda Fixa' : 'Detalhes';
-            detailsGrid.innerHTML = `${buildSection(leftTitle, details.left)}${buildSection(rightTitle, details.right)}`;
+            appendSection(leftTitle, details.left);
+            appendSection(rightTitle, details.right);
+            detailsGrid.replaceChildren(fragment);
         }
 
         function attachRowListeners() {
@@ -711,17 +400,14 @@
                 chartTooltip.style.left = `${x}px`;
                 chartTooltip.style.top = `${(nearest.y / 200) * rect.height}px`;
 
-                let tooltipHtml = `<div style="font-weight:700;color:#D4AF37;margin-bottom:4px;">Portfólio (${nearest.label}): ${nearest.value.toFixed(2).replace('.', ',')}%</div>`;
+                const tooltipFragment = document.createDocumentFragment();
+                const portfolioLine = document.createElement('div');
+                portfolioLine.className = 'tooltip-portfolio-line';
+                portfolioLine.textContent = `Portfólio (${nearest.label}): ${nearest.value.toFixed(2).replace('.', ',')}%`;
+                tooltipFragment.appendChild(portfolioLine);
 
                 state.activeBenchmarkIds.forEach((benchmarkId) => {
                     const benchmarkValue = nearest.benchmarks[benchmarkId];
-                    const colorMap = {
-                        cdi: 'rgba(255,255,255,0.85)',
-                        selic: '#8BA888',
-                        ibov: '#D4AF37',
-                        ifix: '#D97757',
-                    };
-
                     const labelMap = {
                         cdi: 'CDI',
                         selic: 'Selic',
@@ -729,10 +415,13 @@
                         ifix: 'IFIX',
                     };
 
-                    tooltipHtml += `<div style="font-size:0.7rem;color:${colorMap[benchmarkId]};opacity:0.95;">${labelMap[benchmarkId]}: ${benchmarkValue.toFixed(2).replace('.', ',')}%</div>`;
+                    const benchmarkLine = document.createElement('div');
+                    benchmarkLine.className = `tooltip-benchmark-line benchmark-${benchmarkId}`;
+                    benchmarkLine.textContent = `${labelMap[benchmarkId]}: ${benchmarkValue.toFixed(2).replace('.', ',')}%`;
+                    tooltipFragment.appendChild(benchmarkLine);
                 });
 
-                chartTooltip.innerHTML = tooltipHtml;
+                chartTooltip.replaceChildren(tooltipFragment);
             });
 
             chartContainer.addEventListener('mouseleave', () => {

@@ -124,345 +124,8 @@
     }
 
     function buildPatrimonioWidgetTemplate() {
-        return `
-            <style>
-                :host {
-                    all: initial;
-                    font-family: 'Inter', sans-serif;
-                }
-
-                .widget-card {
-                    width: 880px;
-                    height: 430px;
-                    background: rgba(40, 35, 30, 0.4);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 20px;
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    position: relative;
-                    overflow: hidden;
-                    box-sizing: border-box;
-                    color: #EAE5E0;
-                    display: flex;
-                    flex-direction: row;
-                }
-
-                .left-side {
-                    flex: 1;
-                    padding: 24px;
-                    display: flex;
-                    flex-direction: column;
-                    overflow: hidden;
-                }
-
-                .right-side {
-                    width: 260px;
-                    border-left: 0.5px solid rgba(212, 175, 55, 0.12);
-                    padding: 24px 20px;
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    margin-bottom: 20px;
-                    flex-shrink: 0;
-                }
-
-                h2 {
-                    font-family: 'Playfair Display', serif;
-                    font-weight: 600;
-                    font-size: 1.2rem;
-                    letter-spacing: 0.02em;
-                    color: #EAE5E0;
-                    margin: 0 0 2px;
-                }
-
-                .subtitle {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                    font-weight: 400;
-                }
-
-                .filters { display: flex; gap: 8px; }
-                .filter-group {
-                    background: rgba(0,0,0,0.2);
-                    padding: 2px;
-                    border-radius: 10px;
-                    display: flex;
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                }
-
-                .filter-btn {
-                    background: transparent;
-                    border: none;
-                    color: #9A908A;
-                    padding: 4px 10px;
-                    font-size: 0.65rem;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                }
-
-                .filter-btn.active {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #D4AF37;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-                }
-
-                .kpi-section {
-                    display: grid;
-                    grid-template-columns: 1fr 0.8fr 0.8fr;
-                    gap: 16px;
-                    margin-bottom: 20px;
-                    flex-shrink: 0;
-                }
-
-                .kpi-box { display: flex; flex-direction: column; justify-content: center; }
-                .kpi-box.secondary { border-left: 1px solid rgba(212, 175, 55, 0.4); padding-left: 15px; }
-                .kpi-box.tertiary { border-left: 1px solid rgba(212, 175, 55, 0.4); padding-left: 15px; }
-
-                .label {
-                    font-size: 0.65rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.08em;
-                    color: #9A908A;
-                    margin-bottom: 4px;
-                }
-
-                .main-value { font-size: 1.8rem; font-weight: 300; color: #EAE5E0; line-height: 1; }
-                .sub-value { font-size: 1.25rem; color: #EAE5E0; margin-top: 2px; }
-
-                .variation {
-                    display: inline-flex;
-                    align-items: center;
-                    font-size: 0.75rem;
-                    font-weight: 600;
-                    margin-top: 6px;
-                    padding: 3px 8px;
-                    border-radius: 6px;
-                    background: rgba(139, 168, 136, 0.1);
-                    color: #8BA888;
-                    width: fit-content;
-                }
-
-                .chart-container {
-                    width: 100%;
-                    height: 140px;
-                    position: relative;
-                    cursor: crosshair;
-                    flex: 1;
-                }
-
-                svg { width: 100%; height: 100%; overflow: visible; }
-                .chart-area { fill: url(#gradientGolden); opacity: 0.4; }
-                .chart-line {
-                    fill: none;
-                    stroke: #D4AF37;
-                    stroke-width: 2;
-                    stroke-linecap: round;
-                    filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.2));
-                }
-
-                .interactive-line { stroke: rgba(255,255,255,0.2); stroke-width: 1; stroke-dasharray: 4; display: none; }
-                .chart-dot { fill: #D4AF37; stroke: #12100E; stroke-width: 2; display: none; }
-
-                .chart-tooltip {
-                    position: absolute;
-                    background: rgba(25, 20, 18, 0.95);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    font-size: 0.75rem;
-                    pointer-events: none;
-                    display: none;
-                    z-index: 100;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                    transform: translate(-50%, -100%);
-                    margin-top: -10px;
-                }
-
-                .details-grid {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                    flex: 1;
-                    overflow-y: auto;
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(212, 175, 55, 0.3) transparent;
-                    padding-right: 4px;
-                }
-
-                .details-grid::-webkit-scrollbar { width: 4px; }
-                .details-grid::-webkit-scrollbar-track { background: transparent; }
-                .details-grid::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 10px; }
-
-                .asset-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 8px 0;
-                    border-bottom: 1px solid rgba(255,255,255,0.03);
-                    font-weight: 400;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-
-                .asset-row:hover { background: rgba(255,255,255,0.02); }
-                .asset-info { display: flex; flex-direction: column; }
-                .asset-name { font-weight: 400; font-size: 0.85rem; }
-                .asset-meta { font-size: 0.7rem; color: #9A908A; }
-                .asset-value { text-align: right; font-weight: 400; font-size: 0.9rem; font-feature-settings: 'tnum'; }
-
-                #backNav {
-                    display: none;
-                    cursor: pointer;
-                    color: #D4AF37;
-                    margin-bottom: 4px;
-                    font-size: 1.4rem;
-                    align-items: center;
-                    font-weight: 300;
-                    width: fit-content;
-                    transition: transform 0.2s ease;
-                }
-
-                #backNav:hover { transform: translateX(-4px); }
-
-                .modal-overlay {
-                    position: absolute;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    background: rgba(0,0,0,0.7);
-                    backdrop-filter: blur(4px);
-                    display: none;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1000;
-                    border-radius: 20px;
-                }
-
-                .modal-content {
-                    background: #1A1614;
-                    border: 1px solid rgba(255, 230, 200, 0.1);
-                    padding: 24px;
-                    border-radius: 16px;
-                    width: 280px;
-                    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-                }
-
-                .modal-content h3 {
-                    margin: 0 0 16px;
-                    font-family: 'Playfair Display', serif;
-                    font-size: 1.1rem;
-                }
-
-                .period-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, 1fr);
-                    gap: 10px;
-                }
-
-                .period-opt {
-                    background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(255,255,255,0.05);
-                    color: #EAE5E0;
-                    padding: 10px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-size: 0.8rem;
-                    text-align: center;
-                    transition: all 0.2s;
-                }
-
-                .period-opt:hover {
-                    background: rgba(212, 175, 55, 0.15);
-                    border-color: #D4AF37;
-                    color: #D4AF37;
-                }
-            </style>
-
-            <div class="widget-card">
-                <div class="left-side">
-                    <div class="header">
-                        <div>
-                            <div id="backNav">←</div>
-                            <h2 id="cardTitle">Patrimônio Total</h2>
-                            <div class="subtitle" id="cardSubtitle">Posições ativas marcadas a mercado</div>
-                        </div>
-
-                        <div class="filters">
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-currency="BRL">R$</button>
-                                <button class="filter-btn" data-currency="USD">US$</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn active" data-class="all">Todas</button>
-                                <button class="filter-btn" data-class="RV">RV</button>
-                                <button class="filter-btn" data-class="RF">RF</button>
-                            </div>
-                            <div class="filter-group">
-                                <button class="filter-btn" id="timeFilterBtn">Período</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="kpi-section">
-                        <div class="kpi-box">
-                            <span class="label" id="mainLabel">Valor Atual</span>
-                            <div class="main-value" id="mainValue">—</div>
-                            <div class="variation" id="mainVariation">—</div>
-                        </div>
-                        <div class="kpi-box secondary">
-                            <span class="label" id="secondaryLabel">Capital investido</span>
-                            <div class="sub-value" id="secondaryValue">—</div>
-                        </div>
-                        <div class="kpi-box tertiary">
-                            <span class="label" id="tertiaryLabel">Realizado (Em caixa)</span>
-                            <div class="sub-value" id="tertiaryValue">—</div>
-                        </div>
-                    </div>
-
-                    <div class="chart-container" id="chartContainer">
-                        <div class="chart-tooltip" id="chartTooltip"></div>
-                        <svg viewBox="0 0 800 200" preserveAspectRatio="none" id="chartSvg">
-                            <defs>
-                                <linearGradient id="gradientGolden" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0%" stop-color="#D4AF37" stop-opacity="0.4"></stop>
-                                    <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"></stop>
-                                </linearGradient>
-                            </defs>
-
-                            <path class="chart-area" id="chartArea"></path>
-                            <path class="chart-line" id="chartLine"></path>
-                            <line x1="0" y1="0" x2="0" y2="200" class="interactive-line" id="vLine"></line>
-                            <circle cx="0" cy="0" r="4" class="chart-dot" id="chartDot"></circle>
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="right-side">
-                    <div class="details-grid" id="detailsGrid"></div>
-                </div>
-
-                <div class="modal-overlay" id="timeModal">
-                    <div class="modal-content">
-                        <h3>Selecionar Período</h3>
-                        <div class="period-grid">
-                            <div class="period-opt" data-months="1">1 Mês</div>
-                            <div class="period-opt" data-months="3">3 Meses</div>
-                            <div class="period-opt" data-months="6">6 Meses</div>
-                            <div class="period-opt" data-months="12">1 Ano</div>
-                            <div class="period-opt" data-months="24">2 Anos</div>
-                            <div class="period-opt" data-months="0">Tudo</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
+        const template = document.getElementById('invest-dash-template-patrimonio-widget');
+        return template ? template.innerHTML : '';
     }
 
     function createPatrimonioCardController(slotElement) {
@@ -613,24 +276,60 @@
 
         function renderDetails(viewData) {
             const details = normalizeDetails(viewData.details);
-            const buildSection = (items, title) => {
-                if (!items.length) return '';
-                const rows = items.map((item) => `
-                    <div class="asset-row" data-view="${item.id || ''}">
-                        <div class="asset-info">
-                            <span class="asset-name">${item.name || '—'}</span>
-                            <span class="asset-meta">${item.meta || ''}</span>
-                        </div>
-                        <div class="asset-value">
-                            <div>${item.value || '—'}</div>
-                            <div style="font-size:0.7rem;color:#8BA888;">${item.varText || ''}</div>
-                        </div>
-                    </div>
-                `).join('');
-                return `<div style="margin-bottom: 20px;"><span class="label" style="opacity:0.7; display: block; margin-bottom: 8px;">${title}</span>${rows}</div>`;
+            const fragment = document.createDocumentFragment();
+
+            const appendSection = (items, title) => {
+                if (!items.length) return;
+
+                const section = document.createElement('div');
+                section.className = 'detail-section';
+
+                const sectionTitle = document.createElement('span');
+                sectionTitle.className = 'label detail-section-title';
+                sectionTitle.textContent = title;
+                section.appendChild(sectionTitle);
+
+                items.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = 'asset-row';
+                    row.setAttribute('data-view', item.id || '');
+
+                    const info = document.createElement('div');
+                    info.className = 'asset-info';
+
+                    const name = document.createElement('span');
+                    name.className = 'asset-name';
+                    name.textContent = item.name || '—';
+                    info.appendChild(name);
+
+                    const meta = document.createElement('span');
+                    meta.className = 'asset-meta';
+                    meta.textContent = item.meta || '';
+                    info.appendChild(meta);
+
+                    const valueWrap = document.createElement('div');
+                    valueWrap.className = 'asset-value';
+
+                    const valueMain = document.createElement('div');
+                    valueMain.textContent = item.value || '—';
+                    valueWrap.appendChild(valueMain);
+
+                    const valueSub = document.createElement('div');
+                    valueSub.className = 'asset-value-sub';
+                    valueSub.textContent = item.varText || '';
+                    valueWrap.appendChild(valueSub);
+
+                    row.appendChild(info);
+                    row.appendChild(valueWrap);
+                    section.appendChild(row);
+                });
+
+                fragment.appendChild(section);
             };
 
-            detailsGrid.innerHTML = `${buildSection(details.left, 'Ativos')}${buildSection(details.right, 'Detalhes')}`;
+            appendSection(details.left, 'Ativos');
+            appendSection(details.right, 'Detalhes');
+            detailsGrid.replaceChildren(fragment);
         }
 
         function attachRowListeners() {
@@ -704,10 +403,15 @@
                 chartTooltip.style.display = 'block';
                 chartTooltip.style.left = `${x}px`;
                 chartTooltip.style.top = `${(nearest.y / 200) * rect.height}px`;
-                chartTooltip.innerHTML = `
-                    <div style="color:#9A908A;font-size:0.65rem;">${nearest.label}</div>
-                    <div style="color:#D4AF37;font-weight:700;">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: nearest.currency }).format(nearest.value)}</div>
-                `;
+                const tooltipLabel = document.createElement('div');
+                tooltipLabel.className = 'chart-tooltip-label';
+                tooltipLabel.textContent = nearest.label;
+
+                const tooltipValue = document.createElement('div');
+                tooltipValue.className = 'chart-tooltip-value';
+                tooltipValue.textContent = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: nearest.currency }).format(nearest.value);
+
+                chartTooltip.replaceChildren(tooltipLabel, tooltipValue);
             });
 
             chartContainer.addEventListener('mouseleave', () => {

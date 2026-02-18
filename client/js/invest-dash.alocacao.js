@@ -134,282 +134,8 @@
     }
 
     function buildAlocacaoWidgetTemplate() {
-        return `
-            <style>
-                :host { all: initial; font-family: 'Inter', sans-serif; }
-
-                .widget-card {
-                    width: 880px;
-                    height: 430px;
-                    background: rgba(40, 35, 30, 0.4);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    border-radius: 20px;
-                    box-shadow: 0 15px 30px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
-                    color: #EAE5E0;
-                    box-sizing: border-box;
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    padding: 24px;
-                }
-
-                .header {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 16px;
-                    gap: 10px;
-                    align-items: flex-start;
-                }
-
-                h2 {
-                    font-family: 'Playfair Display', serif;
-                    margin: 0;
-                    font-size: 1.2rem;
-                    font-weight: 600;
-                }
-
-                .subtitle {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                }
-
-                #backNav {
-                    display: none;
-                    cursor: pointer;
-                    color: #D4AF37;
-                    font-size: 1.4rem;
-                    margin-bottom: 4px;
-                    width: fit-content;
-                    transition: transform 0.2s ease;
-                }
-
-                #backNav:hover { transform: translateX(-4px); }
-
-                .filters { display: flex; gap: 8px; margin-top: 8px; }
-
-                .filter-btn {
-                    background: rgba(0,0,0,0.2);
-                    border: 1px solid rgba(255, 230, 200, 0.08);
-                    color: #9A908A;
-                    padding: 4px 10px;
-                    border-radius: 8px;
-                    font-size: 0.65rem;
-                    cursor: pointer;
-                    transition: 0.3s;
-                    font-family: 'Inter', sans-serif;
-                    font-weight: 600;
-                }
-
-                .filter-btn.active {
-                    background: rgba(255,255,255,0.1);
-                    color: #D4AF37;
-                }
-
-                .kpi-grid {
-                    display: flex;
-                    gap: 20px;
-                    margin-bottom: 14px;
-                    border-bottom: 1px solid rgba(255, 230, 200, 0.08);
-                    padding-bottom: 14px;
-                }
-
-                .kpi-item { flex: 1; min-width: 0; }
-
-                .kpi-label {
-                    font-size: 0.65rem;
-                    color: #9A908A;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                }
-
-                .kpi-value {
-                    font-size: 1.4rem;
-                    font-weight: 300;
-                    line-height: 1.2;
-                }
-
-                .trade-line {
-                    display: flex;
-                    gap: 8px;
-                    margin-top: 4px;
-                    font-size: 0.72rem;
-                    color: #9A908A;
-                }
-
-                .trade-buy { color: #8BA888; }
-                .trade-sell { color: #D97757; }
-
-                .allocation-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    flex: 1;
-                    overflow: auto;
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(212, 175, 55, 0.35) transparent;
-                }
-
-                .allocation-list::-webkit-scrollbar { width: 4px; }
-                .allocation-list::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.35); border-radius: 8px; }
-
-                .alloc-row {
-                    cursor: pointer;
-                    padding: 8px;
-                    border-radius: 8px;
-                    transition: background 0.2s;
-                    border: 1px solid transparent;
-                }
-
-                .alloc-row.no-drill { cursor: default; }
-                .alloc-row:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); }
-
-                .row-header {
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 6px;
-                    font-size: 0.85rem;
-                    gap: 8px;
-                    align-items: center;
-                }
-
-                .row-name-wrap {
-                    display: inline-flex;
-                    gap: 6px;
-                    align-items: center;
-                }
-
-                .row-meta {
-                    font-size: 0.75rem;
-                    color: #9A908A;
-                    display: flex;
-                    gap: 10px;
-                    align-items: center;
-                }
-
-                .bar-container {
-                    position: relative;
-                    height: 8px;
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 4px;
-                    overflow: hidden;
-                    margin-top: 6px;
-                }
-
-                .bar-target-marker {
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    width: 2px;
-                    background: rgba(255,255,255,0.5);
-                    z-index: 2;
-                }
-
-                .bar-fill {
-                    height: 100%;
-                    border-radius: 4px;
-                    transition: width 0.35s ease;
-                }
-
-                .on-track { background: #D4AF37; }
-                .over { background: #D97757; }
-                .under { background: #8BA888; }
-
-                .diff-tag {
-                    font-size: 0.7rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    background: rgba(0,0,0,0.3);
-                    white-space: nowrap;
-                }
-
-                .diff-tag.over { color: #D97757; }
-                .diff-tag.under { color: #8BA888; }
-                .diff-tag.on-track { color: #D4AF37; }
-
-                .rebalance-chip {
-                    font-size: 0.66rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    background: rgba(255,255,255,0.06);
-                    color: #EAE5E0;
-                    white-space: nowrap;
-                }
-
-                .rebalance-chip.buy { color: #8BA888; }
-                .rebalance-chip.sell { color: #D97757; }
-                .rebalance-chip.hold { color: #D4AF37; }
-
-                .result-chip {
-                    font-size: 0.66rem;
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    background: rgba(0,0,0,0.28);
-                    white-space: nowrap;
-                }
-
-                .result-chip.positive { color: #8BA888; }
-                .result-chip.negative { color: #D97757; }
-                .result-chip.neutral { color: #9A908A; }
-
-                .info-badge {
-                    display: inline-flex;
-                    width: 16px;
-                    height: 16px;
-                    border-radius: 999px;
-                    border: 1px solid rgba(255,255,255,0.2);
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 0.65rem;
-                    color: #D4AF37;
-                    background: rgba(0,0,0,0.25);
-                }
-
-                .empty-state {
-                    color: #9A908A;
-                    font-size: 0.78rem;
-                    padding: 10px 2px;
-                }
-            </style>
-
-            <div class="widget-card">
-                <div class="header">
-                    <div>
-                        <div id="backNav">←</div>
-                        <h2 id="cardTitle">Alocação Real vs. Planejada</h2>
-                        <div class="subtitle" id="cardSubtitle">Saúde estratégica da carteira</div>
-                    </div>
-                    <div class="filters">
-                        <button class="filter-btn active" data-mode="class">Classe</button>
-                        <button class="filter-btn" data-mode="subclass">Subclasse</button>
-                        <button class="filter-btn" data-mode="asset">Ativo</button>
-                    </div>
-                </div>
-
-                <div class="kpi-grid">
-                    <div class="kpi-item">
-                        <div class="kpi-label">Aderência (Score)</div>
-                        <div class="kpi-value" id="scoreValue" style="color:#D4AF37;">100/100</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-label">Rebalanceamento por Aporte</div>
-                        <div class="kpi-value" id="aporteValue">R$ 0,00</div>
-                        <div class="subtitle" id="aporteHint" style="color:#8BA888;">Aporte recomendado</div>
-                    </div>
-                    <div class="kpi-item">
-                        <div class="kpi-label">Rebalanceamento por Venda/Compra</div>
-                        <div class="kpi-value" id="tradeNetValue">R$ 0,00</div>
-                        <div class="trade-line">
-                            <span class="trade-buy" id="tradeBuyValue">Comprar: R$ 0,00</span>
-                            <span class="trade-sell" id="tradeSellValue">Vender: R$ 0,00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="allocation-list" id="allocList"></div>
-            </div>
-        `;
+        const template = document.getElementById('invest-dash-template-alocacao-widget');
+        return template ? template.innerHTML : '';
     }
 
     function createAlocacaoCardController(containerElement) {
@@ -568,7 +294,10 @@
             const rows = getRowsForCurrentView();
 
             if (!rows.length) {
-                allocList.innerHTML = '<div class="empty-state">Nenhum dado de alocação disponível para os filtros atuais.</div>';
+                const emptyState = document.createElement('div');
+                emptyState.className = 'empty-state';
+                emptyState.textContent = 'Nenhum dado de alocação disponível para os filtros atuais.';
+                allocList.replaceChildren(emptyState);
                 return;
             }
 
@@ -578,7 +307,9 @@
                 ...rows.map((row) => Number(row.targetPct || 0))
             );
 
-            allocList.innerHTML = rows.map((item) => {
+            const fragment = document.createDocumentFragment();
+
+            rows.forEach((item) => {
                 const width = Math.max(0, Math.min(100, (Number(item.realPct || 0) / scaleMax) * 100));
                 const targetPos = Math.max(0, Math.min(100, (Number(item.targetPct || 0) / scaleMax) * 100));
                 const hasChildren = (state.childrenByParent.get(item.id) || []).length > 0;
@@ -598,36 +329,112 @@
                         ? `Vender ${formatCurrency(Math.abs(item.adjustmentValue || 0))}`
                         : 'Manter posição';
 
-                return `
-                    <div class="alloc-row ${hasChildren ? '' : 'no-drill'}" data-node-id="${item.id}" data-drill="${hasChildren ? '1' : '0'}" title="${item.infoMessage ? item.infoMessage.replaceAll('"', '&quot;') : ''}">
-                        <div class="row-header">
-                            <span class="row-name-wrap">
-                                <span>${item.name}</span>
-                                ${item.hasLossAlert ? '<span class="info-badge" aria-label="Alerta">i</span>' : ''}
-                            </span>
-                            <span>${item.currentValueText}</span>
-                        </div>
-                        <div class="bar-container">
-                            <div class="bar-fill ${item.status}" style="width:${width}%"></div>
-                            <div class="bar-target-marker" style="left:${targetPos}%" title="Meta: ${item.targetPctText}"></div>
-                        </div>
-                        <div class="row-header" style="margin-top:6px;">
-                            <div class="row-meta">
-                                <span>Real: ${formatSignedPercent(item.realPct, 2)}</span>
-                                <span style="opacity:0.5">Meta: ${formatSignedPercent(item.targetPct, 2)}</span>
-                                ${levelMeta ? `<span style="opacity:0.65">${levelMeta}</span>` : ''}
-                            </div>
-                            <div class="row-meta">
-                                <span class="diff-tag ${item.status}">${item.actionLabel}</span>
-                                <span class="rebalance-chip ${adjustmentDirection}">${adjustmentLabel}</span>
-                                <span class="result-chip ${item.realizedResultClass}">Realizado: ${item.realizedResultText}</span>
-                                <span class="result-chip ${item.unrealizedPnlClass}">Em aberto: ${item.unrealizedPnlText}</span>
-                                <span class="result-chip ${item.financialResultClass}">Resultado: ${item.financialResultText}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+                const row = document.createElement('div');
+                row.className = `alloc-row ${hasChildren ? '' : 'no-drill'}`.trim();
+                row.setAttribute('data-node-id', item.id || '');
+                row.setAttribute('data-drill', hasChildren ? '1' : '0');
+                row.setAttribute('title', item.infoMessage || '');
+
+                const headerTop = document.createElement('div');
+                headerTop.className = 'row-header';
+
+                const nameWrap = document.createElement('span');
+                nameWrap.className = 'row-name-wrap';
+
+                const nameText = document.createElement('span');
+                nameText.textContent = item.name || '—';
+                nameWrap.appendChild(nameText);
+
+                if (item.hasLossAlert) {
+                    const infoBadge = document.createElement('span');
+                    infoBadge.className = 'info-badge';
+                    infoBadge.setAttribute('aria-label', 'Alerta');
+                    infoBadge.textContent = 'i';
+                    nameWrap.appendChild(infoBadge);
+                }
+
+                const currentValue = document.createElement('span');
+                currentValue.textContent = item.currentValueText || '—';
+
+                headerTop.appendChild(nameWrap);
+                headerTop.appendChild(currentValue);
+
+                const barContainer = document.createElement('div');
+                barContainer.className = 'bar-container';
+
+                const barFill = document.createElement('div');
+                barFill.className = `bar-fill ${item.status || ''}`.trim();
+                barFill.style.width = `${width}%`;
+
+                const targetMarker = document.createElement('div');
+                targetMarker.className = 'bar-target-marker';
+                targetMarker.style.left = `${targetPos}%`;
+                targetMarker.setAttribute('title', `Meta: ${item.targetPctText}`);
+
+                barContainer.appendChild(barFill);
+                barContainer.appendChild(targetMarker);
+
+                const headerBottom = document.createElement('div');
+                headerBottom.className = 'row-header';
+                headerBottom.style.marginTop = '6px';
+
+                const metaLeft = document.createElement('div');
+                metaLeft.className = 'row-meta';
+
+                const realPct = document.createElement('span');
+                realPct.textContent = `Real: ${formatSignedPercent(item.realPct, 2)}`;
+                metaLeft.appendChild(realPct);
+
+                const targetPct = document.createElement('span');
+                targetPct.style.opacity = '0.5';
+                targetPct.textContent = `Meta: ${formatSignedPercent(item.targetPct, 2)}`;
+                metaLeft.appendChild(targetPct);
+
+                if (levelMeta) {
+                    const levelMetaNode = document.createElement('span');
+                    levelMetaNode.style.opacity = '0.65';
+                    levelMetaNode.textContent = levelMeta;
+                    metaLeft.appendChild(levelMetaNode);
+                }
+
+                const metaRight = document.createElement('div');
+                metaRight.className = 'row-meta';
+
+                const diffTag = document.createElement('span');
+                diffTag.className = `diff-tag ${item.status || ''}`.trim();
+                diffTag.textContent = item.actionLabel || '';
+                metaRight.appendChild(diffTag);
+
+                const rebalanceChip = document.createElement('span');
+                rebalanceChip.className = `rebalance-chip ${adjustmentDirection}`;
+                rebalanceChip.textContent = adjustmentLabel;
+                metaRight.appendChild(rebalanceChip);
+
+                const realizedChip = document.createElement('span');
+                realizedChip.className = `result-chip ${item.realizedResultClass || ''}`.trim();
+                realizedChip.textContent = `Realizado: ${item.realizedResultText}`;
+                metaRight.appendChild(realizedChip);
+
+                const unrealizedChip = document.createElement('span');
+                unrealizedChip.className = `result-chip ${item.unrealizedPnlClass || ''}`.trim();
+                unrealizedChip.textContent = `Em aberto: ${item.unrealizedPnlText}`;
+                metaRight.appendChild(unrealizedChip);
+
+                const financialChip = document.createElement('span');
+                financialChip.className = `result-chip ${item.financialResultClass || ''}`.trim();
+                financialChip.textContent = `Resultado: ${item.financialResultText}`;
+                metaRight.appendChild(financialChip);
+
+                headerBottom.appendChild(metaLeft);
+                headerBottom.appendChild(metaRight);
+
+                row.appendChild(headerTop);
+                row.appendChild(barContainer);
+                row.appendChild(headerBottom);
+                fragment.appendChild(row);
+            });
+
+            allocList.replaceChildren(fragment);
 
             allocList.querySelectorAll('.alloc-row').forEach((row) => {
                 row.addEventListener('click', () => {

@@ -23,14 +23,6 @@
         return `${day}/${month}/${year}`;
     }
 
-    function escapeHtml(value) {
-        return String(value || '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;');
-    }
-
     function resolveBadgeClass(type) {
         if (type === 'compra' || type === 'aporte') return 'badge-compra';
         if (type === 'venda' || type === 'exclusao') return 'badge-venda';
@@ -130,23 +122,50 @@
             }
 
             emptyState.style.display = 'none';
-            tableBody.innerHTML = pageRows.map((row) => {
+            const fragment = document.createDocumentFragment();
+
+            pageRows.forEach((row) => {
                 const badgeClass = resolveBadgeClass(row.activityType);
                 const quantity = Number(row.quantity || 0);
                 const impactValue = Number(row.impact?.value || 0);
                 const impactClass = resolveImpactClass(impactValue);
 
-                return `
-                    <tr>
-                        <td>${escapeHtml(formatDate(row.referenceDate))}</td>
-                        <td>${escapeHtml(row.assetDisplay || '—')}</td>
-                        <td><span class="badge ${badgeClass}">${escapeHtml(row.activityLabel || 'Movimentação')}</span></td>
-                        <td class="text-right">${escapeHtml(quantity ? quantity.toLocaleString('pt-BR', { maximumFractionDigits: 8 }) : '—')}</td>
-                        <td class="text-right">${escapeHtml(Number(row.unitPrice || 0) > 0 ? formatCurrency(row.unitPrice, row.currency) : '—')}</td>
-                        <td class="text-right ${impactClass}">${escapeHtml(formatCurrency(impactValue, row.currency))}</td>
-                    </tr>
-                `;
-            }).join('');
+                const tr = document.createElement('tr');
+
+                const dateCell = document.createElement('td');
+                dateCell.textContent = formatDate(row.referenceDate);
+                tr.appendChild(dateCell);
+
+                const assetCell = document.createElement('td');
+                assetCell.textContent = row.assetDisplay || '—';
+                tr.appendChild(assetCell);
+
+                const activityCell = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = `badge ${badgeClass}`;
+                badge.textContent = row.activityLabel || 'Movimentação';
+                activityCell.appendChild(badge);
+                tr.appendChild(activityCell);
+
+                const quantityCell = document.createElement('td');
+                quantityCell.className = 'text-right';
+                quantityCell.textContent = quantity ? quantity.toLocaleString('pt-BR', { maximumFractionDigits: 8 }) : '—';
+                tr.appendChild(quantityCell);
+
+                const unitPriceCell = document.createElement('td');
+                unitPriceCell.className = 'text-right';
+                unitPriceCell.textContent = Number(row.unitPrice || 0) > 0 ? formatCurrency(row.unitPrice, row.currency) : '—';
+                tr.appendChild(unitPriceCell);
+
+                const impactCell = document.createElement('td');
+                impactCell.className = `text-right ${impactClass}`;
+                impactCell.textContent = formatCurrency(impactValue, row.currency);
+                tr.appendChild(impactCell);
+
+                fragment.appendChild(tr);
+            });
+
+            tableBody.replaceChildren(fragment);
         }
 
         function applyPeriodButtons() {

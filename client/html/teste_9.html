@@ -1,998 +1,1242 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise Fundamentalista - Valuation</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <style>
-        :root {
-            /* Paleta Crepuscular & Rocha - Golden Hour UI */
-            --bg-deep: #12100E;
-            --bg-ambient: #2A211D;
-            --glass-surface: rgba(40, 35, 30, 0.4);
-            --glass-border: rgba(255, 230, 200, 0.08);
-            --glass-shine: rgba(255, 255, 255, 0.03);
-            
-            /* Cores de Acento */
-            --primary-gold: #D4AF37;
-            --primary-glow: rgba(212, 175, 55, 0.2);
-            --terracotta: #D97757;
-            --positive: #8BA888;
-            --text-main: #EAE5E0;
-            --text-muted: #9A908A;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield — Análise Fundamentalista</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0c0b0a;
+  --bg-surf: #111009;
+  --bg-card: #181613;
+  --bg-hover: #1e1c18;
+  --glass: rgba(20,18,14,0.82);
+  --b: rgba(255,255,255,0.065);
+  --bw: rgba(196,154,108,0.18);
+  --tx: #ede8e0;
+  --tx2: #968e83;
+  --tx3: #524d47;
+  --gold: #c49a6c;
+  --gold-d: rgba(196,154,108,0.11);
+  --gold-d2: rgba(196,154,108,0.18);
+  --terra: #bf6649;
+  --terra-d: rgba(191,102,73,0.1);
+  --green: #7aac88;
+  --red: #bf7a6a;
+  --sidebar: 390px;
+  --nav-h: 54px;
+}
+html { font-size: 16.1px; scroll-behavior: smooth; }
+body { background: var(--bg); color: var(--tx); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+body::before { content:''; position:fixed; inset:0; background:url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
 
-            --shadow-soft: 0 10px 30px -5px rgba(0, 0, 0, 0.5);
-            --shadow-hover: 0 20px 40px -5px rgba(0, 0, 0, 0.7);
-            --radius-card: 20px;
-            --radius-btn: 10px;
-        }
+/* ─── LAYOUT ─── */
+.app { display:flex; flex-direction:column; min-height:100vh; position:relative; z-index:1; }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+/* NAV */
+.nav { height:var(--nav-h); display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid var(--b); background:rgba(12,11,10,0.92); backdrop-filter:blur(14px); position:sticky; top:0; z-index:200; }
+.nav-logo { font-family:'Playfair Display',serif; font-size:1.15rem; color:var(--gold); letter-spacing:.1em; }
+.breadcrumb { display:flex; align-items:center; gap:7px; font-size:.78rem; color:var(--tx3); }
+.breadcrumb span { color:var(--tx2); }
+.nav-r { display:flex; gap:10px; }
+.btn { background:transparent; border:1px solid var(--b); color:var(--tx2); padding:6px 14px; border-radius:7px; font-size:.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; white-space:nowrap; }
+.btn:hover { border-color:var(--bw); color:var(--tx); }
+.btn-gold { border-color:var(--bw); color:var(--gold); background:var(--gold-d); }
+.btn-gold:hover { background:var(--gold-d2); }
 
-        body {
-            background-color: var(--bg-deep);
-            background-image: radial-gradient(circle at 50% 0%, #3d2e26 0%, var(--bg-deep) 70%);
-            font-family: 'Manrope', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
-            color: var(--text-main);
-        }
+/* MAIN */
+.main { display:flex; flex:1; transition:padding-right .38s cubic-bezier(.4,0,.2,1); }
+.main.open { padding-right:var(--sidebar); }
+.content { flex:1; padding:30px 36px; min-width:0; }
 
-        h1.main-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: var(--text-main);
-            letter-spacing: 0.02em;
-        }
+/* ASSET HEADER */
+.asset-hd { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:30px; padding-bottom:24px; border-bottom:1px solid var(--b); gap:20px; }
+.asset-left { display:flex; flex-direction:column; gap:7px; }
+.ticker { font-family:'Playfair Display',serif; font-size:2.5rem; font-weight:700; line-height:1; }
+.asset-name { font-size:.88rem; color:var(--tx2); font-weight:300; }
+.tags { display:flex; gap:7px; margin-top:2px; }
+.tag { padding:3px 10px; border-radius:20px; font-size:.68rem; font-weight:500; letter-spacing:.05em; text-transform:uppercase; border:1px solid; }
+.tag-s { border-color:var(--bw); color:var(--gold); background:var(--gold-d); }
+.tag-t { border-color:rgba(122,172,136,.22); color:var(--green); background:rgba(122,172,136,.08); }
+.asset-right { text-align:right; flex-shrink:0; }
+.price { font-family:'Playfair Display',serif; font-size:1.9rem; }
+.chg { font-size:.82rem; margin-top:3px; }
+.chg.up { color:var(--green); } .chg.dn { color:var(--red); }
+.pdate { font-size:.7rem; color:var(--tx3); margin-top:5px; }
 
-        #app-container {
-            width: 100%;
-            max-width: 1400px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+/* COMPARE BANNER */
+.compare-banner { display:none; margin-bottom:20px; padding:12px 16px; background:var(--bg-card); border:1px solid var(--bw); border-radius:10px; align-items:center; justify-content:space-between; gap:12px; }
+.compare-banner.visible { display:flex; }
+.compare-info { display:flex; align-items:center; gap:14px; }
+.compare-ticker-badge { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--gold); }
+.compare-label { font-size:.75rem; color:var(--tx2); }
+.compare-close { background:transparent; border:none; color:var(--tx3); cursor:pointer; font-size:1rem; padding:2px 6px; transition:color .2s; }
+.compare-close:hover { color:var(--red); }
 
-        .main-cards-wrapper {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            width: 100%;
-            opacity: 1;
-            transition: opacity 0.3s ease;
-        }
+/* SECTION */
+.section { margin-bottom:22px; }
+.sec-hd { display:flex; align-items:center; justify-content:space-between; padding:13px 18px; background:var(--bg-card); border:1px solid var(--b); border-radius:10px 10px 0 0; cursor:pointer; transition:background .15s; user-select:none; }
+.sec-hd:hover { background:var(--bg-hover); }
+.sec-hd.collapsed { border-radius:10px; }
+.sec-title { font-size:.75rem; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--tx2); }
+.sec-arr { color:var(--tx3); font-size:.65rem; transition:transform .25s; }
+.sec-arr.open { transform:rotate(180deg); }
+.sec-body { background:var(--bg-surf); border:1px solid var(--b); border-top:none; border-radius:0 0 10px 10px; overflow:hidden; }
 
-        /* --- CARD SINGLE VIEW --- */
-        .card {
-            background: var(--glass-surface);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-soft);
-            width: 100%;
-            max-width: 420px;
-            flex: 1;
-            min-width: 320px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+/* METRICS GRID */
+.mgrid { display:grid; grid-template-columns:repeat(4, 1fr); }
+.metric-cell { padding:20px 18px; border-right:1px solid var(--b); border-bottom:1px solid var(--b); position:relative; transition:background .15s; }
+.metric-cell:hover { background:var(--bg-card); }
+.metric-cell:hover .mann { opacity:1; }
+.metric-cell:hover .minfo { opacity:1; }
+.mlbl { font-size:.68rem; color:var(--tx3); letter-spacing:.07em; text-transform:uppercase; margin-bottom:7px; display:flex; align-items:center; gap:5px; }
+.mval { font-family:'DM Mono',monospace; font-size:1.22rem; color:var(--tx); }
+.mval.pos { color:var(--green); } .mval.neg { color:var(--red); } .mval.neu { color:var(--gold); }
+.msub { font-size:.68rem; color:var(--tx3); margin-top:3px; }
 
-        #backNav {
-            display: flex;
-            cursor: pointer;
-            color: var(--primary-gold);
-            transition: transform 0.2s ease;
-            width: fit-content;
-            margin-bottom: 20px;
-        }
-        #backNav:hover { transform: translateX(-4px); }
-        #backNav svg { width: 24px; height: 24px; }
+/* COMPARE VALUE */
+.mval-compare { font-family:'DM Mono',monospace; font-size:.82rem; color:var(--tx3); margin-top:4px; border-top:1px solid var(--b); padding-top:4px; display:none; }
+.mval-compare.visible { display:block; }
+.mval-compare-ticker { font-size:.62rem; color:var(--tx3); text-transform:uppercase; letter-spacing:.05em; }
 
-        .card-header-visual {
-            height: 180px;
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 0.5px solid rgba(212, 175, 55, 0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+/* ICONS */
+.mann { position:absolute; top:9px; right:30px; width:22px; height:22px; background:var(--gold-d); border:1px solid var(--bw); border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .15s,background .15s; font-size:.62rem; color:var(--gold); }
+.mann:hover { background:var(--gold-d2); }
+.minfo { position:absolute; top:9px; right:6px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity .15s; font-size:.7rem; color:var(--tx3); }
+.minfo:hover { color:var(--gold); }
 
-        .indicator-value {
-            font-size: 2.8rem;
-            font-weight: 300;
-            color: var(--text-main);
-            line-height: 1;
-            margin-bottom: 8px;
-            opacity: 0;
-            animation: fadeInDown 0.6s forwards;
-        }
+/* ANNOTATION */
+.mnote { margin-top:8px; padding:7px 9px; background:rgba(196,154,108,.06); border:1px solid var(--bw); border-radius:6px; display:none; }
+.mnote.visible { display:block; }
+.mnote textarea { width:100%; background:transparent; border:none; color:var(--gold); font-family:'DM Sans',sans-serif; font-size:.76rem; font-style:italic; resize:none; outline:none; min-height:36px; }
 
-        .indicator-name-large {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--primary-gold);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
+/* CHART TOGGLE */
+.chart-toggle-row { padding:8px 18px 10px; border-top:1px solid var(--b); display:flex; align-items:center; gap:10px; }
+.chart-toggle-btn { background:transparent; border:1px solid var(--b); border-radius:6px; padding:4px 11px; font-size:.7rem; color:var(--tx3); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; letter-spacing:.03em; }
+.chart-toggle-btn:hover, .chart-toggle-btn.active { border-color:var(--bw); color:var(--gold); }
+.chart-period-sel { display:none; align-items:center; gap:6px; }
+.chart-period-sel.visible { display:flex; }
+.period-btn { background:transparent; border:1px solid var(--b); border-radius:5px; padding:3px 9px; font-size:.68rem; color:var(--tx3); cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .15s; }
+.period-btn.active { border-color:var(--bw); color:var(--gold); background:var(--gold-d); }
+.period-sep { color:var(--tx3); font-size:.65rem; }
+.year-sel { background:var(--bg-card); border:1px solid var(--b); border-radius:5px; padding:3px 8px; font-size:.68rem; color:var(--tx2); cursor:pointer; font-family:'DM Sans',sans-serif; outline:none; }
 
-        .card-content { padding: 24px; position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; }
+/* CHART AREA */
+.chart-area { display:none; padding:14px 18px 18px; border-top:1px solid var(--b); }
+.chart-area.visible { display:block; }
+.chart-wrap { position:relative; height:120px; }
+.chart-svg { width:100%; height:100%; overflow:visible; }
 
-        .card-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 600; color: var(--text-main); }
-        .card-location { font-weight: 400; color: var(--text-muted); font-size: 1.2rem; margin-left: 8px;}
-        .card-description { font-size: 0.8rem; line-height: 1.6; color: var(--text-muted); margin-bottom: 24px; min-height: 64px; }
+/* TOOLTIP */
+.chart-tooltip { position:absolute; background:var(--bg-card); border:1px solid var(--bw); border-radius:7px; padding:8px 11px; pointer-events:none; display:none; z-index:50; min-width:130px; }
+.ct-date { font-size:.68rem; color:var(--tx3); margin-bottom:3px; }
+.ct-val { font-family:'DM Mono',monospace; font-size:.9rem; color:var(--tx); }
+.ct-chg { font-size:.7rem; margin-top:2px; }
+.ct-chg.pos { color:var(--green); } .ct-chg.neg { color:var(--red); }
 
-        /* Tags Estilo Filtro Golden Hour */
-        .tags-container { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
-        .tag-btn {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--glass-border);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.6rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Manrope', sans-serif;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        .tag-btn:hover { background: rgba(255, 255, 255, 0.05); color: var(--text-main); }
-        .tag-btn.active { 
-            background: rgba(255, 255, 255, 0.1); 
-            color: var(--primary-gold); 
-            border-color: rgba(212, 175, 55, 0.3);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
+/* SIDEBAR */
+.sidebar { position:fixed; top:var(--nav-h); right:0; bottom:0; width:var(--sidebar); background:var(--glass); backdrop-filter:blur(28px); border-left:1px solid var(--b); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .38s cubic-bezier(.4,0,.2,1); z-index:150; }
+.sidebar.open { transform:translateX(0); }
+.stoggle { position:fixed; top:50%; right:0; transform:translateY(-50%); width:24px; height:56px; background:var(--bg-card); border:1px solid var(--b); border-right:none; border-radius:7px 0 0 7px; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:160; color:var(--tx3); font-size:.72rem; transition:right .38s cubic-bezier(.4,0,.2,1),color .2s,background .2s; }
+.stoggle:hover { color:var(--gold); }
+.stoggle.open { right:var(--sidebar); }
 
-        /* Botões Estilo Golden Hour */
-        .action-buttons { display: flex; gap: 10px; margin-top: auto; }
-        .btn {
-            flex: 1; padding: 10px; border-radius: var(--radius-btn);
-            font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none;
-            transition: all 0.2s ease; display: flex; justify-content: center; align-items: center;
-            font-family: 'Manrope', sans-serif;
-        }
-        .btn-primary { 
-            background: var(--primary-gold); 
-            color: #12100E; 
-        }
-        .btn-primary:hover { 
-            background: #e5bd3d; 
-            transform: translateY(-1px);
-        }
-        .btn-secondary { 
-            background: transparent; 
-            border: 1px solid var(--glass-border); 
-            color: var(--text-main); 
-        }
-        .btn-secondary:hover { 
-            background: rgba(255, 255, 255, 0.05); 
-            border-color: var(--primary-gold);
-        }
-        .btn-sm { padding: 6px 12px; font-size: 0.7rem; }
+/* SIDEBAR TABS */
+.stabs { display:flex; border-bottom:1px solid var(--b); flex-shrink:0; }
+.stab { flex:1; padding:13px 0; text-align:center; font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; color:var(--tx3); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+.stab.active { color:var(--gold); border-bottom-color:var(--gold); }
 
-        /* Gráfico Principal */
-        .chart-wrapper {
-            display: none;
-            width: 100%;
-            height: 180px;
-            margin-bottom: 20px;
-        }
-        .chart-wrapper.show { display: block; animation: fadeIn 0.5s ease; }
+.spanel { display:none; flex:1; flex-direction:column; overflow:hidden; min-height:0; }
+.spanel.active { display:flex; }
 
-        /* --- GRID VIEW (Expandido) --- */
-        .grid-view-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-            gap: 24px;
-            width: 100%;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeInUp 0.5s forwards;
-        }
+/* NOTES PANEL */
+.notes-list { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:9px; }
+.note-card { background:var(--bg-card); border:1px solid var(--b); border-radius:8px; padding:11px 13px; }
+.note-origin { font-size:.65rem; color:var(--gold); text-transform:uppercase; letter-spacing:.06em; margin-bottom:5px; font-family:'DM Mono',monospace; }
+.note-text { font-size:.8rem; color:var(--tx2); line-height:1.55; }
+.notes-empty { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--tx3); font-size:.8rem; text-align:center; gap:7px; padding:28px; }
+.notes-empty-ico { font-size:1.6rem; opacity:.3; }
+.notes-foot { padding:13px 14px; border-top:1px solid var(--b); flex-shrink:0; display:flex; flex-direction:column; gap:8px; }
+.ai-sum-block { padding:12px 13px; background:var(--gold-d); border:1px solid var(--bw); border-radius:8px; font-size:.78rem; color:var(--tx2); line-height:1.6; display:none; }
+.ai-sum-block.visible { display:block; animation:fadein .3s ease; }
+.ai-sum-lbl { font-size:.63rem; text-transform:uppercase; letter-spacing:.08em; color:var(--gold); margin-bottom:6px; }
+.btn-ai { width:100%; padding:9px; background:var(--gold-d); border:1px solid var(--bw); border-radius:8px; color:var(--gold); font-family:'DM Sans',sans-serif; font-size:.78rem; cursor:pointer; transition:all .2s; }
+.btn-ai:hover { background:var(--gold-d2); }
 
-        .grid-card {
-            background: var(--glass-surface);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: var(--shadow-soft);
-            display: flex;
-            flex-direction: column;
-            transition: all 0.3s ease;
-            min-height: 380px; 
-            justify-content: flex-start;
-        }
-        
-        .grid-card:hover { transform: translateY(-5px); border-color: rgba(212, 175, 55, 0.3); }
+/* ANALYSIS PANEL */
+.an-head { padding:14px; border-bottom:1px solid var(--b); flex-shrink:0; }
+.an-confirm { display:flex; align-items:center; gap:10px; padding:9px 11px; background:var(--bg-card); border:1px solid var(--bw); border-radius:8px; margin-bottom:10px; }
+.an-ticker { font-family:'Playfair Display',serif; font-size:.95rem; color:var(--gold); }
+.an-cname { font-size:.7rem; color:var(--tx3); }
+.an-name-inp { width:100%; background:var(--bg-card); border:1px solid var(--b); border-radius:7px; padding:8px 11px; color:var(--tx); font-family:'DM Sans',sans-serif; font-size:.82rem; outline:none; transition:border-color .2s; }
+.an-name-inp:focus { border-color:var(--bw); }
+.an-name-inp::placeholder { color:var(--tx3); }
+.an-body { flex:1; overflow-y:auto; padding:0 14px 14px; display:flex; flex-direction:column; gap:10px; min-height:0; }
+.an-editor { flex:1; background:var(--bg-card); border:1px solid var(--b); border-radius:8px; padding:12px; color:var(--tx); font-family:'DM Sans',sans-serif; font-size:.82rem; line-height:1.75; resize:none; outline:none; transition:border-color .2s; min-height:160px; }
+.an-editor:focus { border-color:var(--bw); }
+.an-editor::placeholder { color:var(--tx3); font-style:italic; }
+.ai-insight { padding:11px 13px; background:var(--terra-d); border:1px solid rgba(191,102,73,.22); border-left:3px solid var(--terra); border-radius:0 7px 7px 0; font-size:.76rem; color:rgba(210,130,105,.9); line-height:1.6; animation:fadein .4s ease; display:none; }
+.ai-ins-lbl { font-size:.62rem; text-transform:uppercase; letter-spacing:.08em; color:var(--terra); margin-bottom:4px; }
+.an-foot { padding:0 14px 14px; display:flex; gap:7px; flex-shrink:0; }
+.btn-calc { flex:0; padding:8px 13px; background:var(--bg-card); border:1px solid var(--b); border-radius:7px; color:var(--tx2); font-family:'DM Sans',sans-serif; font-size:.75rem; cursor:pointer; white-space:nowrap; transition:all .2s; }
+.btn-calc:hover { border-color:var(--bw); color:var(--gold); }
+.btn-save { flex:1; padding:8px; background:var(--gold-d); border:1px solid var(--bw); border-radius:7px; color:var(--gold); font-family:'DM Sans',sans-serif; font-size:.75rem; cursor:pointer; transition:all .2s; }
+.btn-save:hover { background:var(--gold-d2); }
 
-        .grid-header { margin-bottom: 16px; }
-        .grid-value { font-size: 2.2rem; font-weight: 300; color: var(--text-main); margin-bottom: 4px; }
-        .grid-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 600; color: var(--text-main); }
-        .grid-subtitle { font-size: 0.6rem; color: var(--primary-gold); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
-        .grid-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; flex-grow: 1; margin-bottom: 20px; }
+/* SAVED ANALYSES PANEL */
+.saves-list { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:9px; }
+.save-card { background:var(--bg-card); border:1px solid var(--b); border-radius:8px; padding:13px; cursor:pointer; transition:background .15s,border-color .15s; }
+.save-card:hover { background:var(--bg-hover); border-color:var(--bw); }
+.save-card-name { font-size:.88rem; color:var(--tx); margin-bottom:4px; }
+.save-card-meta { font-size:.68rem; color:var(--tx3); display:flex; gap:10px; }
+.save-card-meta span { color:var(--tx2); }
+.save-card-preview { font-size:.75rem; color:var(--tx3); margin-top:7px; line-height:1.5; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 
-        /* Botão grid reduzido (ajuste altura 60%) */
-        .grid-card .btn-sm {
-            padding: 4px 12px;
-            font-size: 0.65rem;
-            min-height: 26px;
-            max-height: 26px;
-        }
+/* MODAL */
+.modal-ov { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(10px); z-index:300; display:none; align-items:center; justify-content:center; }
+.modal-ov.open { display:flex; }
+.modal { background:var(--bg-card); border:1px solid var(--b); border-radius:14px; padding:26px; width:540px; max-width:95vw; max-height:90vh; overflow-y:auto; animation:modalin .22s ease; }
+@keyframes modalin { from{opacity:0;transform:scale(.96)} to{opacity:1;transform:scale(1)} }
+@keyframes fadein { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+.modal-title { font-family:'Playfair Display',serif; font-size:1.15rem; margin-bottom:18px; color:var(--tx); }
+.calc-tabs { display:flex; gap:7px; margin-bottom:18px; flex-wrap:wrap; }
+.ctab { padding:5px 13px; border-radius:20px; font-size:.72rem; cursor:pointer; border:1px solid var(--b); color:var(--tx3); transition:all .15s; }
+.ctab.active { border-color:var(--bw); color:var(--gold); background:var(--gold-d); }
+.calc-body { display:flex; flex-direction:column; gap:13px; }
+.calc-section { display:none; }
+.calc-section.active { display:flex; flex-direction:column; gap:13px; }
+.cfield { display:flex; flex-direction:column; gap:4px; }
+.cfield label { font-size:.68rem; color:var(--tx3); text-transform:uppercase; letter-spacing:.05em; }
+.cfield input, .cfield select { background:var(--bg-surf); border:1px solid var(--b); border-radius:6px; padding:8px 10px; color:var(--tx); font-family:'DM Mono',monospace; font-size:.85rem; outline:none; transition:border-color .2s; width:100%; }
+.cfield input:focus, .cfield select:focus { border-color:var(--bw); }
+.cfield select option { background:var(--bg-card); }
+.crow { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.cresult { padding:14px 16px; background:var(--bg-surf); border:1px solid var(--bw); border-radius:8px; text-align:center; }
+.cres-lbl { font-size:.65rem; text-transform:uppercase; letter-spacing:.06em; color:var(--tx3); margin-bottom:4px; }
+.cres-val { font-family:'Playfair Display',serif; font-size:1.55rem; color:var(--gold); }
+.cres-sub { font-size:.72rem; color:var(--tx3); margin-top:3px; }
+.modal-close { width:100%; margin-top:14px; padding:9px; background:transparent; border:1px solid var(--b); border-radius:7px; color:var(--tx3); font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .2s; }
+.modal-close:hover { color:var(--tx); border-color:var(--bw); }
 
-        /* Container do gráfico dentro do Grid */
-        .grid-chart-box {
-            height: 0;
-            overflow: hidden;
-            transition: height 0.4s ease;
-            width: 100%;
-        }
-        .grid-chart-box.active { height: 160px; margin-bottom: 20px; }
+/* INFO MODAL */
+.info-modal { width:420px; }
+.info-title { font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--tx); margin-bottom:6px; }
+.info-subtitle { font-size:.72rem; color:var(--tx3); margin-bottom:16px; text-transform:uppercase; letter-spacing:.05em; }
+.info-section { margin-bottom:14px; }
+.info-section-title { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--gold); margin-bottom:5px; }
+.info-text { font-size:.8rem; color:var(--tx2); line-height:1.65; }
 
-        .hidden { display: none !important; }
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+/* COMPARE MODAL */
+.comp-input { display:flex; gap:8px; margin-bottom:16px; }
+.comp-input input { flex:1; background:var(--bg-surf); border:1px solid var(--b); border-radius:7px; padding:9px 12px; color:var(--tx); font-family:'DM Mono',monospace; font-size:.9rem; outline:none; transition:border-color .2s; text-transform:uppercase; }
+.comp-input input:focus { border-color:var(--bw); }
+.comp-input button { padding:9px 16px; background:var(--gold-d); border:1px solid var(--bw); border-radius:7px; color:var(--gold); font-family:'DM Sans',sans-serif; font-size:.78rem; cursor:pointer; transition:all .2s; }
+.comp-input button:hover { background:var(--gold-d2); }
 
-        /* --- SIDEBAR --- */
-        #sidebar {
-            position: fixed;
-            top: 0;
-            right: 0;
-            height: 100vh;
-            width: 350px;
-            background: rgba(18, 16, 14, 0.95);
-            backdrop-filter: blur(20px);
-            border-left: 1px solid var(--glass-border);
-            z-index: 1000;
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
-            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-        }
-        #sidebar.open { transform: translateX(0); }
-        
-        #sidebar-resizer {
-            position: absolute;
-            left: -5px;
-            top: 0;
-            width: 10px;
-            height: 100%;
-            cursor: col-resize;
-            background: transparent;
-        }
+/* VALUATION CALC */
+.val-model-desc { padding:11px 13px; background:var(--bg-surf); border:1px solid var(--b); border-radius:7px; font-size:.78rem; color:var(--tx2); line-height:1.6; margin-bottom:4px; }
+.multi-results { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.mini-result { padding:11px; background:var(--bg-surf); border:1px solid var(--b); border-radius:7px; text-align:center; }
+.mini-res-lbl { font-size:.62rem; color:var(--tx3); text-transform:uppercase; margin-bottom:3px; }
+.mini-res-val { font-family:'Playfair Display',serif; font-size:1.1rem; color:var(--gold); }
 
-        .sidebar-header {
-            padding: 24px;
-            border-bottom: 1px solid var(--glass-border);
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .sidebar-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; }
-        .sidebar-content { flex: 1; overflow-y: auto; padding: 20px; }
-        
-        #sidebar-toggle {
-            position: fixed;
-            right: 20px;
-            bottom: 20px;
-            width: 50px;
-            height: 50px;
-            background: var(--primary-gold);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 999;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
-            transition: transform 0.2s;
-        }
-        #sidebar-toggle:hover { transform: scale(1.1); }
-        #sidebar-toggle svg { width: 24px; height: 24px; fill: #12100E; }
-
-        .sidebar-item {
-            background: var(--glass-surface);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .sidebar-item:hover { border-color: var(--primary-gold); background: rgba(255, 255, 255, 0.05); }
-
-        /* Calculadoras */
-        .calc-input-group { margin-bottom: 12px; }
-        .calc-input-group label { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px; }
-        .calc-input-group input { 
-            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); 
-            padding: 8px; border-radius: 6px; color: var(--text-main); font-family: 'Manrope', sans-serif;
-        }
-        .calc-result { 
-            margin-top: 20px; padding: 16px; background: rgba(212, 175, 55, 0.1); 
-            border-radius: 8px; text-align: center; border: 1px dashed var(--primary-gold);
-        }
-        .calc-result-val { font-size: 1.5rem; font-weight: 700; color: var(--primary-gold); }
-
-        /* Anotações Tags */
-        .note-tag {
-            display: inline-block;
-            background: rgba(212, 175, 55, 0.1);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: var(--primary-gold);
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            margin: 4px;
-            cursor: pointer;
-        }
-
-        /* Tooltip Fórmula */
-        .info-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            border: 1px solid var(--text-muted);
-            border-radius: 50%;
-            font-size: 10px;
-            cursor: help;
-            margin-left: 8px;
-            color: var(--text-muted);
-            position: relative;
-        }
-        .info-icon:hover { border-color: var(--primary-gold); color: var(--primary-gold); }
-        .info-icon:hover::after {
-            content: attr(data-formula);
-            position: absolute;
-            bottom: 120%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1e1b19;
-            border: 1px solid var(--glass-border);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            white-space: nowrap;
-            color: var(--text-main);
-            z-index: 100;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-        }
-
-        /* Badge Ativo */
-        .active-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: var(--positive);
-            color: #12100E;
-            font-size: 0.6rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            text-transform: uppercase;
-        }
-
-        /* Filtros Gráfico */
-        .chart-filters {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 15px;
-            justify-content: center;
-        }
-        
-        .expanded-block {
-            width: 100%;
-            border-top: 1px solid var(--glass-border);
-            padding-top: 40px;
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .note-btn {
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            color: var(--text-muted);
-            transition: color 0.2s;
-            margin-left: 10px;
-        }
-        .note-btn:hover { color: var(--primary-gold); }
-
-    </style>
+::-webkit-scrollbar { width:3px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:var(--b); border-radius:2px; }
+</style>
 </head>
 <body>
+<div class="app">
 
-    <div id="app-container">
-        
-        <!-- Área de Indicadores Expandidos -->
-        <div id="expandedSections" class="width:100%"></div>
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-logo">Yield</div>
+  <div class="breadcrumb"><span>Investimentos</span><span style="opacity:.35">›</span><span>Análise Fundamentalista</span></div>
+  <div class="nav-r">
+    <button class="btn" onclick="openCompare()">⇄ Comparar</button>
+    <button class="btn btn-gold" onclick="toggleSidebar()">Workspace</button>
+  </div>
+</nav>
 
-        <div id="mainCardsWrapper" class="main-cards-wrapper">
-            <!-- Os cards principais serão injetados via JavaScript -->
+<!-- MAIN -->
+<div class="main" id="main">
+<div class="content">
+
+<!-- ASSET HEADER -->
+<div class="asset-hd">
+  <div class="asset-left">
+    <div class="ticker">PETR4</div>
+    <div class="asset-name">Petróleo Brasileiro S.A. — Petrobras</div>
+    <div class="tags">
+      <span class="tag tag-s">Energia</span>
+      <span class="tag tag-t">Não-Banco</span>
+    </div>
+  </div>
+  <div class="asset-right">
+    <div class="price">R$ 38,42</div>
+    <div class="chg up">▲ +1,24% hoje</div>
+    <div class="pdate">17 fev. 2026 · Fechamento</div>
+  </div>
+</div>
+
+<!-- COMPARE BANNER -->
+<div class="compare-banner" id="compareBanner">
+  <div class="compare-info">
+    <div>
+      <div class="compare-ticker-badge" id="compTickerBadge">VALE3</div>
+      <div class="compare-label" id="compName">Vale S.A.</div>
+    </div>
+    <span style="font-size:.75rem;color:var(--tx3)">Comparação ativa — valores em itálico</span>
+  </div>
+  <button class="compare-close" onclick="removeCompare()">✕</button>
+</div>
+
+<!-- BLOCO VALUATION -->
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <span class="sec-title">Valuation</span>
+    <span class="sec-arr open">▼</span>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="PL">
+        <div class="mlbl">P/L <span class="minfo" onclick="showInfo('PL',event)">ⓘ</span></div>
+        <div class="mval neu">4,8x</div>
+        <div class="msub">Setor: 7,2x</div>
+        <div class="mval-compare" id="cmp-PL"><span class="mval-compare-ticker" id="ct-PL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'P/L')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-PL">
+            <button class="period-btn active" onclick="setPeriod(this,'PL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PL')" id="ysel-PL"></select>
+          </div>
         </div>
+        <div class="chart-area" id="chart-PL"><div class="chart-wrap"><svg class="chart-svg" id="svg-PL"></svg><div class="chart-tooltip" id="tip-PL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="PVP">
+        <div class="mlbl">P/VP <span class="minfo" onclick="showInfo('PVP',event)">ⓘ</span></div>
+        <div class="mval neu">1,2x</div>
+        <div class="msub">Setor: 1,8x</div>
+        <div class="mval-compare" id="cmp-PVP"><span class="mval-compare-ticker" id="ct-PVP"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'P/VP')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PVP')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-PVP">
+            <button class="period-btn active" onclick="setPeriod(this,'PVP','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PVP')" id="ysel-PVP"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-PVP"><div class="chart-wrap"><svg class="chart-svg" id="svg-PVP"></svg><div class="chart-tooltip" id="tip-PVP"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="EVEBITDA">
+        <div class="mlbl">EV/EBITDA <span class="minfo" onclick="showInfo('EVEBITDA',event)">ⓘ</span></div>
+        <div class="mval neu">3,6x</div>
+        <div class="msub">Setor: 5,1x</div>
+        <div class="mval-compare" id="cmp-EVEBITDA"><span class="mval-compare-ticker" id="ct-EVEBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EV/EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'EVEBITDA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-EVEBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'EVEBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'EVEBITDA')" id="ysel-EVEBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-EVEBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-EVEBITDA"></svg><div class="chart-tooltip" id="tip-EVEBITDA"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="DY">
+        <div class="mlbl">Dividend Yield <span class="minfo" onclick="showInfo('DY',event)">ⓘ</span></div>
+        <div class="mval pos">14,3%</div>
+        <div class="msub">Último pag.: R$ 5,49/ação</div>
+        <div class="mval-compare" id="cmp-DY"><span class="mval-compare-ticker" id="ct-DY"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'DY')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DY')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DY">
+            <button class="period-btn active" onclick="setPeriod(this,'DY','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DY')" id="ysel-DY"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DY"><div class="chart-wrap"><svg class="chart-svg" id="svg-DY"></svg><div class="chart-tooltip" id="tip-DY"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCO RENTABILIDADE -->
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <span class="sec-title">Rentabilidade</span>
+    <span class="sec-arr open">▼</span>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="ROE">
+        <div class="mlbl">ROE <span class="minfo" onclick="showInfo('ROE',event)">ⓘ</span></div>
+        <div class="mval pos">28,4%</div>
+        <div class="msub">2023: 31,2%</div>
+        <div class="mval-compare" id="cmp-ROE"><span class="mval-compare-ticker" id="ct-ROE"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROE')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROE')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ROE">
+            <button class="period-btn active" onclick="setPeriod(this,'ROE','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROE')" id="ysel-ROE"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROE"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROE"></svg><div class="chart-tooltip" id="tip-ROE"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ROIC">
+        <div class="mlbl">ROIC <span class="minfo" onclick="showInfo('ROIC',event)">ⓘ</span></div>
+        <div class="mval pos">18,7%</div>
+        <div class="msub">2023: 20,1%</div>
+        <div class="mval-compare" id="cmp-ROIC"><span class="mval-compare-ticker" id="ct-ROIC"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROIC')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROIC')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ROIC">
+            <button class="period-btn active" onclick="setPeriod(this,'ROIC','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROIC')" id="ysel-ROIC"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROIC"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROIC"></svg><div class="chart-tooltip" id="tip-ROIC"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ROA">
+        <div class="mlbl">ROA <span class="minfo" onclick="showInfo('ROA',event)">ⓘ</span></div>
+        <div class="mval neu">9,2%</div>
+        <div class="msub">2023: 10,5%</div>
+        <div class="mval-compare" id="cmp-ROA"><span class="mval-compare-ticker" id="ct-ROA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ROA">
+            <button class="period-btn active" onclick="setPeriod(this,'ROA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROA')" id="ysel-ROA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROA"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROA"></svg><div class="chart-tooltip" id="tip-ROA"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="MEBITDA">
+        <div class="mlbl">Margem EBITDA <span class="minfo" onclick="showInfo('MEBITDA',event)">ⓘ</span></div>
+        <div class="mval pos">54,8%</div>
+        <div class="msub">Setor: 38,2%</div>
+        <div class="mval-compare" id="cmp-MEBITDA"><span class="mval-compare-ticker" id="ct-MEBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Margem EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'MEBITDA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-MEBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'MEBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'MEBITDA')" id="ysel-MEBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-MEBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-MEBITDA"></svg><div class="chart-tooltip" id="tip-MEBITDA"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCO RESULTADO -->
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <span class="sec-title">Resultado (R$ Bilhões)</span>
+    <span class="sec-arr open">▼</span>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="RL">
+        <div class="mlbl">Receita Líquida <span class="minfo" onclick="showInfo('RL',event)">ⓘ</span></div>
+        <div class="mval">R$ 512,4B</div>
+        <div class="msub">▲ +3,1% a.a.</div>
+        <div class="mval-compare" id="cmp-RL"><span class="mval-compare-ticker" id="ct-RL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Receita Líquida')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'RL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-RL">
+            <button class="period-btn active" onclick="setPeriod(this,'RL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'RL')" id="ysel-RL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-RL"><div class="chart-wrap"><svg class="chart-svg" id="svg-RL"></svg><div class="chart-tooltip" id="tip-RL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="LB">
+        <div class="mlbl">Lucro Bruto <span class="minfo" onclick="showInfo('LB',event)">ⓘ</span></div>
+        <div class="mval">R$ 286,1B</div>
+        <div class="msub">Margem: 55,8%</div>
+        <div class="mval-compare" id="cmp-LB"><span class="mval-compare-ticker" id="ct-LB"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Lucro Bruto')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'LB')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-LB">
+            <button class="period-btn active" onclick="setPeriod(this,'LB','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'LB')" id="ysel-LB"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-LB"><div class="chart-wrap"><svg class="chart-svg" id="svg-LB"></svg><div class="chart-tooltip" id="tip-LB"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="EBITDA">
+        <div class="mlbl">EBITDA <span class="minfo" onclick="showInfo('EBITDA',event)">ⓘ</span></div>
+        <div class="mval">R$ 280,7B</div>
+        <div class="msub">▼ -2,4% a.a.</div>
+        <div class="mval-compare" id="cmp-EBITDA"><span class="mval-compare-ticker" id="ct-EBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'EBITDA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-EBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'EBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'EBITDA')" id="ysel-EBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-EBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-EBITDA"></svg><div class="chart-tooltip" id="tip-EBITDA"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="LL">
+        <div class="mlbl">Lucro Líquido <span class="minfo" onclick="showInfo('LL',event)">ⓘ</span></div>
+        <div class="mval">R$ 124,6B</div>
+        <div class="msub">▼ -8,1% a.a.</div>
+        <div class="mval-compare" id="cmp-LL"><span class="mval-compare-ticker" id="ct-LL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Lucro Líquido')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'LL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-LL">
+            <button class="period-btn active" onclick="setPeriod(this,'LL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'LL')" id="ysel-LL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-LL"><div class="chart-wrap"><svg class="chart-svg" id="svg-LL"></svg><div class="chart-tooltip" id="tip-LL"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BLOCO ENDIVIDAMENTO -->
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <span class="sec-title">Endividamento</span>
+    <span class="sec-arr open">▼</span>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="DB">
+        <div class="mlbl">Dívida Bruta <span class="minfo" onclick="showInfo('DB',event)">ⓘ</span></div>
+        <div class="mval neg">R$ 312,8B</div>
+        <div class="msub">▲ +4,2% a.a.</div>
+        <div class="mval-compare" id="cmp-DB"><span class="mval-compare-ticker" id="ct-DB"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida Bruta')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DB')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DB">
+            <button class="period-btn active" onclick="setPeriod(this,'DB','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DB')" id="ysel-DB"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DB"><div class="chart-wrap"><svg class="chart-svg" id="svg-DB"></svg><div class="chart-tooltip" id="tip-DB"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="DL">
+        <div class="mlbl">Dívida Líquida <span class="minfo" onclick="showInfo('DL',event)">ⓘ</span></div>
+        <div class="mval neg">R$ 198,4B</div>
+        <div class="msub">Caixa: R$ 114,4B</div>
+        <div class="mval-compare" id="cmp-DL"><span class="mval-compare-ticker" id="ct-DL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida Líquida')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DL">
+            <button class="period-btn active" onclick="setPeriod(this,'DL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DL')" id="ysel-DL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DL"><div class="chart-wrap"><svg class="chart-svg" id="svg-DL"></svg><div class="chart-tooltip" id="tip-DL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ALAV">
+        <div class="mlbl">Alavancagem DL/EBITDA <span class="minfo" onclick="showInfo('ALAV',event)">ⓘ</span></div>
+        <div class="mval neu">0,71x</div>
+        <div class="msub">2023: 0,58x</div>
+        <div class="mval-compare" id="cmp-ALAV"><span class="mval-compare-ticker" id="ct-ALAV"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Alavancagem')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ALAV')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ALAV">
+            <button class="period-btn active" onclick="setPeriod(this,'ALAV','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ALAV')" id="ysel-ALAV"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ALAV"><div class="chart-wrap"><svg class="chart-svg" id="svg-ALAV"></svg><div class="chart-tooltip" id="tip-ALAV"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="DPL">
+        <div class="mlbl">Dívida / PL <span class="minfo" onclick="showInfo('DPL',event)">ⓘ</span></div>
+        <div class="mval neu">1,48x</div>
+        <div class="msub">2023: 1,32x</div>
+        <div class="mval-compare" id="cmp-DPL"><span class="mval-compare-ticker" id="ct-DPL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida/PL')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DPL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DPL">
+            <button class="period-btn active" onclick="setPeriod(this,'DPL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DPL')" id="ysel-DPL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DPL"><div class="chart-wrap"><svg class="chart-svg" id="svg-DPL"></svg><div class="chart-tooltip" id="tip-DPL"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</div><!-- /main -->
+
+<!-- SIDEBAR TOGGLE -->
+<div class="stoggle" id="stoggle" onclick="toggleSidebar()">‹</div>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="stabs">
+    <div class="stab active" onclick="switchTab('notes',this)">Anotações</div>
+    <div class="stab" onclick="switchTab('analysis',this)">Análise</div>
+    <div class="stab" onclick="switchTab('saves',this)">Histórico</div>
+  </div>
+
+  <!-- NOTAS -->
+  <div class="spanel active" id="panel-notes">
+    <div class="notes-list" id="notesList">
+      <div class="notes-empty" id="notesEmpty">
+        <div class="notes-empty-ico">✎</div>
+        <div>Clique no ícone ✎ ao lado de qualquer métrica para anotar.</div>
+      </div>
+    </div>
+    <div class="notes-foot">
+      <div class="ai-sum-block" id="aiSumBlock"><div class="ai-sum-lbl">✦ Resumo IA</div><div id="aiSumText"></div></div>
+      <button class="btn-ai" onclick="summarizeNotes()">✦ Resumir anotações com IA</button>
+    </div>
+  </div>
+
+  <!-- ANÁLISE -->
+  <div class="spanel" id="panel-analysis">
+    <div class="an-head">
+      <div class="an-confirm"><div><div class="an-ticker">PETR4</div><div class="an-cname">Petróleo Brasileiro S.A.</div></div></div>
+      <input class="an-name-inp" type="text" placeholder="Nome da análise (ex: Tese Longa — Fev/26)">
+    </div>
+    <div class="an-body" id="anBody">
+      <textarea class="an-editor" id="anEditor" placeholder="Escreva sua análise. A IA sugere insights a cada 5 linhas escritas..." oninput="onAnInput(this)"></textarea>
+      <div class="ai-insight" id="aiInsight"><div class="ai-ins-lbl">✦ Insight IA</div><div id="aiInsightText"></div></div>
+    </div>
+    <div class="an-foot">
+      <button class="btn-calc" onclick="openModal('calc')">⊞ Calculadoras</button>
+      <button class="btn-save" onclick="saveAnalysis()">Salvar análise</button>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO -->
+  <div class="spanel" id="panel-saves">
+    <div class="saves-list" id="savesList">
+      <div class="notes-empty"><div class="notes-empty-ico">📁</div><div>Nenhuma análise salva ainda.</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALCULADORAS -->
+<div class="modal-ov" id="modal-calc">
+  <div class="modal">
+    <div class="modal-title">Calculadoras</div>
+    <div class="calc-tabs">
+      <div class="ctab active" onclick="switchCalc('graham',this)">Graham</div>
+      <div class="ctab" onclick="switchCalc('peg',this)">PEG Ratio</div>
+      <div class="ctab" onclick="switchCalc('dividendos',this)">Proj. Dividendos</div>
+      <div class="ctab" onclick="switchCalc('custoMedio',this)">Custo Médio</div>
+      <div class="ctab" onclick="switchCalc('valuation',this)">Valuation</div>
+    </div>
+    <div class="calc-body">
+
+      <!-- GRAHAM -->
+      <div class="calc-section active" id="cs-graham">
+        <div class="crow">
+          <div class="cfield"><label>LPA (Lucro por Ação)</label><input type="number" id="g-lpa" placeholder="ex: 8.00" oninput="calcGraham()"></div>
+          <div class="cfield"><label>VPA (Valor Patrimonial)</label><input type="number" id="g-vpa" placeholder="ex: 32.00" oninput="calcGraham()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">Preço Justo Graham (√22,5 × LPA × VPA)</div>
+          <div class="cres-val" id="g-res">—</div>
+          <div class="cres-sub" id="g-sub"></div>
+        </div>
+      </div>
+
+      <!-- PEG -->
+      <div class="calc-section" id="cs-peg">
+        <div class="crow">
+          <div class="cfield"><label>P/L atual</label><input type="number" id="peg-pl" placeholder="ex: 4.8" oninput="calcPeg()"></div>
+          <div class="cfield"><label>Crescimento do Lucro (%)</label><input type="number" id="peg-g" placeholder="ex: 8" oninput="calcPeg()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">PEG Ratio (P/L ÷ Crescimento)</div>
+          <div class="cres-val" id="peg-res">—</div>
+          <div class="cres-sub" id="peg-sub">PEG &lt; 1 = potencialmente subvalorizado</div>
+        </div>
+      </div>
+
+      <!-- DIVIDENDOS -->
+      <div class="calc-section" id="cs-dividendos">
+        <div class="crow">
+          <div class="cfield"><label>Dividendo anual atual (R$)</label><input type="number" id="div-atual" placeholder="ex: 5.49" oninput="calcDiv()"></div>
+          <div class="cfield"><label>Crescimento anual (%)</label><input type="number" id="div-g" placeholder="ex: 5" oninput="calcDiv()"></div>
+        </div>
+        <div class="crow">
+          <div class="cfield"><label>Anos de projeção</label><input type="number" id="div-anos" placeholder="ex: 10" oninput="calcDiv()" min="1" max="30"></div>
+          <div class="cfield"><label>Preço de compra (R$)</label><input type="number" id="div-preco" placeholder="ex: 38.42" oninput="calcDiv()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">Dividendo projetado no ano final</div>
+          <div class="cres-val" id="div-res">—</div>
+          <div class="cres-sub" id="div-sub"></div>
+        </div>
+      </div>
+
+      <!-- CUSTO MÉDIO -->
+      <div class="calc-section" id="cs-custoMedio">
+        <div id="cm-rows" style="display:flex;flex-direction:column;gap:9px;"></div>
+        <button class="btn" onclick="addCmRow()" style="align-self:flex-start;margin-top:4px;font-size:.72rem;">+ Adicionar compra</button>
+        <div class="cresult">
+          <div class="cres-lbl">Custo Médio por Ação</div>
+          <div class="cres-val" id="cm-res">—</div>
+          <div class="cres-sub" id="cm-sub"></div>
+        </div>
+      </div>
+
+      <!-- VALUATION -->
+      <div class="calc-section" id="cs-valuation">
+        <div class="cfield">
+          <label>Modelo de valuation</label>
+          <select id="val-modelo" onchange="switchValModel()">
+            <option value="">Selecione um modelo</option>
+            <option value="bazin">Bazin (DY mínimo)</option>
+            <option value="gordon">Gordon Growth Model</option>
+            <option value="lynch">Peter Lynch Fair Value</option>
+            <option value="greenblatt">Magic Formula (Greenblatt)</option>
+          </select>
+        </div>
+        <div class="val-model-desc" id="val-desc" style="display:none"></div>
+        <div id="val-inputs" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <div class="cresult" id="val-result" style="display:none">
+          <div class="cres-lbl" id="val-res-lbl">Preço Justo</div>
+          <div class="cres-val" id="val-res">—</div>
+          <div class="cres-sub" id="val-sub"></div>
+        </div>
+      </div>
 
     </div>
+    <button class="modal-close" onclick="closeModal('calc')">Fechar</button>
+  </div>
+</div>
 
-    <!-- Sidebar -->
-    <div id="sidebar">
-        <div id="sidebar-resizer"></div>
-        <div class="sidebar-header">
-            <div id="sidebar-back" style="cursor:pointer; display:none;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            </div>
-            <div class="sidebar-title" id="sidebar-title">Menu</div>
-        </div>
-        <div class="sidebar-content" id="sidebar-content">
-            <div class="sidebar-item" onclick="openNotes()">
-                <strong>Anotações</strong>
-                <p style="font-size:0.7rem; color:var(--text-muted);">Visualize e gerencie suas notas por índice.</p>
-            </div>
-            <div class="sidebar-item" onclick="openCalculators()">
-                <strong>Calculadoras</strong>
-                <p style="font-size:0.7rem; color:var(--text-muted);">Ferramentas de cálculo fundamentalista.</p>
-            </div>
-        </div>
+<!-- MODAL INFO -->
+<div class="modal-ov" id="modal-info">
+  <div class="modal info-modal">
+    <div class="info-title" id="infoTitle">—</div>
+    <div class="info-subtitle" id="infoSubtitle">Indicador Fundamentalista</div>
+    <div class="info-section">
+      <div class="info-section-title">O que é</div>
+      <div class="info-text" id="infoWhat"></div>
     </div>
-
-    <!-- Toggle Sidebar -->
-    <div id="sidebar-toggle" onclick="toggleSidebar()">
-        <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+    <div class="info-section">
+      <div class="info-section-title">Como analisar</div>
+      <div class="info-text" id="infoHow"></div>
     </div>
+    <div class="info-section">
+      <div class="info-section-title">Limitações</div>
+      <div class="info-text" id="infoLimit"></div>
+    </div>
+    <button class="modal-close" onclick="closeModal('info')">Fechar</button>
+  </div>
+</div>
 
-    <script>
-        // Dados Mockados com descrições expandidas e fórmulas
-        const data = [
-            { id: 'dy', name: 'D.Y', label: 'Dividend Yield', value: '6,24%', formula: 'D.Y = (Dividendos anuais / Preço da Ação) x 100', desc: 'Representa a relação percentual entre os dividendos distribuídos no último ano e o preço atual da ação, servindo como termômetro vital para investidores focados em renda passiva recorrente e sólida.', history: [5.1, 5.4, 6.0, 5.8, 6.1, 6.24] },
-            { id: 'pl', name: 'P/L', label: 'Preço / Lucro', value: '8,45', formula: 'P/L = Preço da Ação / Lucro por Ação (LPA)', desc: 'Indica o número de anos que o investidor levaria para recuperar o capital investido através do lucro da empresa, sendo fundamental para avaliar se uma ação está barata no mercado.', history: [12, 10, 9.5, 8.8, 8.2, 8.45] },
-            { id: 'peg', name: 'PEG Ratio', label: 'PEG Ratio', value: '0,92', formula: 'PEG = (P/L) / Taxa de Crescimento dos Lucros', desc: 'Relaciona o índice P/L com a taxa de crescimento esperada para os lucros, ajudando a identificar se o preço atual é justificado pelo potencial de expansão futura dos resultados operacionais.', history: [1.2, 1.1, 1.0, 0.95, 0.90, 0.92] },
-            { id: 'pvp', name: 'P/VP', label: 'Preço / V.P.', value: '1,15', formula: 'P/VP = Preço da Ação / Valor Patrimonial por Ação', desc: 'Compara o valor de mercado com o valor patrimonial contábil, permitindo identificar oportunidades onde o preço da ação está abaixo do valor real dos ativos tangíveis e intangíveis da companhia.', history: [1.5, 1.4, 1.3, 1.2, 1.18, 1.15] },
-            { id: 'evebitda', name: 'EV/EBITDA', label: 'EV / EBITDA', value: '5,8x', formula: 'EV/EBITDA = (Market Cap + Dívida Líquida) / EBITDA', desc: 'Mede o valor da firma em relação à sua capacidade de geração de caixa operacional bruta, sendo amplamente utilizado para comparar empresas de um mesmo setor sem distorções financeiras.', history: [7, 6.5, 6.2, 6.0, 5.9, 5.8] },
-            { id: 'evebit', name: 'EV/EBIT', label: 'EV / EBIT', value: '7,2x', formula: 'EV/EBIT = (Market Cap + Dívida Líquida) / EBIT', desc: 'Avalia o valor total da empresa em relação ao seu lucro operacional, permitindo analisar a eficiência core do negócio sem as influências diretas causadas por impostos ou estrutura de juros.', history: [8.5, 8.0, 7.8, 7.5, 7.3, 7.2] },
-            { id: 'pebitda', name: 'P/EBITDA', label: 'Preço / EBITDA', value: '4,5x', formula: 'P/EBITDA = Preço da Ação / EBITDA por Ação', desc: 'Mede quanto o mercado aceita pagar pela geração de caixa bruto da companhia por ação, sendo um múltiplo valioso para analisar a sustentabilidade financeira em setores de capital intensivo.', history: [5.5, 5.0, 4.8, 4.6, 4.5, 4.5] },
-            { id: 'pebit', name: 'P/EBIT', label: 'Preço / EBIT', value: '6,1x', formula: 'P/EBIT = Preço da Ação / EBIT por Ação', desc: 'Relaciona o preço de mercado com o lucro operacional bruto por ação, oferecendo uma visão clara sobre o retorno gerado pelas atividades core do negócio sob análise financeira detalhada.', history: [7.0, 6.8, 6.5, 6.2, 6.0, 6.1] },
-            { id: 'vpa', name: 'VPA', label: 'V.P. p/ Ação', value: 'R$ 24,50', formula: 'VPA = Patrimônio Líquido / Total de Ações', desc: 'Demonstra o valor contábil de cada ação baseando-se no patrimônio líquido total registrado, sendo um referencial sólido para determinar a segurança patrimonial do investimento em horizontes de longo prazo.', history: [20, 21, 22, 23, 24, 24.5] },
-            { id: 'pativo', name: 'P/Ativo', label: 'Preço / Ativo', value: '0,80', formula: 'P/Ativo = Preço da Ação / Ativos Totais por Ação', desc: 'Indica quanto o mercado paga por cada real em ativos totais da empresa, fornecendo uma métrica complementar sobre a eficiência da utilização da estrutura produtiva instalada na geração de valor.', history: [0.9, 0.88, 0.85, 0.82, 0.81, 0.80] },
-            { id: 'lpa', name: 'LPA', label: 'Lucro p/ Ação', value: 'R$ 3,10', formula: 'LPA = Lucro Líquido / Total de Ações', desc: 'Calcula o lucro líquido atribuível a cada ação individual em circulação, sendo o principal motor para a valorização dos papéis e para o cálculo de outros múltiplos fundamentais da análise.', history: [2.5, 2.6, 2.8, 2.9, 3.0, 3.1] },
-            { id: 'psr', name: 'P/SR', label: 'Price to Sales', value: '1,5x', formula: 'P/SR = Preço da Ação / Receita Líquida por Ação', desc: 'Compara o valor de mercado com a receita líquida total gerada anualmente, permitindo avaliar companhias que possuem forte domínio em volume de vendas mas ainda buscam a rentabilidade ideal.', history: [1.8, 1.7, 1.6, 1.55, 1.52, 1.5] }
-        ];
+<!-- MODAL COMPARAR -->
+<div class="modal-ov" id="modal-compare">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">Comparar com outro ativo</div>
+    <div class="comp-input">
+      <input type="text" id="compInput" placeholder="Ex: VALE3" maxlength="6" oninput="this.value=this.value.toUpperCase()">
+      <button onclick="applyCompare()">Comparar</button>
+    </div>
+    <p style="font-size:.76rem;color:var(--tx3);line-height:1.6">Os valores do ativo comparado aparecerão abaixo de cada métrica para facilitar a análise lado a lado.</p>
+    <button class="modal-close" onclick="closeModal('compare')">Cancelar</button>
+  </div>
+</div>
 
-        let mainChartInstances = {}; 
-        let gridCharts = {}; 
-        let annotations = JSON.parse(localStorage.getItem('indices_annotations') || '{}');
-        let savedCalculations = JSON.parse(localStorage.getItem('indices_calcs') || '[]');
-        let expandedCardIds = new Set();
+<script>
+// ─── DATA ───
+const chartData = {};
+const metrics = ['PL','PVP','EVEBITDA','DY','ROE','ROIC','ROA','MEBITDA','RL','LB','EBITDA','LL','DB','DL','ALAV','DPL'];
+const baseValues = {PL:[9.2,7.4,5.1,4.2,4.8,5.6,4.8],PVP:[2.1,1.8,1.3,1.0,1.2,1.4,1.2],EVEBITDA:[6.8,5.4,3.9,3.2,3.6,4.0,3.6],DY:[8.2,5.1,11.4,14.8,13.2,12.1,14.3],ROE:[18.2,12.4,31.2,34.8,28.4,26.1,28.4],ROIC:[12.1,8.8,20.1,22.4,18.7,17.2,18.7],ROA:[6.2,4.1,10.5,11.8,9.2,8.6,9.2],MEBITDA:[44.2,38.8,52.4,56.1,54.8,51.2,54.8],RL:[380,320,460,510,512,498,512],LB:[210,175,255,290,286,272,286],EBITDA:[168,124,241,288,281,265,281],LL:[88,54,148,162,125,118,125],DB:[290,310,285,298,312,308,312],DL:[182,208,168,185,198,192,198],ALAV:[1.09,1.68,0.70,0.64,0.71,0.73,0.71],DPL:[1.72,2.14,1.24,1.30,1.48,1.42,1.48]};
+const years = [2018,2019,2020,2021,2022,2023,2024,2025];
+const quarters = {A:baseValues,1:null,2:null,3:null,4:null};
+const metricState = {};
+metrics.forEach(k => { metricState[k]={period:'A',year:2025,open:false}; generateQData(k); });
+function generateQData(k){const b=baseValues[k];quarters[1]={};quarters[2]={};quarters[3]={};quarters[4]={};metrics.forEach(m=>{const bv=baseValues[m];[1,2,3,4].forEach(q=>{if(!quarters[q][m])quarters[q][m]=[];quarters[q][m]=bv.map((v,i)=>+(v*(0.88+Math.random()*.24)).toFixed(2));});});}
 
-        document.addEventListener('DOMContentLoaded', () => {
-            renderAllMainCards();
-        });
+// YEAR SELECTS
+metrics.forEach(k => {
+  const sel = document.getElementById('ysel-'+k);
+  if(!sel) return;
+  for(let i=2025;i>=2018;i--){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
+});
 
-        // Função para criar o HTML de um card principal
-        function createMainCardHtml(cardId, initialDataIdx) {
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.id = `mainCard-${cardId}`;
-            card.dataset.cardId = cardId;
-            card.dataset.currentIdx = initialDataIdx;
+function getChartVals(key, period, year){
+  const yIdx = years.indexOf(parseInt(year));
+  if(period==='A'){
+    const end=yIdx<0?years.length:yIdx+1;
+    return baseValues[key].slice(0,end).map((v,i)=>({v,label:String(years[i])}));
+  }
+  const q=parseInt(period.replace('T',''));
+  const arr=quarters[q]&&quarters[q][key]?quarters[q][key]:baseValues[key];
+  const end=yIdx<0?arr.length:yIdx+1;
+  return arr.slice(0,end).map((v,i)=>({v,label:`${q}T/${String(years[i]).slice(2)}`}));
+}
 
-            card.innerHTML = `
-                <div class="active-badge hidden" id="badge-${cardId}">Ativo no momento</div>
-                <div class="card-header-visual">
-                    <div class="indicator-value">--</div>
-                    <div class="indicator-name-large">SELECIONE</div>
-                </div>
+// CHART RENDER
+function renderChart(key){
+  const state=metricState[key];
+  const data=getChartVals(key,state.period,state.year);
+  if(!data.length)return;
+  const svg=document.getElementById('svg-'+key);
+  const tip=document.getElementById('tip-'+key);
+  if(!svg)return;
+  const W=svg.parentElement.offsetWidth||300, H=120;
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const vals=data.map(d=>d.v);
+  const mn=Math.min(...vals), mx=Math.max(...vals);
+  const pad={t:14,b:22,l:8,r:8};
+  const xScale=i=>(W-pad.l-pad.r)/(data.length-1)*i+pad.l;
+  const yScale=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
+  const pts=data.map((d,i)=>`${xScale(i)},${yScale(d.v)}`).join(' ');
+  const fillPts=`${pad.l},${H-pad.b} `+pts+` ${xScale(data.length-1)},${H-pad.b}`;
+  svg.innerHTML=`
+    <defs>
+      <linearGradient id="lg-${key}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="rgba(196,154,108,0.3)"/>
+        <stop offset="100%" stop-color="rgba(196,154,108,0)"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${fillPts}" fill="url(#lg-${key})"/>
+    <polyline points="${pts}" fill="none" stroke="rgba(196,154,108,0.7)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${data.map((d,i)=>`
+      <circle cx="${xScale(i)}" cy="${yScale(d.v)}" r="3.5" fill="var(--bg-card)" stroke="rgba(196,154,108,0.8)" stroke-width="1.5" class="dot"
+        data-i="${i}" data-v="${d.v}" data-l="${d.label}"/>
+    `).join('')}
+    ${data.map((d,i)=>`
+      <text x="${xScale(i)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="DM Mono,monospace">${d.label}</text>
+    `).join('')}
+  `;
+  svg.querySelectorAll('.dot').forEach(dot=>{
+    dot.addEventListener('mouseenter',e=>{
+      const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l;
+      const prev=i>0?vals[i-1]:null;
+      const chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
+      const samePeriodPrev=i>0&&state.period!=='A'?vals[Math.max(0,i-1)]:null;
+      let chgHtml='';
+      if(chg!==null){const cls=parseFloat(chg)>=0?'pos':'neg';chgHtml=`<div class="ct-chg ${cls}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
+      tip.style.display='block';
+      tip.innerHTML=`<div class="ct-date">${lbl}</div><div class="ct-val">${v}</div>${chgHtml}`;
+      const svgRect=svg.getBoundingClientRect();
+      const cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy'));
+      const scaleX=svgRect.width/W;
+      let left=cx*scaleX+10, top=cy-40;
+      if(left+150>svgRect.width)left=cx*scaleX-160;
+      tip.style.left=left+'px'; tip.style.top=top+'px';
+    });
+    dot.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  });
+}
 
-                <div class="card-content">
-                    <div style="margin-bottom: 16px;">
-                        <span class="card-title">Selecione</span>
-                        <span class="card-location">VALU3</span>
-                        <p class="card-description">
-                            Selecione um indicador fundamentalista abaixo para explorar detalhadamente o valuation dos ativos.
-                        </p>
-                    </div>
+// TOGGLE CHART
+function toggleChart(btn, key){
+  const area=document.getElementById('chart-'+key);
+  const psel=document.getElementById('psel-'+key);
+  const open=area.classList.toggle('visible');
+  psel.classList.toggle('visible',open);
+  btn.textContent=open?'Esconder gráfico':'Mostrar gráfico';
+  btn.classList.toggle('active',open);
+  metricState[key].open=open;
+  if(open) setTimeout(()=>renderChart(key),20);
+}
 
-                    <div class="tags-container"></div>
+function setPeriod(btn, key, p){
+  document.querySelectorAll(`#psel-${key} .period-btn`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  metricState[key].period=p;
+  if(metricState[key].open) renderChart(key);
+}
 
-                    <div class="chart-wrapper" id="chart-wrapper-${cardId}">
-                        <div class="chart-filters">
-                            <select class="tag-btn" onchange="updateMainChartData('${cardId}')" id="filter-period-${cardId}">
-                                <option value="1tri">1º Tri</option>
-                                <option value="2tri">2º Tri</option>
-                                <option value="3tri">3º Tri</option>
-                                <option value="4tri">4º Tri</option>
-                                <option value="anual" selected>Anual</option>
-                            </select>
-                            <select class="tag-btn" onchange="updateMainChartData('${cardId}')" id="filter-year-${cardId}">
-                                <option value="2021">2021</option>
-                                <option value="2022">2022</option>
-                                <option value="2023" selected>2023</option>
-                            </select>
-                        </div>
-                        <canvas id="chart-canvas-${cardId}"></canvas>
-                    </div>
+function setYear(sel, key){
+  metricState[key].year=parseInt(sel.value);
+  if(metricState[key].open) renderChart(key);
+}
 
-                    <div class="action-buttons">
-                        <button class="btn btn-primary btn-chart" id="btn-chart-${cardId}" onclick="toggleMainChart('${cardId}')">
-                            Mostrar gráfico
-                        </button>
-                        <button class="btn btn-secondary" onclick="toggleExpand('${cardId}')">
-                            Expandir
-                        </button>
-                    </div>
-                </div>
-            `;
-            return card;
-        }
+// ─── SECTION COLLAPSE ───
+function toggleSec(hd){
+  const body=hd.nextElementSibling;
+  const arr=hd.querySelector('.sec-arr');
+  const hidden=body.style.display==='none';
+  body.style.display=hidden?'':'none';
+  arr.classList.toggle('open',hidden);
+  hd.classList.toggle('collapsed',!hidden);
+}
 
-        function renderAllMainCards() {
-            const container = document.getElementById('mainCardsWrapper');
-            container.innerHTML = '';
-            for (let i = 0; i < 5; i++) {
-                const card = createMainCardHtml(i, i);
-                container.appendChild(card);
-                renderTags(card, i);
-                updateCard(i, i);
-            }
-        }
+// ─── SIDEBAR ───
+let sbOpen=false;
+function toggleSidebar(){
+  sbOpen=!sbOpen;
+  document.getElementById('sidebar').classList.toggle('open',sbOpen);
+  document.getElementById('main').classList.toggle('open',sbOpen);
+  const t=document.getElementById('stoggle');
+  t.classList.toggle('open',sbOpen);
+  t.textContent=sbOpen?'›':'‹';
+}
+function switchTab(name,el){
+  document.querySelectorAll('.stab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.spanel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+}
 
-        function renderTags(cardElement, cardId) {
-            const tagContainer = cardElement.querySelector('.tags-container');
-            tagContainer.innerHTML = '';
-            data.forEach((item, index) => {
-                const btn = document.createElement('button');
-                btn.className = `tag-btn ${index === parseInt(cardElement.dataset.currentIdx) ? 'active' : ''}`;
-                btn.innerText = item.name;
-                btn.onclick = () => {
-                    updateCard(cardId, index);
-                    tagContainer.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                };
-                tagContainer.appendChild(btn);
-            });
-        }
+// ─── NOTES ───
+const notes={};
+function openNote(btn){
+  const cell=btn.closest('.metric-cell');
+  const note=cell.querySelector('.mnote');
+  note.classList.toggle('visible');
+  if(note.classList.contains('visible')) note.querySelector('textarea').focus();
+}
+function saveNote(ta, label){
+  const txt=ta.value.trim();
+  if(txt){ notes[label]=txt; renderNotes(); }
+}
+function renderNotes(){
+  const list=document.getElementById('notesList');
+  const empty=document.getElementById('notesEmpty');
+  const keys=Object.keys(notes);
+  if(!keys.length){empty.style.display='';return;}
+  empty.style.display='none';
+  const existing=list.querySelectorAll('.note-card');
+  existing.forEach(c=>c.remove());
+  keys.forEach(k=>{
+    const c=document.createElement('div');
+    c.className='note-card';
+    c.innerHTML=`<div class="note-origin">${k}</div><div class="note-text">${notes[k]}</div>`;
+    list.appendChild(c);
+  });
+}
+const sumPool=["P/L abaixo do setor (4,8x vs 7,2x) — desconto pode refletir risco político. Cruze com a tendência de queda no lucro líquido (-8,1% a.a.).","ROE em queda estrutural (31% → 28%) com alavancagem crescente. Verifique custo da dívida vs. retorno gerado.","Dividend Yield de 14,3% com payout elevado — analise se o fluxo de caixa livre sustenta a distribuição no médio prazo."];
+function summarizeNotes(){
+  const b=document.getElementById('aiSumBlock');
+  document.getElementById('aiSumText').textContent=sumPool[Math.floor(Math.random()*sumPool.length)];
+  b.classList.add('visible');
+}
 
-        function updateCard(cardId, dataIndex) {
-            const cardElement = document.getElementById(`mainCard-${cardId}`);
-            if (!cardElement) return;
-            
-            cardElement.dataset.currentIdx = dataIndex;
-            const item = data[dataIndex];
-            
-            cardElement.querySelector('.indicator-value').innerText = item.value;
-            cardElement.querySelector('.card-title').innerText = item.name;
-            cardElement.querySelector('.indicator-name-large').innerText = item.label;
-            cardElement.querySelector('.card-description').innerText = item.desc.substring(0, 100) + '...';
-            
-            const wrapper = cardElement.querySelector('.chart-wrapper');
-            if (wrapper.classList.contains('show')) {
-                updateMainChartData(cardId);
-            }
-        }
+// ─── ANALYSIS ───
+let lastLine=0, insIdx=0;
+const insightPool=["Dividend Yield de 14,3% com lucro em queda — verifique payout ratio e sustentabilidade.","P/L 4,8x com ROE 28,4%: mercado precifica crescimento baixo. Consistente com sua tese?","Alavancagem crescendo com caixa robusto — cruze com cronograma de vencimento da dívida.","Margem EBITDA (54,8%) acima do setor: vantagem competitiva ou benefício regulatório temporário?","ROIC (18,7%) acima do custo de capital estimado (~12%): geração de valor ainda positiva."];
+function onAnInput(ta){
+  const lines=ta.value.split('\n').filter(l=>l.trim()).length;
+  if(lines>0&&lines%5===0&&lines!==lastLine){lastLine=lines;showInsight();}
+}
+function showInsight(){
+  const el=document.getElementById('aiInsight');
+  document.getElementById('aiInsightText').textContent=insightPool[insIdx%insightPool.length];
+  insIdx++;
+  el.style.display='block';
+}
+const saves=[];
+function saveAnalysis(){
+  const name=document.querySelector('.an-name-inp').value||'Análise PETR4';
+  const text=document.getElementById('anEditor').value;
+  if(!text.trim()){alert('Escreva sua análise antes de salvar.');return;}
+  saves.unshift({name,text,date:new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})});
+  renderSaves();
+  const btn=document.querySelector('.btn-save');
+  btn.textContent='✓ Salvo';
+  setTimeout(()=>{btn.textContent='Salvar análise';},2000);
+  switchTab('saves',document.querySelectorAll('.stab')[2]);
+}
+function renderSaves(){
+  const list=document.getElementById('savesList');
+  list.innerHTML='';
+  if(!saves.length){list.innerHTML='<div class="notes-empty"><div class="notes-empty-ico">📁</div><div>Nenhuma análise salva ainda.</div></div>';return;}
+  saves.forEach((s,i)=>{
+    const c=document.createElement('div');
+    c.className='save-card';
+    c.innerHTML=`<div class="save-card-name">${s.name}</div><div class="save-card-meta"><span>PETR4</span>${s.date}</div><div class="save-card-preview">${s.text}</div>`;
+    c.onclick=()=>{
+      document.querySelector('.an-name-inp').value=s.name;
+      document.getElementById('anEditor').value=s.text;
+      switchTab('analysis',document.querySelectorAll('.stab')[1]);
+    };
+    list.appendChild(c);
+  });
+}
 
-        function toggleMainChart(cardId) {
-            const wrapper = document.getElementById(`chart-wrapper-${cardId}`);
-            const btn = document.getElementById(`btn-chart-${cardId}`);
-            const canvas = document.getElementById(`chart-canvas-${cardId}`);
+// ─── COMPARE ───
+let compareActive=false, compareTicker='';
+const compareData={PL:'3,2x',PVP:'2,1x',EVEBITDA:'4,8x',DY:'4,2%',ROE:'21,4%',ROIC:'14,8%',ROA:'7,8%',MEBITDA:'42,1%',RL:'R$ 196,2B',LB:'R$ 82,4B',EBITDA:'R$ 82,6B',LL:'R$ 46,8B',DB:'R$ 148,4B',DL:'R$ 62,8B',ALAV:'0,76x',DPL:'0,88x'};
+const compareNames={VALE3:'Vale S.A.',ITUB4:'Itaú Unibanco',BBDC4:'Bradesco',ABEV3:'Ambev S.A.',WEGE3:'WEG S.A.'};
+function openCompare(){ openModal('compare'); }
+function applyCompare(){
+  compareTicker=document.getElementById('compInput').value.trim().toUpperCase();
+  if(!compareTicker){return;}
+  compareActive=true;
+  const name=compareNames[compareTicker]||compareTicker;
+  document.getElementById('compTickerBadge').textContent=compareTicker;
+  document.getElementById('compName').textContent=name;
+  document.getElementById('compareBanner').classList.add('visible');
+  metrics.forEach(k=>{
+    const el=document.getElementById('cmp-'+k);
+    const ct=document.getElementById('ct-'+k);
+    if(el){
+      ct.textContent=compareTicker+': ';
+      el.querySelector('span').nextSibling.textContent=compareData[k]||'—';
+      el.classList.add('visible');
+    }
+  });
+  closeModal('compare');
+}
+function removeCompare(){
+  compareActive=false;
+  document.getElementById('compareBanner').classList.remove('visible');
+  metrics.forEach(k=>{
+    const el=document.getElementById('cmp-'+k);
+    if(el) el.classList.remove('visible');
+  });
+}
 
-            if (wrapper.classList.contains('show')) {
-                wrapper.classList.remove('show');
-                btn.innerText = "Mostrar gráfico";
-            } else {
-                wrapper.classList.add('show');
-                btn.innerText = "Fechar gráfico";
-                updateMainChartData(cardId);
-            }
-        }
+// ─── MODALS ───
+function openModal(name){ document.getElementById('modal-'+name).classList.add('open'); }
+function closeModal(name){ document.getElementById('modal-'+name).classList.remove('open'); }
+document.querySelectorAll('.modal-ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');}));
 
-        function updateMainChartData(cardId) {
-            const cardElement = document.getElementById(`mainCard-${cardId}`);
-            const canvas = document.getElementById(`chart-canvas-${cardId}`);
-            const period = document.getElementById(`filter-period-${cardId}`).value;
-            const year = document.getElementById(`filter-year-${cardId}`).value;
-            
-            const dataIdx = parseInt(cardElement.dataset.currentIdx);
-            const item = data[dataIdx];
+// ─── CALCS ───
+function switchCalc(name, el){
+  document.querySelectorAll('.ctab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.calc-section').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('cs-'+name).classList.add('active');
+}
+function calcGraham(){
+  const lpa=parseFloat(document.getElementById('g-lpa').value);
+  const vpa=parseFloat(document.getElementById('g-vpa').value);
+  const res=document.getElementById('g-res');
+  const sub=document.getElementById('g-sub');
+  if(lpa>0&&vpa>0){const pj=Math.sqrt(22.5*lpa*vpa);res.textContent='R$ '+pj.toFixed(2);sub.textContent='Preço atual: R$ 38,42 — '+(38.42<=pj?'potencial de valorização de '+((pj/38.42-1)*100).toFixed(1)+'%':'acima do preço justo');}
+  else{res.textContent='—';sub.textContent='';}
+}
+function calcPeg(){
+  const pl=parseFloat(document.getElementById('peg-pl').value);
+  const g=parseFloat(document.getElementById('peg-g').value);
+  const res=document.getElementById('peg-res');
+  if(pl>0&&g>0){const peg=pl/g;res.textContent=peg.toFixed(2)+'x';document.getElementById('peg-sub').textContent=peg<1?'Potencialmente subvalorizado (PEG < 1)':peg<2?'Avaliação razoável (PEG entre 1 e 2)':'Potencialmente sobrevalorizado (PEG > 2)';}
+  else{res.textContent='—';}
+}
+function calcDiv(){
+  const d=parseFloat(document.getElementById('div-atual').value);
+  const g=parseFloat(document.getElementById('div-g').value)/100;
+  const n=parseInt(document.getElementById('div-anos').value);
+  const p=parseFloat(document.getElementById('div-preco').value);
+  const res=document.getElementById('div-res');
+  const sub=document.getElementById('div-sub');
+  if(d>0&&!isNaN(g)&&n>0){
+    const df=d*Math.pow(1+g,n);
+    res.textContent='R$ '+df.toFixed(2)+'/ação';
+    if(p>0){const yoc=df/p*100;sub.textContent='Yield on Cost no ano '+n+': '+yoc.toFixed(1)+'%';}
+  } else {res.textContent='—';sub.textContent='';}
+}
 
-            // Mocking different data based on period/year for visual effect
-            let baseData = [...item.history];
-            if(period !== 'anual') {
-                baseData = baseData.map(v => v * (0.8 + Math.random() * 0.4));
-            }
+// CUSTO MÉDIO
+let cmRows=[];
+function addCmRow(){
+  const idx=cmRows.length;
+  cmRows.push({qtd:0,preco:0});
+  const cont=document.getElementById('cm-rows');
+  const row=document.createElement('div');
+  row.className='crow';
+  row.innerHTML=`<div class="cfield"><label>Qtd. de ações</label><input type="number" placeholder="ex: 100" oninput="updateCm(${idx},'qtd',this.value)"></div><div class="cfield"><label>Preço pago (R$)</label><input type="number" placeholder="ex: 35.20" oninput="updateCm(${idx},'preco',this.value)"></div>`;
+  cont.appendChild(row);
+  calcCm();
+}
+function updateCm(i,field,v){cmRows[i][field]=parseFloat(v)||0;calcCm();}
+function calcCm(){
+  const totalQtd=cmRows.reduce((a,r)=>a+r.qtd,0);
+  const totalVal=cmRows.reduce((a,r)=>a+r.qtd*r.preco,0);
+  const res=document.getElementById('cm-res');
+  const sub=document.getElementById('cm-sub');
+  if(totalQtd>0){
+    const cm=totalVal/totalQtd;
+    res.textContent='R$ '+cm.toFixed(2);
+    sub.textContent=totalQtd+' ações — Total: R$ '+totalVal.toFixed(2);
+  } else {res.textContent='—';sub.textContent='';}
+}
+// init cm row
+addCmRow();
 
-            if (mainChartInstances[cardId]) {
-                mainChartInstances[cardId].destroy();
-            }
-            mainChartInstances[cardId] = createChart(canvas.getContext('2d'), baseData);
-        }
+// VALUATION MODELS
+const valModels={
+  bazin:{desc:'O método de Bazin define o preço justo como aquele em que o Dividend Yield alcança pelo menos 6% ao ano. Funciona bem para empresas pagadoras consistentes.',inputs:[{id:'baz-div',label:'Dividendo anual esperado (R$)',ph:'ex: 5.49'}],calc:()=>{const d=parseFloat(document.getElementById('baz-div').value);return d>0?{val:(d/0.06).toFixed(2),lbl:'Preço Justo Bazin (DY = 6%)'}:{};} },
+  gordon:{desc:'O Modelo de Gordon calcula o valor presente de dividendos crescendo perpetuamente. Adequado para empresas maduras com dividendos estáveis.',inputs:[{id:'gor-d',label:'Dividendo por ação (R$)',ph:'ex: 5.49'},{id:'gor-k',label:'Taxa de desconto (%) — Custo do capital',ph:'ex: 12'},{id:'gor-g',label:'Crescimento perpétuo (%)',ph:'ex: 4'}],calc:()=>{const d=parseFloat(document.getElementById('gor-d').value),k=parseFloat(document.getElementById('gor-k').value)/100,g=parseFloat(document.getElementById('gor-g').value)/100;return(d&&k&&g&&k>g)?{val:(d/(k-g)).toFixed(2),lbl:'Preço Justo Gordon Growth'}:{};}},
+  lynch:{desc:'Peter Lynch sugere que uma empresa bem precificada tem P/L igual à sua taxa de crescimento. P/L justo = taxa de crescimento esperada do lucro.',inputs:[{id:'ly-g',label:'Crescimento do Lucro esperado (%)',ph:'ex: 8'},{id:'ly-lpa',label:'LPA (Lucro por Ação)',ph:'ex: 8.00'}],calc:()=>{const g=parseFloat(document.getElementById('ly-g').value),lpa=parseFloat(document.getElementById('ly-lpa').value);return(g&&lpa)?{val:(g*lpa).toFixed(2),lbl:'Preço Justo Peter Lynch'}:{};}},
+  greenblatt:{desc:'A Magic Formula de Greenblatt seleciona empresas com alto ROIC e alto Earnings Yield. O preço justo é estimado pelo EV implícito com ROIC alvo.',inputs:[{id:'gbl-ebit',label:'EBIT anual (R$)',ph:'ex: 280'},{id:'gbl-cic',label:'Capital Investido (R$)',ph:'ex: 500'},{id:'gbl-acoes',label:'Número de ações (milhões)',ph:'ex: 13000'}],calc:()=>{const ebit=parseFloat(document.getElementById('gbl-ebit').value),cic=parseFloat(document.getElementById('gbl-cic').value),acoes=parseFloat(document.getElementById('gbl-acoes').value);if(ebit&&cic&&acoes){const ev=ebit/0.15,pj=(ev/acoes).toFixed(2);return{val:pj,lbl:'Preço Justo Magic Formula (ROIC alvo 15%)'};}return{};}},
+};
+function switchValModel(){
+  const sel=document.getElementById('val-modelo').value;
+  const desc=document.getElementById('val-desc');
+  const inp=document.getElementById('val-inputs');
+  const res=document.getElementById('val-result');
+  if(!sel){desc.style.display='none';inp.innerHTML='';res.style.display='none';return;}
+  const m=valModels[sel];
+  desc.style.display='block'; desc.textContent=m.desc;
+  inp.innerHTML=m.inputs.map(f=>`<div class="cfield"><label>${f.label}</label><input type="number" id="${f.id}" placeholder="${f.ph}" oninput="calcValuation()"></div>`).join('');
+  res.style.display='block';
+  document.getElementById('val-res').textContent='—';
+}
+function calcValuation(){
+  const sel=document.getElementById('val-modelo').value;
+  if(!sel)return;
+  const r=valModels[sel].calc();
+  if(r.val){
+    document.getElementById('val-res').textContent='R$ '+r.val;
+    document.getElementById('val-res-lbl').textContent=r.lbl||'Preço Justo';
+    const pj=parseFloat(r.val);
+    document.getElementById('val-sub').textContent=pj>0?'Preço atual: R$ 38,42 — '+(38.42<=pj?'upside de '+((pj/38.42-1)*100).toFixed(1)+'%':'acima do preço justo'):'';
+  }
+}
 
-        // Função genérica para criar gráficos
-        function createChart(ctx, historyData) {
-            return new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['2019', '2020', '2021', '2022', '2023', 'Atual'],
-                    datasets: [{
-                        label: 'Histórico',
-                        data: historyData,
-                        borderColor: '#D4AF37',
-                        backgroundColor: 'rgba(212, 175, 55, 0.1)',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#12100E',
-                        pointBorderColor: '#D4AF37',
-                        pointRadius: 3,
-                        pointHoverRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: 'rgba(25, 20, 18, 0.95)',
-                            titleFont: { family: 'Manrope', size: 11 },
-                            bodyFont: { family: 'Manrope', size: 12, weight: 'bold' },
-                            padding: 10,
-                            displayColors: false,
-                            borderColor: 'rgba(212, 175, 55, 0.2)',
-                            borderWidth: 1
-                        }
-                    },
-                    scales: {
-                        y: { display: false },
-                        x: { 
-                            grid: { display: false }, 
-                            ticks: { 
-                                color: '#9A908A',
-                                font: { family: 'Manrope', size: 10 } 
-                            } 
-                        }
-                    }
-                }
-            });
-        }
+// ─── INFO DATABASE ───
+const infoDB={
+  PL:{title:'P/L — Preço/Lucro',sub:'Indicador de Valuation',what:'Relaciona o preço de mercado da ação com o lucro por ação gerado pela empresa. Indica quanto o mercado paga por cada R$ 1 de lucro.',how:'P/L baixo pode indicar subvalorização ou expectativa de queda nos lucros. P/L alto pode indicar crescimento esperado ou sobrevalorização. Compare sempre com o histórico da empresa e com o setor.',limit:'Não funciona bem para empresas com lucro negativo. Em setores cíclicos, um P/L aparentemente baixo pode ocorrer no pico do ciclo.'},
+  PVP:{title:'P/VP — Preço/Valor Patrimonial',sub:'Indicador de Valuation',what:'Compara o preço de mercado com o valor patrimonial por ação (patrimônio líquido ÷ ações). Indica se o mercado valora a empresa acima ou abaixo do seu patrimônio contábil.',how:'P/VP < 1 pode indicar desconto sobre o valor dos ativos. P/VP > 1 indica ágio — o mercado reconhece valor além do balanço. Essencial para bancos e seguradoras.',limit:'O valor patrimonial contábil pode não refletir o valor real dos ativos, especialmente em empresas intensivas em intangíveis.'},
+  EVEBITDA:{title:'EV/EBITDA',sub:'Indicador de Valuation',what:'Razão entre o Valor da Empresa (Enterprise Value) e o EBITDA. O EV inclui dívida líquida + valor de mercado, representando o "preço total" da empresa.',how:'Permite comparar empresas com estruturas de capital diferentes. Valores abaixo da média histórica ou do setor podem indicar desconto. Amplamente usado em M&A.',limit:'Ignora variações no capital de giro e capex. Empresas com alto capex recorrente (como Petrobras) podem parecer mais baratas do que realmente são.'},
+  DY:{title:'Dividend Yield',sub:'Indicador de Retorno',what:'Percentual do preço da ação distribuído em dividendos nos últimos 12 meses. Mede a renda passiva gerada pelo investimento.',how:'DY elevado pode ser atrativo para renda, mas verifique se é sustentável. Calcule o payout ratio e verifique se o lucro e o fluxo de caixa suportam a distribuição.',limit:'DY alto pode resultar de queda no preço da ação (mau sinal) ou de lucro extraordinário não recorrente.'},
+  ROE:{title:'ROE — Retorno sobre o Patrimônio',sub:'Indicador de Rentabilidade',what:'Mede o lucro gerado pela empresa em relação ao patrimônio líquido dos acionistas. ROE = Lucro Líquido ÷ Patrimônio Líquido.',how:'ROE acima de 15% é geralmente considerado bom. Tendência de alta é sinal positivo. Compare com o custo de capital: se ROE > Ke, a empresa gera valor.',limit:'Alavancagem financeira elevada pode inflar artificialmente o ROE. Use em conjunto com ROIC para uma visão mais completa.'},
+  ROIC:{title:'ROIC — Retorno sobre o Capital Investido',sub:'Indicador de Rentabilidade',what:'Mede a eficiência com que a empresa usa todo o capital investido (dívida + equity) para gerar lucro operacional. ROIC = NOPAT ÷ Capital Investido.',how:'ROIC > WACC (custo médio do capital) indica geração de valor. É o indicador preferido por analistas focados em qualidade de negócios.',limit:'Exige ajustes contábeis para ser calculado corretamente. Pode variar muito em setores com ativos intangíveis relevantes.'},
+  ROA:{title:'ROA — Retorno sobre os Ativos',sub:'Indicador de Rentabilidade',what:'Mede o lucro gerado em relação ao total de ativos da empresa. ROA = Lucro Líquido ÷ Ativo Total.',how:'Útil para comparar eficiência entre empresas do mesmo setor. Para bancos, um ROA de 1-2% já é considerado bom. Para industriais, espera-se mais.',limit:'Ativos intangíveis não contabilizados (marcas, patentes) podem distorcer o indicador.'},
+  MEBITDA:{title:'Margem EBITDA',sub:'Indicador de Rentabilidade',what:'Percentual da receita que se converte em EBITDA. Mede a eficiência operacional antes de juros, impostos, depreciação e amortização.',how:'Margem alta e crescente indica poder de precificação e controle de custos. Compare com concorrentes e com o histórico da empresa.',limit:'Ignora capex e variações de capital de giro. Uma empresa pode ter margem EBITDA alta mas queimar caixa se o capex for muito elevado.'},
+  RL:{title:'Receita Líquida',sub:'Indicador de Resultado',what:'Total das vendas deduzidas de impostos, devoluções e descontos. É a linha de partida da demonstração de resultados.',how:'Crescimento consistente da receita indica demanda sólida. Analise junto com as margens para entender se o crescimento é rentável.',limit:'Crescimento de receita sem crescimento de lucro pode indicar deterioração das margens ou aumento de custos.'},
+  LB:{title:'Lucro Bruto',sub:'Indicador de Resultado',what:'Receita Líquida menos o Custo dos Produtos Vendidos (CPV). Representa a rentabilidade antes das despesas operacionais.',how:'A margem bruta (Lucro Bruto ÷ Receita) indica o poder de precificação da empresa. Margens estáveis ou crescentes são positivas.',limit:'Varia muito por setor. Varejistas têm margens brutas menores que empresas de software, por exemplo.'},
+  EBITDA:{title:'EBITDA',sub:'Indicador de Resultado',what:'Lucro antes de juros, impostos, depreciação e amortização. Aproxima a geração de caixa operacional da empresa.',how:'Permite comparar empresas com diferentes estruturas de capital e regimes fiscais. Crescimento consistente é sinal positivo.',limit:'Não é fluxo de caixa livre. Ignora necessidades de reinvestimento (capex). Warren Buffett é crítico do uso isolado deste indicador.'},
+  LL:{title:'Lucro Líquido',sub:'Indicador de Resultado',what:'Resultado final após todas as despesas, juros e impostos. É a base para o cálculo do LPA (Lucro por Ação) e do ROE.',how:'Analise a tendência plurianual, não um resultado isolado. Verifique itens não recorrentes que possam distorcer o resultado.',limit:'Pode ser influenciado por eventos não recorrentes, variações cambiais e diferimentos contábeis.'},
+  DB:{title:'Dívida Bruta',sub:'Indicador de Endividamento',what:'Total de obrigações financeiras da empresa com credores, incluindo empréstimos, debêntures e financiamentos de curto e longo prazo.',how:'Analise em relação ao EBITDA e ao Patrimônio Líquido. Tendência de crescimento acima da geração de caixa é sinal de alerta.',limit:'Nem toda dívida é igual — verifique custo, prazo e moeda da dívida para avaliar o real risco.'},
+  DL:{title:'Dívida Líquida',sub:'Indicador de Endividamento',what:'Dívida Bruta menos o Caixa e Equivalentes. Representa a dívida efetiva caso a empresa usasse todo o caixa disponível para quitá-la.',how:'DL negativa (caixa > dívida) indica posição de caixa líquida — geralmente positivo. DL/EBITDA > 3x é considerado alto para a maioria dos setores.',limit:'O caixa pode ser restrito ou destinado a obrigações específicas. Dívida com garantias ou covenants exige análise adicional.'},
+  ALAV:{title:'Alavancagem (DL/EBITDA)',sub:'Indicador de Endividamento',what:'Quantos anos de EBITDA seriam necessários para quitar a Dívida Líquida. É o principal indicador de risco financeiro de crédito.',how:'< 1x: muito conservador. 1-2x: saudável. 2-3x: razoável. > 3x: alto para a maioria dos setores. Agências de rating usam este indicador extensamente.',limit:'Setores intensivos em ativos (energia, telecom, utilities) naturalmente operam com alavancagens mais altas por conta de fluxos de caixa previsíveis.'},
+  DPL:{title:'Dívida / Patrimônio Líquido',sub:'Indicador de Endividamento',what:'Relação entre a dívida total e o patrimônio líquido dos acionistas. Indica quanto a empresa deve para cada R$ 1 de patrimônio dos sócios.',how:'< 1x é geralmente conservador. Valores acima de 2x merecem atenção. Compare com o histórico e com o setor.',limit:'Em períodos de juros baixos, empresas alavancadas podem superar desalavancadas. A análise de qualidade da dívida é essencial.'},
+};
+function showInfo(key, e){
+  e.stopPropagation();
+  const d=infoDB[key];
+  if(!d)return;
+  document.getElementById('infoTitle').textContent=d.title;
+  document.getElementById('infoSubtitle').textContent=d.sub;
+  document.getElementById('infoWhat').textContent=d.what;
+  document.getElementById('infoHow').textContent=d.how;
+  document.getElementById('infoLimit').textContent=d.limit;
+  openModal('info');
+}
 
-        // 3. Lógica de Expansão (Nova)
-        function toggleExpand(cardId) {
-            const badge = document.getElementById(`badge-${cardId}`);
-            const sections = document.getElementById('expandedSections');
-            
-            if (expandedCardIds.has(cardId)) {
-                // Fechar
-                expandedCardIds.delete(cardId);
-                badge.classList.add('hidden');
-                const section = document.getElementById(`expanded-indicators-${cardId}`);
-                if (section) section.remove();
-            } else {
-                // Abrir
-                expandedCardIds.add(cardId);
-                badge.classList.remove('hidden');
-                
-                const cardElement = document.getElementById(`mainCard-${cardId}`);
-                const cardName = cardElement.querySelector('.card-location').innerText;
+// METRIC CELL class
+document.querySelectorAll('.metric-cell').forEach(c=>c.classList.add('mcell'));
 
-                const section = document.createElement('div');
-                section.id = `expanded-indicators-${cardId}`;
-                section.className = 'expanded-block';
-                
-                // Adiciona borda se houver outros blocos
-                if (expandedCardIds.size > 1) {
-                    section.style.borderTop = "2px solid var(--primary-gold)";
-                }
-
-                section.innerHTML = `
-                    <div style="width:100%; max-width:1400px; padding: 20px;">
-                        <h3 style="font-family:'Playfair Display'; margin-bottom: 20px; color:var(--primary-gold)">
-                            Indicadores: ${cardName} (Card #${cardId})
-                        </h3>
-                        <div class="grid-view-container" id="grid-${cardId}"></div>
-                    </div>
-                `;
-                
-                sections.appendChild(section);
-                renderGridItems(cardId);
-            }
-        }
-
-        function renderGridItems(cardId) {
-            const grid = document.getElementById(`grid-${cardId}`);
-            grid.innerHTML = '';
-
-            data.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'grid-card';
-                
-                const canvasId = `chart-${cardId}-${item.id}`;
-                const containerId = `box-${cardId}-${item.id}`;
-
-                card.innerHTML = `
-                    <div class="grid-header">
-                        <div style="display:flex; align-items:center; justify-content:space-between">
-                            <div class="grid-subtitle">${item.label}</div>
-                            <div style="display:flex; align-items:center">
-                                <span class="info-icon" data-formula="${item.formula}">i</span>
-                                <button class="note-btn" onclick="openNoteModal('${item.id}', '${item.name}')">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="grid-title">${item.name}</div>
-                        <div class="grid-value">${item.value}</div>
-                    </div>
-                    
-                    <div class="grid-chart-box" id="${containerId}">
-                        <canvas id="${canvasId}"></canvas>
-                    </div>
-
-                    <div class="grid-desc">${item.desc}</div>
-
-                    <button class="btn btn-primary btn-sm" onclick="toggleGridChart('${cardId}', '${item.id}')" id="btn-${cardId}-${item.id}">
-                        Mostrar Gráfico
-                    </button>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function toggleGridChart(cardId, itemId) {
-            const container = document.getElementById(`box-${cardId}-${itemId}`);
-            const btn = document.getElementById(`btn-${cardId}-${itemId}`);
-            const item = data.find(d => d.id === itemId);
-
-            if (container.classList.contains('active')) {
-                container.classList.remove('active');
-                btn.innerText = "Mostrar Gráfico";
-            } else {
-                container.classList.add('active');
-                btn.innerText = "Fechar Gráfico";
-                setTimeout(() => {
-                    const ctx = document.getElementById(`chart-${cardId}-${itemId}`).getContext('2d');
-                    if (gridCharts[`${cardId}-${itemId}`]) gridCharts[`${cardId}-${itemId}`].destroy();
-                    gridCharts[`${cardId}-${itemId}`] = createChart(ctx, item.history);
-                }, 100);
-            }
-        }
-
-        // --- SIDEBAR & FUNCIONALIDADES ---
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
-
-        function openNotes() {
-            const content = document.getElementById('sidebar-content');
-            const title = document.getElementById('sidebar-title');
-            const back = document.getElementById('sidebar-back');
-            
-            title.innerText = "Anotações";
-            back.style.display = "block";
-            back.onclick = resetSidebar;
-
-            let html = `
-                <button class="btn btn-primary btn-sm" style="width:100%; margin-bottom:20px" onclick="summarizeNotes()">
-                    Resumir minhas anotações
-                </button>
-                <div id="notes-list">
-            `;
-
-            const indexKeys = Object.keys(annotations);
-            if(indexKeys.length === 0) {
-                html += `<p style="color:var(--text-muted); text-align:center">Nenhuma anotação encontrada.</p>`;
-            } else {
-                indexKeys.forEach(id => {
-                    const item = data.find(d => d.id === id);
-                    html += `
-                        <div class="sidebar-item" onclick="showNoteDetail('${id}')">
-                            <span class="note-tag">${item ? item.name : id}</span>
-                            <p style="font-size:0.75rem; margin-top:8px">${(annotations[id] || "").substring(0, 40)}...</p>
-                        </div>
-                    `;
-                });
-            }
-            html += `</div>`;
-            content.innerHTML = html;
-        }
-
-        function showNoteDetail(id) {
-            const content = document.getElementById('sidebar-content');
-            const item = data.find(d => d.id === id);
-            content.innerHTML = `
-                <div style="padding:10px">
-                    <h4 style="color:var(--primary-gold); margin-bottom:10px">${item ? item.name : id}</h4>
-                    <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; line-height:1.6; font-size:0.85rem">
-                        ${annotations[id]}
-                    </div>
-                    <button class="btn btn-secondary btn-sm" style="margin-top:20px" onclick="openNotes()">Voltar</button>
-                </div>
-            `;
-        }
-
-        function summarizeNotes() {
-            alert("Função de resumo global de anotações (aguardando integração).");
-        }
-
-        function openCalculators() {
-            const content = document.getElementById('sidebar-content');
-            const title = document.getElementById('sidebar-title');
-            const back = document.getElementById('sidebar-back');
-            
-            title.innerText = "Calculadoras";
-            back.style.display = "block";
-            back.onclick = resetSidebar;
-
-            const calcs = [
-                { name: 'Dividend Yield', id: 'calc-dy' },
-                { name: 'Preço / Lucro (P/L)', id: 'calc-pl' },
-                { name: 'PEG Ratio', id: 'calc-peg' },
-                { name: 'Preço / Valor Patrimonial', id: 'calc-pvp' },
-                { name: 'EV / EBITDA', id: 'calc-evebitda' }
-            ];
-
-            content.innerHTML = calcs.map(c => `
-                <div class="sidebar-item" onclick="openCalc('${c.id}')">
-                    <strong>${c.name}</strong>
-                </div>
-            `).join('') + `
-                <div style="margin-top:30px; border-top:1px solid var(--glass-border); padding-top:20px">
-                    <h5 style="margin-bottom:10px">Cálculos Salvos</h5>
-                    <div id="saved-calcs-list">
-                        ${savedCalculations.map((sc, i) => `<div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:5px">${sc.name}: ${sc.result}</div>`).join('') || 'Nenhum salvo.'}
-                    </div>
-                </div>
-            `;
-        }
-
-        function openNoteModal(id, name) {
-            const note = prompt(`Anotação para ${name}:`, annotations[id] || "");
-            if (note !== null) {
-                annotations[id] = note;
-                localStorage.setItem('indices_annotations', JSON.stringify(annotations));
-            }
-        }
-
-        function openCalc(id) {
-            const content = document.getElementById('sidebar-content');
-            let html = `<div style="padding:10px">`;
-            
-            if (id === 'calc-dy') {
-                html += `
-                    <h4>Dividend Yield</h4>
-                    <div class="calc-input-group"><label>Dividendos anuais (R$)</label><input type="number" id="dy-d" placeholder="0.00"></div>
-                    <div class="calc-input-group"><label>Preço da Ação (R$)</label><input type="number" id="dy-p" placeholder="0.00"></div>
-                `;
-            } else if (id === 'calc-pl') {
-                html += `
-                    <h4>Preço / Lucro</h4>
-                    <div class="calc-input-group"><label>Preço da Ação (R$)</label><input type="number" id="pl-p" placeholder="0.00"></div>
-                    <div class="calc-input-group"><label>LPA (R$)</label><input type="number" id="pl-l" placeholder="0.00"></div>
-                `;
-            } else if (id === 'calc-peg') {
-                html += `
-                    <h4>PEG Ratio</h4>
-                    <div class="calc-input-group"><label>P/L</label><input type="number" id="peg-pl" placeholder="0.00"></div>
-                    <div class="calc-input-group"><label>Crescimento Esperado (%)</label><input type="number" id="peg-g" placeholder="0.00"></div>
-                `;
-            } else if (id === 'calc-pvp') {
-                html += `
-                    <h4>P/VP</h4>
-                    <div class="calc-input-group"><label>Preço da Ação (R$)</label><input type="number" id="pvp-p" placeholder="0.00"></div>
-                    <div class="calc-input-group"><label>VPA (R$)</label><input type="number" id="pvp-v" placeholder="0.00"></div>
-                `;
-            } else if (id === 'calc-evebitda') {
-                html += `
-                    <h4>EV / EBITDA</h4>
-                    <div class="calc-input-group"><label>Enterprise Value (R$)</label><input type="number" id="ev-e" placeholder="0.00"></div>
-                    <div class="calc-input-group"><label>EBITDA (R$)</label><input type="number" id="ev-eb" placeholder="0.00"></div>
-                `;
-            }
-
-            html += `
-                <button class="btn btn-primary" style="width:100%; margin-top:10px" onclick="runCalc('${id}')">Calcular</button>
-                <div id="calc-result-box" class="calc-result hidden">
-                    Result: <span class="calc-result-val" id="calc-res">--</span>
-                    <button class="btn btn-sm btn-secondary" style="width:100%; margin-top:10px" id="save-calc-btn">Salvar</button>
-                </div>
-                <button class="btn btn-secondary btn-sm" style="margin-top:20px; width:100%" onclick="openCalculators()">Voltar</button>
-            </div>`;
-            content.innerHTML = html;
-        }
-
-        function runCalc(id) {
-            let res = 0;
-            let name = "";
-            try {
-                if (id === 'calc-dy') {
-                    res = (parseFloat(document.getElementById('dy-d').value) / parseFloat(document.getElementById('dy-p').value)) * 100;
-                    res = res.toFixed(2) + "%";
-                    name = "D.Y";
-                } else if (id === 'calc-pl') {
-                    res = (parseFloat(document.getElementById('pl-p').value) / parseFloat(document.getElementById('pl-l').value)).toFixed(2);
-                    name = "P/L";
-                } else if (id === 'calc-peg') {
-                    res = (parseFloat(document.getElementById('peg-pl').value) / parseFloat(document.getElementById('peg-g').value)).toFixed(2);
-                    name = "PEG";
-                } else if (id === 'calc-pvp') {
-                    res = (parseFloat(document.getElementById('pvp-p').value) / parseFloat(document.getElementById('pvp-v').value)).toFixed(2);
-                    name = "P/VP";
-                } else if (id === 'calc-evebitda') {
-                    res = (parseFloat(document.getElementById('ev-e').value) / parseFloat(document.getElementById('ev-eb').value)).toFixed(2) + "x";
-                    name = "EV/EBITDA";
-                }
-            } catch(e) { res = "Erro"; }
-
-            const box = document.getElementById('calc-result-box');
-            const resEl = document.getElementById('calc-res');
-            box.classList.remove('hidden');
-            resEl.innerText = res;
-
-            document.getElementById('save-calc-btn').onclick = () => {
-                savedCalculations.push({ name, result: res, date: new Date().toLocaleDateString() });
-                localStorage.setItem('indices_calcs', JSON.stringify(savedCalculations));
-                alert("Cálculo salvo!");
-            };
-        }
-
-        function resetSidebar() {
-            const content = document.getElementById('sidebar-content');
-            const title = document.getElementById('sidebar-title');
-            const back = document.getElementById('sidebar-back');
-            
-            title.innerText = "Menu";
-            back.style.display = "none";
-            content.innerHTML = `
-                <div class="sidebar-item" onclick="openNotes()">
-                    <strong>Anotações</strong>
-                    <p style="font-size:0.7rem; color:var(--text-muted);">Visualize e gerencie suas notas por índice.</p>
-                </div>
-                <div class="sidebar-item" onclick="openCalculators()">
-                    <strong>Calculadoras</strong>
-                    <p style="font-size:0.7rem; color:var(--text-muted);">Ferramentas de cálculo fundamentalista.</p>
-                </div>
-            `;
-        }
-
-        // Sidebar resize logic
-        const sidebar = document.getElementById('sidebar');
-        const resizer = document.getElementById('sidebar-resizer');
-        resizer.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            document.addEventListener('mousemove', resize);
-            document.addEventListener('mouseup', stopResize);
-        });
-        function resize(e) {
-            const width = window.innerWidth - e.clientX;
-            if (width > 250 && width < 600) {
-                sidebar.style.width = width + 'px';
-            }
-        }
-        function stopResize() {
-            document.removeEventListener('mousemove', resize);
-        }
-    </script>
+// init
+window.addEventListener('resize',()=>{
+  metrics.forEach(k=>{ if(metricState[k]&&metricState[k].open) renderChart(k); });
+});
+</script>
 </body>
 </html>

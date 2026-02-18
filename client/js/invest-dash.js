@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('wheel', () => {}, { passive: true });
     window.addEventListener('touchstart', () => {}, { passive: true });
 
@@ -108,6 +108,49 @@ document.addEventListener('DOMContentLoaded', () => {
             return this._request(`/api/investments/assets/${encodeURIComponent(assetId)}/quote${suffix}`);
         },
     };
+
+    async function ensureDashWidgetTemplatesLoaded() {
+        const requiredTemplateIds = [
+            'invest-dash-template-alocacao-widget',
+            'invest-dash-template-patrimonio-widget',
+            'invest-dash-template-rentabilidade-widget',
+            'invest-dash-template-resultado-widget',
+            'invest-dash-template-volatilidade-widget',
+        ];
+
+        const hasAllTemplates = requiredTemplateIds.every((id) => document.getElementById(id));
+        if (hasAllTemplates) return;
+
+        const candidates = [
+            './invest-dash-dados.html',
+            '/html/invest-dash-dados.html',
+            '../html/invest-dash-dados.html',
+        ];
+
+        for (const path of candidates) {
+            try {
+                const response = await fetch(path, { cache: 'no-store' });
+                if (!response.ok) continue;
+
+                const htmlText = await response.text();
+                const parsed = new DOMParser().parseFromString(htmlText, 'text/html');
+                const templates = parsed.querySelectorAll('template[id^="invest-dash-template-"]');
+
+                templates.forEach((template) => {
+                    if (!document.getElementById(template.id)) {
+                        document.body.appendChild(template.cloneNode(true));
+                    }
+                });
+
+                const loadedAll = requiredTemplateIds.every((id) => document.getElementById(id));
+                if (loadedAll) return;
+            } catch (_) {
+                // noop
+            }
+        }
+    }
+
+    await ensureDashWidgetTemplatesLoaded();
 
     function collectSlots() {
         const mainCards = Array.from(document.querySelectorAll('.main-card-full'));
