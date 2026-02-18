@@ -123,10 +123,10 @@ body:has(.sidebar.collapsed) .content-wrapper {
 }
 
 .nav-opt.active {
-    background: var(--glass-surface);
+    background: rgba(166, 94, 68, 0.12);
     color: var(--text-primary);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    border: 1px solid rgba(166, 94, 68, 0.25);
 }
 
 /* Indicadores de Mercado */
@@ -173,6 +173,10 @@ body:has(.sidebar.collapsed) .content-wrapper {
 /* Ajuste sutil na cor verde para não brigar com o tom terra */
 .indicator i.up {
     color: #8FBC8F; /* Dark Sea Green - mais orgânico */
+}
+
+.indicator i.down {
+    color: #D97757; /* Terracota queimado — coerente com a paleta */
 }
 
 .add-indicator-btn {

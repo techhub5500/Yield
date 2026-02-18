@@ -109,13 +109,13 @@ body.chat-active .cards-grid {
 
 .main-card {
     /* Glassmorphism Premium */
-    background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+    background: linear-gradient(145deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.01) 100%);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
-    
+
     border: 1px solid var(--glass-border);
     border-top: 1px solid var(--glass-highlight);
-    
+
     height: 350px;
     border-radius: var(--radius-lg);
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.5);
@@ -248,10 +248,9 @@ body.chat-active .input-container-box {
     padding: 12px 18px;
     border-radius: 18px;
     font-size: 15px;
-    line-height: 1.5; /* Melhor legibilidade */
+    line-height: 1.55;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    word-break: break-all;
     animation: fadeIn 0.3s ease-out;
 }
 
