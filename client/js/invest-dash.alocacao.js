@@ -499,6 +499,72 @@
             return allocations;
         }
 
+        function distributeWithCaps(totalAmount, rows, getCap, getWeight) {
+            const allocations = new Map();
+            const amount = roundCents(Math.max(0, Number(totalAmount || 0)));
+            if (!amount || !rows.length) return allocations;
+
+            let remaining = amount;
+            let active = rows
+                .map((row) => ({
+                    row,
+                    cap: roundCents(Math.max(0, Number(getCap(row) || 0))),
+                    weight: Math.max(0.0001, Number(getWeight(row) || 0.0001)),
+                }))
+                .filter((entry) => entry.cap > 0);
+
+            active.forEach((entry) => allocations.set(entry.row.id, 0));
+
+            while (remaining > 0.0001 && active.length) {
+                const totalWeight = active.reduce((sum, entry) => sum + entry.weight, 0);
+                let consumed = 0;
+
+                active.forEach((entry) => {
+                    const current = roundCents(allocations.get(entry.row.id) || 0);
+                    const room = roundCents(entry.cap - current);
+                    if (room <= 0) return;
+
+                    const share = totalWeight > 0 ? (remaining * entry.weight) / totalWeight : 0;
+                    const applied = roundCents(Math.min(room, share));
+
+                    if (applied > 0) {
+                        allocations.set(entry.row.id, roundCents(current + applied));
+                        consumed = roundCents(consumed + applied);
+                    }
+                });
+
+                if (consumed <= 0.0001) {
+                    const fallback = active[0];
+                    if (!fallback) break;
+
+                    const current = roundCents(allocations.get(fallback.row.id) || 0);
+                    const room = roundCents(fallback.cap - current);
+                    if (room <= 0) break;
+
+                    const applied = roundCents(Math.min(room, remaining));
+                    allocations.set(fallback.row.id, roundCents(current + applied));
+                    consumed = applied;
+                }
+
+                remaining = roundCents(Math.max(0, remaining - consumed));
+                active = active.filter((entry) => {
+                    const current = roundCents(allocations.get(entry.row.id) || 0);
+                    return roundCents(entry.cap - current) > 0;
+                });
+            }
+
+            const distributed = roundCents(Array.from(allocations.values()).reduce((sum, value) => sum + value, 0));
+            const diff = roundCents(amount - distributed);
+            if (diff !== 0 && allocations.size) {
+                const target = active[0]?.row || rows[0];
+                if (target) {
+                    allocations.set(target.id, roundCents((allocations.get(target.id) || 0) + diff));
+                }
+            }
+
+            return allocations;
+        }
+
         function buildViewRows(frame, rawRows) {
             const isRootView = frame.key.endsWith('-root');
             const isClassRoot = frame.key === 'class-root';
@@ -597,7 +663,19 @@
 
             const inheritedAporte = roundCents(Math.max(0, Number(frame.inheritedAporte || 0)));
             if (inheritedAporte > 0) {
-                const recipients = rows.filter((row) => row.realPct < row.targetPct);
+                const inheritedNewTotal = roundCents(baseTotal + inheritedAporte);
+                const recipients = rows
+                    .map((row) => {
+                        const targetAtNewTotal = roundCents((row.targetPct / 100) * inheritedNewTotal);
+                        const capToTarget = roundCents(Math.max(0, targetAtNewTotal - row.currentValue));
+                        return {
+                            ...row,
+                            targetAtNewTotal,
+                            capToTarget,
+                        };
+                    })
+                    .filter((row) => row.capToTarget > 0);
+
                 if (!recipients.length) {
                     return {
                         id: 'aporte',
@@ -614,20 +692,36 @@
                     };
                 }
 
-                const allocations = distributeAmount(inheritedAporte, recipients, priority);
-                rows.forEach((row) => actions.set(row.id, roundCents(allocations.get(row.id) || 0)));
+                const inheritedWeight = (row) => {
+                    const gap = Math.max(0, row.targetPct - row.realPct);
+                    if (gap > 0) return 1000 + gap;
+                    return Math.max(0.0001, priority(row));
+                };
+
+                const allocations = distributeWithCaps(
+                    inheritedAporte,
+                    recipients,
+                    (row) => row.capToTarget,
+                    inheritedWeight
+                );
+
+                rows.forEach((row) => {
+                    actions.set(row.id, roundCents(allocations.get(row.id) || 0));
+                });
+
+                const distributed = roundCents(Array.from(actions.values()).reduce((sum, value) => sum + Math.max(0, value), 0));
 
                 return {
                     id: 'aporte',
                     blocked: false,
-                    reason: '',
+                    reason: distributed > 0 ? '' : 'Sem desvio detectado',
                     inherited: true,
                     sourceHint: 'Distribuição do aporte sugerido no nível superior',
                     rows,
                     actions,
-                    total: inheritedAporte,
-                    newTotal: roundCents(baseTotal + inheritedAporte),
-                    buyTotal: inheritedAporte,
+                    total: distributed,
+                    newTotal: roundCents(baseTotal + distributed),
+                    buyTotal: distributed,
                     sellTotal: 0,
                 };
             }

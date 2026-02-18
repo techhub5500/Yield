@@ -680,6 +680,9 @@ Implementação complementar aplicada em `client/js/invest-dash.alocacao.js` + t
   - Ao navegar para dentro de um grupo, o aporte recomendado no nível superior é propagado para o nível interno como `aporteHerdado`.
   - O card passa a exibir explicitamente:
     - "Distribuição do aporte sugerido no nível superior".
+  - Ajuste de correção aplicado: a distribuição herdada deixou de depender apenas de itens já abaixo da meta no estado pré-aporte.
+    - Regra nova: usa `meta no novo total do grupo` (`targetAtNewTotal`) e distribui somente até `capToTarget` por item.
+    - Resultado: mesmo com grupo internamente equilibrado, o aporte herdado é distribuído corretamente entre os ativos conforme metas internas, preservando soma e sem ultrapassar teto individual.
 
 - UI/UX: cenários simultâneos e detalhe com 1 clique
   - Removidas as tabs de modo no topo.
