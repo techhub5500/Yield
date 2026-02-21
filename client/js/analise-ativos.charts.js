@@ -145,36 +145,29 @@ function aaRenderLineChart({ svgId, tipId, datasets = [], height = 188 }) {
     return { ...dataset, ...geom };
   });
 
-  // Single-point rendering: show a visible bar + value label instead of an invisible dot
+  // Single-point rendering: show value centered with a horizontal indicator line
   const isSinglePoint = validDatasets.every((d) => d.data.length === 1);
 
   if (isSinglePoint) {
-    const padX = 10;
-    const padY = 14;
-    const drawH = height - padY * 2;
-    const barWidth = Math.max(Math.min(width * 0.12, 36), 16);
-    const gap = barWidth + 10;
-    const totalW = prepared.length * barWidth + (prepared.length - 1) * 10;
-    const startX = (width - totalW) / 2;
+    const midY = height / 2;
+    const lineY = midY + 18;
+    const perItem = Math.floor(width / prepared.length);
 
     svg.innerHTML = prepared.map((dataset, i) => {
       const val = dataset.data[0]?.value ?? 0;
-      const cx = startX + i * gap + barWidth / 2;
-      const barH = Math.max(drawH * 0.55, 24);
-      const barY = padY + (drawH - barH) / 2;
-      const labelY = barY - 6;
+      const cx = perItem * i + perItem / 2;
       const fmtFn = dataset.fmt || ((v) => window.aaFmtCompactCurrency ? window.aaFmtCompactCurrency(v) : String(v));
       const fmtVal = fmtFn(val);
+      const ticker = dataset.name || '';
+      const period = dataset.data[0]?.label || '';
       return `
-        <rect x="${cx - barWidth / 2}" y="${barY}" width="${barWidth}" rx="4" ry="4"
-              height="${barH}" fill="${dataset.fill || dataset.color}" opacity="0.7"></rect>
-        <rect x="${cx - barWidth / 2}" y="${barY}" width="${barWidth}" rx="4" ry="4"
-              height="${barH}" fill="none" stroke="${dataset.color}" stroke-width="1.5"></rect>
-        <circle cx="${cx}" cy="${barY + barH / 2}" r="4" fill="${dataset.color}"></circle>
-        <text x="${cx}" y="${labelY}" text-anchor="middle" fill="${dataset.color}"
-              font-size="11" font-family="'DM Mono',monospace" font-weight="500">${fmtVal}</text>
-        <text x="${cx}" y="${barY + barH + 14}" text-anchor="middle" fill="var(--tx2,#888)"
-              font-size="9" font-family="inherit">${dataset.data[0]?.label || dataset.name || ''}</text>
+        <line x1="${cx - perItem * 0.35}" y1="${lineY}" x2="${cx + perItem * 0.35}" y2="${lineY}"
+              stroke="${dataset.color}" stroke-width="1.5" stroke-dasharray="4 3" opacity="0.45"></line>
+        <circle cx="${cx}" cy="${midY - 4}" r="5" fill="${dataset.color}" opacity="0.85"></circle>
+        <text x="${cx}" y="${midY - 16}" text-anchor="middle" fill="${dataset.color}"
+              font-size="13" font-family="'DM Mono',monospace" font-weight="600">${fmtVal}</text>
+        ${ticker ? `<text x="${cx}" y="${lineY + 13}" text-anchor="middle" fill="var(--tx2,#888)" font-size="9" font-family="inherit" opacity="0.75">${ticker}</text>` : ''}
+        ${period ? `<text x="${cx}" y="${lineY + 23}" text-anchor="middle" fill="var(--tx2,#888)" font-size="8" font-family="inherit" opacity="0.55">${period}</text>` : ''}
       `;
     }).join('');
 

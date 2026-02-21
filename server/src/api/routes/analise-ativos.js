@@ -183,11 +183,14 @@ function createAnaliseAtivosRouter() {
       const quoteResult = await brapiService.fetchQuote(ticker, {
         modules: fundamentalModules,
         dividends: true,
+        range: 'max',
+        interval: '1mo',
         cacheTtl: aaConfig.ttl.indices,
       });
 
       const raw = quoteResult.data;
-      const indicesPayload = buildIndicesPayload(raw);
+      const historicalPrices = Array.isArray(raw.historicalDataPrice) ? raw.historicalDataPrice : [];
+      const indicesPayload = buildIndicesPayload(raw, historicalPrices);
 
       return res.json({
         ticker,

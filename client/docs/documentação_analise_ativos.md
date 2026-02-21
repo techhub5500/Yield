@@ -850,14 +850,17 @@ Fluxo principal:
 ```
 Frontend
   └─ GET /api/analise-ativos/core/:ticker
-      ├─ BrapiService.fetchQuote(...modules fundamentalistas...)
+      ├─ BrapiService.fetchQuote(...modules fundamentalistas + range=max + interval=1mo...)
       │   ├─ verifica aa_index_cache
-      │   └─ chama Brapi se cache expirado
-      └─ indices.engine.buildIndicesPayload(raw)
+      │   ├─ chama Brapi se cache expirado (uma única chamada retorna módulos + preço histórico)
+      │   └─ retorna data + historicalDataPrice
+      └─ indices.engine.buildIndicesPayload(raw, historicalPrices)
         ├─ calcula índices universais/dinâmicos
         ├─ classifica segmento
         ├─ define hiddenMetrics e unavailable
-        └─ prepara séries para gráficos
+        ├─ prepara séries de Rentabilidade/Resultado/Endividamento via financialDataHistoryQuarterly
+        └─ prepara séries de Valuation (PL, PVP, EVEBITDA, DY, EV, PSR) cruzando
+           preço histórico mensal com dados fundamentalistas trimestrais
 ```
 
 ### 9.2 Serviços Criados
@@ -890,6 +893,7 @@ Responsabilidades:
 - Definir `hiddenMetrics` por segmento (ex.: bancos/seguros)
 - Definir lista dinâmica de “Dados não disponíveis” por segmento
 - Montar séries anuais/trimestrais usadas nos gráficos
+- **Montar séries históricas de Valuation** cruzando preço histórico mensal com dados fundamentalistas trimestrais
 
 Decisões técnicas:
 
@@ -897,6 +901,18 @@ Decisões técnicas:
 - **Payout**: proxy por dividendos 12m ÷ LPA.
 - **Alavancagem**: `(Dívida Líquida / EBITDA)` com fallback robusto para campos ausentes.
 - Sem mock: quando não existe dado suficiente, retorna `null` para frontend renderizar fallback visual.
+- **Valuation Series**: os múltiplos PL, PVP, EVEBITDA, DY, EV e PSR são calculados por trimestre cruzando o preço mensal mais próximo (tolerância de 45 dias) com os dados de `financialDataHistoryQuarterly` e `balanceSheetHistoryQuarterly`. Isso resolve a limitação anterior onde esses gráficos exibiam apenas um ponto (o valor corrente) por falta de dados históricos de preço.
+
+  | Métrica | Cálculo por trimestre |
+  |---|---|
+  | **PL** | `(price × sharesOutstanding) / (totalRevenue × profitMargins)` |
+  | **PVP** | `(price × sharesOutstanding) / shareholdersEquity` |
+  | **EV/EBITDA** | `(price × sharesOutstanding + totalDebt - totalCash) / ebitda` |
+  | **DY** | `(soma dividendos 12m / price) × 100` |
+  | **EV** | `price × sharesOutstanding + totalDebt - totalCash` |
+  | **PSR** | `(price × sharesOutstanding) / totalRevenue` |
+
+- **`findClosestPrice(historicalPrices, targetDate)`**: função auxiliar que encontra o preço de fechamento mensal mais próximo de uma data-alvo, com tolerância máxima de 45 dias.
 
 ### 9.3 Endpoints da Fase 2
 
@@ -905,7 +921,7 @@ Adicionados em `server/src/api/routes/analise-ativos.js` (todos com JWT):
 | Endpoint | Finalidade | Cache |
 |---|---|---|
 | `GET /api/analise-ativos/search?query=...` | Autocomplete de ativos | 30min |
-| `GET /api/analise-ativos/core/:ticker` | Header + índices + séries + segmento | 12h |
+| `GET /api/analise-ativos/core/:ticker` | Header + índices + séries + segmento (inclui preço histórico mensal para Valuation) | 12h |
 | `GET /api/analise-ativos/history/:ticker?range=&interval=` | Histórico para gráfico | 30min |
 | `GET /api/analise-ativos/balance/:ticker` | BP trimestral/anual | 12h |
 
@@ -964,8 +980,10 @@ Tratamento de erro:
 
 #### Nível aplicação (frescor lógico)
 
-- Fundamentalistas: validação de frescor `<= 12h`
+- Fundamentalistas + preço histórico mensal (core): validação de frescor `<= 12h`
 - Histórico/cotação/autocomplete: validação de frescor `<= 30min`
+
+> **Nota:** O endpoint `/core/:ticker` agora inclui `range=max&interval=1mo` na chamada Brapi, retornando módulos fundamentalistas e preço histórico mensal numa única requisição. A chave de cache é distinta da chamada sem range/interval, mas ambos se beneficiam do mesmo TTL de 12h.
 
 Isso permite:
 

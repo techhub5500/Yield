@@ -76,6 +76,23 @@ function onlyClosedQuarterRows(rows, now = new Date()) {
   });
 }
 
+function findClosestPrice(historicalPrices, targetDate) {
+  if (!Array.isArray(historicalPrices) || !historicalPrices.length) return null;
+  const targetTs = new Date(targetDate).getTime();
+  if (!Number.isFinite(targetTs)) return null;
+
+  let best = null;
+  let bestDiff = Infinity;
+  for (const point of historicalPrices) {
+    const ts = (point.date || 0) * 1000; // Brapi returns Unix seconds
+    const diff = Math.abs(ts - targetTs);
+    if (diff < bestDiff) { bestDiff = diff; best = point; }
+  }
+
+  const MAX_DIFF_MS = 45 * 24 * 60 * 60 * 1000; // 45 days tolerance
+  return best && bestDiff <= MAX_DIFF_MS ? toNumber(best.close) : null;
+}
+
 function classifySegment(summaryProfile = {}) {
   const sector = String(summaryProfile?.sector || '').toLowerCase();
   const industry = String(summaryProfile?.industry || '').toLowerCase();
@@ -141,7 +158,7 @@ const SEGMENT_CONFIG = {
   },
 };
 
-function buildSeries(raw = {}) {
+function buildSeries(raw = {}, historicalPrices = []) {
   const incomeA = sortByEndDateAsc(raw.incomeStatementHistory || []);
   const incomeQ = onlyClosedQuarterRows(raw.incomeStatementHistoryQuarterly || []);
   const financialQ = onlyClosedQuarterRows(raw.financialDataHistoryQuarterly || []);
@@ -241,6 +258,26 @@ function buildSeries(raw = {}) {
 
   // Helper: compute shares outstanding (constant approximation)
   const sharesOutstanding = toNumber(raw.defaultKeyStatistics?.sharesOutstanding);
+
+  // Dividend data for DY series computation
+  const dividendsData = raw.dividendsData?.cashDividends || [];
+
+  // Helper: build annual + quarterly series for valuation metrics that need historical price
+  function valSeries(computeFn) {
+    const annual = financialA.map(({ year, row }) => {
+      const price = findClosestPrice(historicalPrices, row.endDate);
+      return { label: year, value: computeFn(row, price, row.endDate) };
+    }).filter((r) => r.value !== null && Number.isFinite(r.value));
+    const quarterly = financialQ.map((row) => {
+      const d = new Date(row.endDate);
+      const q = Math.ceil((d.getMonth() + 1) / 3);
+      const price = findClosestPrice(historicalPrices, d);
+      const value = computeFn(row, price, d);
+      if (value === null || !Number.isFinite(value)) return null;
+      return { label: `${q}T/${String(d.getFullYear()).slice(2)}`, quarter: q, value };
+    }).filter(Boolean);
+    return { A: annual, Q: quarterly };
+  }
 
   function metricSeries(key) {
     if (key === 'RL') return { A: annualReceita, Q: quarterReceita };
@@ -383,9 +420,68 @@ function buildSeries(raw = {}) {
     if (key === 'DPL') {
       return finSeriesFromField((row) => toNumber(row.debtToEquity));
     }
-    // ─── EV: enterpriseValue approximation from totalDebt - totalCash + marketCap ───
-    // No historical price data, so cannot compute reliable series
-    // ─── PL, PVP, EVEBITDA, DY, PSR: require historical price ───
+
+    // ─── Valuation metrics: require historical price + fundamental data ───
+    if (!historicalPrices.length || !sharesOutstanding) return { A: [], Q: [] };
+
+    if (key === 'PL') {
+      return valSeries((row, price) => {
+        if (!price) return null;
+        const rev = toNumber(row.totalRevenue);
+        const pm = toNumber(row.profitMargins);
+        if (rev === null || pm === null) return null;
+        const ni = rev * pm;
+        return ni !== 0 ? (price * sharesOutstanding) / ni : null;
+      });
+    }
+    if (key === 'PVP') {
+      return valSeries((row, price) => {
+        if (!price) return null;
+        const d = new Date(row.endDate);
+        const qKey = `${d.getFullYear()}-${Math.ceil((d.getMonth() + 1) / 3)}`;
+        const bsRow = balanceQ.find((b) => {
+          const db = new Date(b.endDate);
+          return `${db.getFullYear()}-${Math.ceil((db.getMonth() + 1) / 3)}` === qKey;
+        });
+        const eqRaw = bsRow?.totalStockholderEquity ?? bsRow?.stockholdersEquity ?? bsRow?.shareholdersEquity;
+        const equity = toNumber(eqRaw);
+        return equity && equity !== 0 ? (price * sharesOutstanding) / equity : null;
+      });
+    }
+    if (key === 'EVEBITDA') {
+      return valSeries((row, price) => {
+        if (!price) return null;
+        const ebitdaVal = toNumber(row.ebitda);
+        if (!ebitdaVal || ebitdaVal === 0) return null;
+        const debt = toNumber(row.totalDebt) ?? 0;
+        const cash = toNumber(row.totalCash) ?? 0;
+        return (price * sharesOutstanding + debt - cash) / ebitdaVal;
+      });
+    }
+    if (key === 'DY') {
+      if (!dividendsData.length) return { A: [], Q: [] };
+      return valSeries((row, price, endDate) => {
+        if (!price) return null;
+        const totalDiv = sumDividendsLast12Months(dividendsData, new Date(endDate));
+        return totalDiv > 0 ? (totalDiv / price) * 100 : null;
+      });
+    }
+    if (key === 'EV') {
+      return valSeries((row, price) => {
+        if (!price) return null;
+        const debt = toNumber(row.totalDebt) ?? 0;
+        const cash = toNumber(row.totalCash) ?? 0;
+        return price * sharesOutstanding + debt - cash;
+      });
+    }
+    if (key === 'PSR') {
+      return valSeries((row, price) => {
+        if (!price) return null;
+        const rev = toNumber(row.totalRevenue);
+        return rev && rev !== 0 ? (price * sharesOutstanding) / rev : null;
+      });
+    }
+
     return { A: [], Q: [] };
   }
 
@@ -456,7 +552,8 @@ function buildIndices(raw = {}) {
   const totalDebt = toNumber(financial.totalDebt) ?? toNumber(latestBQ?.totalDebt);
   const totalCash = toNumber(financial.totalCash);
   const ebitda = toNumber(financial.ebitda) ?? toNumber(latestQ?.ebitda);
-  const equity = toNumber(latestBQ?.totalStockholderEquity) ?? toNumber(latestBQ?.stockholdersEquity);
+  const equityRaw = latestBQ?.totalStockholderEquity ?? latestBQ?.stockholdersEquity ?? latestBQ?.shareholdersEquity;
+  const equity = toNumber(equityRaw);
   const totalLiabilities = toNumber(latestBQ?.totalLiab)
     ?? toNumber(latestBQ?.totalLiabilitiesNetMinorityInterest)
     ?? toNumber(latestBQ?.totalLiabilities);
@@ -500,7 +597,7 @@ function buildIndices(raw = {}) {
   };
 }
 
-function buildIndicesPayload(raw = {}) {
+function buildIndicesPayload(raw = {}, historicalPrices = []) {
   const summaryProfile = raw.summaryProfile || {};
   const segment = classifySegment(summaryProfile);
   const segmentConfig = SEGMENT_CONFIG[segment] || SEGMENT_CONFIG.general;
@@ -510,7 +607,7 @@ function buildIndicesPayload(raw = {}) {
     segmentLabel: summaryProfile.sector || 'Geral',
     segmentConfig,
     indices: buildIndices(raw),
-    series: buildSeries(raw),
+    series: buildSeries(raw, historicalPrices),
   };
 }
 
