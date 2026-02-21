@@ -141,7 +141,7 @@ toc:
 
     O parâmetro `modules` é extremamente poderoso para enriquecer a
     resposta com dados financeiros detalhados. Você pode solicitar um ou
-    mais módulos, separados por vírgula.
+    mais módulos, separados por vígula.
 
     **Módulos Disponíveis:**
 

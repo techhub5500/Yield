@@ -1,0 +1,1140 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield — Análise Fundamentalista</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/analise-ativos.css">
+</head>
+<body>
+<div class="app">
+
+<nav class="nav">
+  <div class="nav-logo">Yield</div>
+  <div class="nav-search">
+    <input type="text" class="nav-search-inp" id="navSearchInp" placeholder="Pesquisar empresa ou ativo" autocomplete="off" oninput="onNavSearch(this.value)" onblur="setTimeout(closeNavSearch,200)">
+    <span class="nav-search-ico">⌕</span>
+    <div class="nav-search-results" id="navSearchResults"></div>
+  </div>
+  <div class="nav-r">
+    <button class="btn" onclick="openCompare()">⇄ Comparar</button>
+    <button class="btn btn-gold" onclick="toggleSidebar()">Workspace</button>
+  </div>
+</nav>
+
+<div class="main" id="main">
+<div class="content" id="content">
+
+<div class="asset-hd">
+  <div class="asset-left">
+    <div class="ticker" id="assetTicker" data-ticker="PETR4" data-placeholder="ticker">PETR4</div>
+    <div class="asset-name" id="assetName" data-placeholder="name">Petróleo Brasileiro S.A. — Petrobras</div>
+    <div class="tags">
+      <span class="tag tag-s" id="assetSector" data-placeholder="sector">—</span>
+      <span class="tag tag-t" id="btn-dossier" style="cursor:pointer; transition: all 0.2s;" onclick="toggleDossier()">Ver Dossiê</span>
+    </div>
+  </div>
+  <div class="asset-right">
+    <div class="price" id="assetPrice" data-placeholder="price">R$ —</div>
+    <div class="chg" id="assetChg" data-placeholder="change">— hoje</div>
+    <div class="pdate" id="assetDate" data-placeholder="date">—</div>
+  </div>
+</div>
+
+<div class="dossier-panel" id="dossierPanel">
+  <button class="dossier-close" onclick="toggleDossier()">✕ Fechar</button>
+
+  <div class="dossier-header">
+    <div class="dossier-title">Dossiê de Inteligência Corporativa</div>
+    <div class="dossier-subtitle">Atualizado em 15 fev. 2026 · Fonte: CVM (Formulário de Referência)</div>
+  </div>
+
+  <div class="dossier-grid">
+    <div class="dossier-block">
+      <div class="dossier-block-title">Tese e Fosso Competitivo</div>
+      <div class="d-item">
+        <div class="d-lbl">Modelo de Receita</div>
+        <div class="d-val">Venda de commodities (Petróleo e Derivados) atrelada à cotação do barril Brent em Dólar.</div>
+      </div>
+      <div class="d-item">
+        <div class="d-lbl">Vantagem Competitiva (Moat)</div>
+        <div class="d-val">Domínio logístico nacional no refino e tecnologia proprietária de extração em águas profundas. <span class="d-val-highlight">Barreiras de entrada massivas.</span></div>
+      </div>
+      <div class="d-item">
+        <div class="d-lbl">Riscos Estruturais</div>
+        <div class="d-val">Exposição severa ao risco político (controle estatal), volatilidade da commodity e exigência de Capex elevado.</div>
+      </div>
+    </div>
+
+    <div class="dossier-block">
+      <div class="dossier-block-title">Governança e Administração</div>
+      <div class="d-item">
+        <div class="d-lbl">Gestão Atual (CEO)</div>
+        <div class="d-val">Magda Chambriard (desde Mai/2024). Perfil técnico e carreira estruturada dentro do setor de O&G e ANP.</div>
+      </div>
+      <div class="d-item">
+        <div class="d-lbl">Skin in the Game (Diretoria)</div>
+        <div class="d-val" style="color: var(--red);">Baixo. Participação acionária imaterial. Remuneração baseada em metas corporativas, mas sem longo prazo travado em ações.</div>
+      </div>
+      <div class="d-item">
+        <div class="d-lbl">Conselho de Administração</div>
+        <div class="d-val">Misto. Maioria controlada pelo acionista majoritário (União), com presença minoritária focada em compliance.</div>
+      </div>
+    </div>
+
+    <div class="dossier-block">
+      <div class="dossier-block-title">Capital Votante e Posições</div>
+      <div class="d-item">
+        <div class="d-sh-row">
+          <span class="d-sh-name">União Federal (Controlador)</span>
+          <span class="d-sh-pct">50,26%</span>
+        </div>
+        <div class="d-sh-row">
+          <span class="d-sh-name">BNDESPAR</span>
+          <span class="d-sh-pct">7,94%</span>
+        </div>
+        <div class="d-sh-row">
+          <span class="d-sh-name">BlackRock Inc.</span>
+          <span class="d-sh-pct">4,81%</span>
+        </div>
+        <div class="d-sh-row">
+          <span class="d-sh-name">Capital Pulverizado (Free Float)</span>
+          <span class="d-sh-pct">37,00%</span>
+        </div>
+      </div>
+      <div class="d-item" style="margin-top: 16px;">
+        <div class="d-lbl">Smart Money (Movimentações)</div>
+        <div class="d-val">Fundos institucionais estrangeiros <span style="color:var(--red)">reduziram levemente</span> a posição no último trimestre (ITR 3T25).</div>
+      </div>
+    </div>
+
+    <div class="dossier-block">
+      <div class="dossier-block-title">Ciclos e Pontos de Inflexão</div>
+      <div class="d-timeline-item">
+        <div class="d-timeline-year">2014 - 2016</div>
+        <div class="d-timeline-desc">Crise de governança e alavancagem profunda (DL/EBITDA atingiu > 4.5x). Queima severa de caixa operando refinarias com prejuízo.</div>
+      </div>
+      <div class="d-timeline-item">
+        <div class="d-timeline-year">2017 - 2021</div>
+        <div class="d-timeline-desc">Turnaround. Foco em desinvestimentos (venda de ativos não-core) e adoção rígida da política de paridade de importação (PPI).</div>
+      </div>
+      <div class="d-timeline-item">
+        <div class="d-timeline-year">2023 - Presente</div>
+        <div class="d-timeline-desc">Fim do PPI formal (nova estratégia comercial). Reinício do foco em transição energética e fertilizantes, porém mantendo dividendos sólidos.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="asset-health-strip">
+  <div class="ahs-chip"><span class="cdot a"></span>Valuation — <strong>Desconto vs. setor</strong></div>
+  <div class="ahs-chip"><span class="cdot g"></span>Rentabilidade — <strong>Sólida</strong></div>
+  <div class="ahs-chip"><span class="cdot a"></span>Resultado — <strong>Queda no LL</strong></div>
+  <div class="ahs-chip"><span class="cdot g"></span>Endividamento — <strong>Controlado</strong></div>
+  <div class="ahs-chip"><span class="cdot g"></span>DY — <strong>14,3% a.a.</strong></div>
+</div>
+
+<!-- ▸ MACRO CHARTS STRIP -->
+<div class="macro-charts" id="macroChartsStrip">
+
+  <!-- Chart 1: Valor de Mercado -->
+  <div class="macro-chart-card">
+    <div class="macro-chart-hd">
+      <div class="macro-chart-info">
+        <div class="macro-chart-title">Valor de Mercado</div>
+        <div class="macro-chart-val" id="mktcap-val">R$ 475,8B</div>
+        <div class="macro-chart-chg up" id="mktcap-chg">▲ +7,8% no período</div>
+      </div>
+      <div class="macro-chart-filters" id="mktcap-filters">
+        <button class="mf-btn" onclick="setMktcapFilter(this,'MTD')">MTD</button>
+        <button class="mf-btn active" onclick="setMktcapFilter(this,'YTD')">YTD</button>
+        <button class="mf-btn" onclick="setMktcapFilter(this,'12M')">12M</button>
+        <button class="mf-btn" onclick="setMktcapFilter(this,'ORIGEM')">Origem</button>
+      </div>
+    </div>
+    <div class="macro-chart-body">
+      <div class="macro-chart-svg-wrap">
+        <svg class="macro-chart-svg" id="svg-mktcap"></svg>
+        <div class="macro-chart-tooltip" id="tip-mktcap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 2: Receita Líquida -->
+  <div class="macro-chart-card">
+    <div class="macro-chart-hd">
+      <div class="macro-chart-info">
+        <div class="macro-chart-title">Receita Líquida</div>
+        <div class="macro-chart-val" id="receita-val">R$ 512B</div>
+        <div class="macro-chart-chg up" id="receita-chg">▲ +2,8% vs anterior</div>
+      </div>
+      <div class="macro-chart-filters" id="receita-filters">
+        <button class="mf-btn active mf-btn-blue" onclick="setReceitaPeriod(this,'A')">Anual</button>
+        <button class="mf-btn mf-btn-blue" onclick="setReceitaPeriod(this,'1T')">1T</button>
+        <button class="mf-btn mf-btn-blue" onclick="setReceitaPeriod(this,'2T')">2T</button>
+        <button class="mf-btn mf-btn-blue" onclick="setReceitaPeriod(this,'3T')">3T</button>
+        <button class="mf-btn mf-btn-blue" onclick="setReceitaPeriod(this,'4T')">4T</button>
+        <select class="year-sel" id="ysel-macro-receita" onchange="setReceitaYear(this)"></select>
+      </div>
+    </div>
+    <div class="macro-chart-body">
+      <div class="macro-chart-svg-wrap">
+        <svg class="macro-chart-svg" id="svg-receita"></svg>
+        <div class="macro-chart-tooltip" id="tip-receita"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 3: Caixa (EBITDA + Geração de Caixa) -->
+  <div class="macro-chart-card">
+    <div class="macro-chart-hd">
+      <div class="macro-chart-info">
+        <div class="macro-chart-title">Caixa — EBITDA &amp; FCL</div>
+        <div class="macro-chart-val" id="caixa-val">R$ 281B</div>
+        <div class="macro-chart-chg up" id="caixa-chg">▲ +5,9% vs anterior</div>
+      </div>
+      <div class="macro-chart-filters" id="caixa-filters">
+        <button class="mf-btn active" onclick="setCaixaPeriod(this,'A')">Anual</button>
+        <button class="mf-btn" onclick="setCaixaPeriod(this,'1T')">1T</button>
+        <button class="mf-btn" onclick="setCaixaPeriod(this,'2T')">2T</button>
+        <button class="mf-btn" onclick="setCaixaPeriod(this,'3T')">3T</button>
+        <button class="mf-btn" onclick="setCaixaPeriod(this,'4T')">4T</button>
+        <select class="year-sel" id="ysel-macro-caixa" onchange="setCaixaYear(this)"></select>
+      </div>
+    </div>
+    <div class="macro-chart-body">
+      <div class="macro-legend">
+        <span class="macro-legend-item"><span class="macro-legend-dot" style="background:rgba(122,172,136,0.85)"></span>EBITDA</span>
+        <span class="macro-legend-item"><span class="macro-legend-dot" style="background:rgba(191,102,73,0.85);border-radius:0"></span>Geração de Caixa</span>
+      </div>
+      <div class="macro-chart-svg-wrap">
+        <svg class="macro-chart-svg" id="svg-caixa"></svg>
+        <div class="macro-chart-tooltip" id="tip-caixa"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<!-- ◂ fim macro charts -->
+
+<div class="compare-banner" id="compareBanner">
+  <div class="compare-info">
+    <div>
+      <div class="compare-ticker-badge" id="compTickerBadge">VALE3</div>
+      <div class="compare-label" id="compName">Vale S.A.</div>
+    </div>
+    <span style="font-size:.75rem;color:var(--tx3)">Comparação ativa — valores em itálico</span>
+  </div>
+  <button class="compare-close" onclick="removeCompare()">✕</button>
+</div>
+
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <div class="sec-hd-left">
+      <span class="sec-title">Valuation</span>
+      <span class="sec-summary">Múltiplos de preço vs. fundamentos</span>
+    </div>
+    <div class="sec-hd-right">
+      <div class="sec-health"><div class="health-dot a"></div><span class="sec-health-lbl">Desconto vs. setor</span></div>
+      <span class="sec-arr open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell featured" data-key="PL">
+        <div class="mlbl">P/L <span class="minfo" onclick="showInfo('PL',event)">ⓘ</span></div>
+        <div class="mval neu">4,8x</div>
+        <div class="msub">Setor: 7,2x</div>
+        <div class="mval-compare" id="cmp-PL"><span class="mval-compare-ticker" id="ct-PL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'P/L')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PL')">Mostrar gráfico</button>
+          <div class="mtrend neu">▼ 33% vs. setor</div>
+          <div class="chart-period-sel" id="psel-PL">
+            <button class="period-btn active" onclick="setPeriod(this,'PL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PL')" id="ysel-PL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-PL"><div class="chart-wrap"><svg class="chart-svg" id="svg-PL"></svg><div class="chart-tooltip" id="tip-PL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="PVP">
+        <div class="mlbl">P/VP <span class="minfo" onclick="showInfo('PVP',event)">ⓘ</span></div>
+        <div class="mval neu">1,2x</div>
+        <div class="msub">Setor: 1,8x</div>
+        <div class="mval-compare" id="cmp-PVP"><span class="mval-compare-ticker" id="ct-PVP"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'P/VP')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PVP')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-PVP">
+            <button class="period-btn active" onclick="setPeriod(this,'PVP','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PVP','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PVP')" id="ysel-PVP"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-PVP"><div class="chart-wrap"><svg class="chart-svg" id="svg-PVP"></svg><div class="chart-tooltip" id="tip-PVP"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="EVEBITDA">
+        <div class="mlbl">EV/EBITDA <span class="minfo" onclick="showInfo('EVEBITDA',event)">ⓘ</span></div>
+        <div class="mval neu">3,6x</div>
+        <div class="msub">Setor: 5,1x</div>
+        <div class="mval-compare" id="cmp-EVEBITDA"><span class="mval-compare-ticker" id="ct-EVEBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EV/EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'EVEBITDA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-EVEBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'EVEBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EVEBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'EVEBITDA')" id="ysel-EVEBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-EVEBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-EVEBITDA"></svg><div class="chart-tooltip" id="tip-EVEBITDA"></div></div></div>
+      </div>
+      <div class="metric-cell featured" data-key="DY">
+        <div class="mlbl">Dividend Yield <span class="minfo" onclick="showInfo('DY',event)">ⓘ</span></div>
+        <div class="mval pos">14,3%</div>
+        <div class="msub">Último pag.: R$ 5,49/ação</div>
+        <div class="mval-compare" id="cmp-DY"><span class="mval-compare-ticker" id="ct-DY"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'DY')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DY')">Mostrar gráfico</button>
+          <div class="mtrend up">▲ Acima da Selic</div>
+          <div class="chart-period-sel" id="psel-DY">
+            <button class="period-btn active" onclick="setPeriod(this,'DY','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DY','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DY')" id="ysel-DY"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DY"><div class="chart-wrap"><svg class="chart-svg" id="svg-DY"></svg><div class="chart-tooltip" id="tip-DY"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="EV">
+        <div class="mlbl">EV <span class="minfo" onclick="showInfo('EV',event)">ⓘ</span></div>
+        <div class="mval">R$ 738B</div>
+        <div class="msub">Enterprise Value</div>
+        <div class="mval-compare" id="cmp-EV"><span class="mval-compare-ticker" id="ct-EV"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EV')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'EV')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-EV"><div class="chart-wrap"><svg class="chart-svg" id="svg-EV"></svg><div class="chart-tooltip" id="tip-EV"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="PSR">
+        <div class="mlbl">P/Receita (PSR) <span class="minfo" onclick="showInfo('PSR',event)">ⓘ</span></div>
+        <div class="mval">1,05x</div>
+        <div class="msub">Preço / Receita</div>
+        <div class="mval-compare" id="cmp-PSR"><span class="mval-compare-ticker" id="ct-PSR"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'PSR')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PSR')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-PSR"><div class="chart-wrap"><svg class="chart-svg" id="svg-PSR"></svg><div class="chart-tooltip" id="tip-PSR"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <div class="sec-hd-left">
+      <span class="sec-title">Rentabilidade</span>
+      <span class="sec-summary">Eficiência na geração de retorno</span>
+    </div>
+    <div class="sec-hd-right">
+      <div class="sec-health"><div class="health-dot g"></div><span class="sec-health-lbl">ROE 28,4% · ROIC 18,7%</span></div>
+      <span class="sec-arr open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell featured" data-key="ROE">
+        <div class="mlbl">ROE <span class="minfo" onclick="showInfo('ROE',event)">ⓘ</span></div>
+        <div class="mval pos">28,4%</div>
+        <div class="msub">2023: 31,2%</div>
+        <div class="mval-compare" id="cmp-ROE"><span class="mval-compare-ticker" id="ct-ROE"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROE')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROE')">Mostrar gráfico</button>
+          <div class="mtrend dn">▼ −2,8pp vs. 2023</div>
+          <div class="chart-period-sel" id="psel-ROE">
+            <button class="period-btn active" onclick="setPeriod(this,'ROE','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROE','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROE')" id="ysel-ROE"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROE"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROE"></svg><div class="chart-tooltip" id="tip-ROE"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ROIC">
+        <div class="mlbl">ROIC <span class="minfo" onclick="showInfo('ROIC',event)">ⓘ</span></div>
+        <div class="mval pos">18,7%</div>
+        <div class="msub">2023: 20,1%</div>
+        <div class="mval-compare" id="cmp-ROIC"><span class="mval-compare-ticker" id="ct-ROIC"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROIC')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROIC')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ROIC">
+            <button class="period-btn active" onclick="setPeriod(this,'ROIC','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROIC','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROIC')" id="ysel-ROIC"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROIC"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROIC"></svg><div class="chart-tooltip" id="tip-ROIC"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ROA">
+        <div class="mlbl">ROA <span class="minfo" onclick="showInfo('ROA',event)">ⓘ</span></div>
+        <div class="mval neu">9,2%</div>
+        <div class="msub">2023: 10,5%</div>
+        <div class="mval-compare" id="cmp-ROA"><span class="mval-compare-ticker" id="ct-ROA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'ROA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ROA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ROA">
+            <button class="period-btn active" onclick="setPeriod(this,'ROA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ROA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ROA')" id="ysel-ROA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ROA"><div class="chart-wrap"><svg class="chart-svg" id="svg-ROA"></svg><div class="chart-tooltip" id="tip-ROA"></div></div></div>
+      </div>
+      <div class="metric-cell featured" data-key="MEBITDA">
+        <div class="mlbl">Margem EBITDA <span class="minfo" onclick="showInfo('MEBITDA',event)">ⓘ</span></div>
+        <div class="mval pos">54,8%</div>
+        <div class="msub">Setor: 38,2%</div>
+        <div class="mval-compare" id="cmp-MEBITDA"><span class="mval-compare-ticker" id="ct-MEBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Margem EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'MEBITDA')">Mostrar gráfico</button>
+          <div class="mtrend up">▲ +16,6pp vs. setor</div>
+          <div class="chart-period-sel" id="psel-MEBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'MEBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'MEBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'MEBITDA')" id="ysel-MEBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-MEBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-MEBITDA"></svg><div class="chart-tooltip" id="tip-MEBITDA"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="ML">
+        <div class="mlbl">Margem Líquida <span class="minfo" onclick="showInfo('ML',event)">ⓘ</span></div>
+        <div class="mval pos">24,3%</div>
+        <div class="msub">Eficiência final</div>
+        <div class="mval-compare" id="cmp-ML"><span class="mval-compare-ticker" id="ct-ML"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Margem Líquida')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ML')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-ML"><div class="chart-wrap"><svg class="chart-svg" id="svg-ML"></svg><div class="chart-tooltip" id="tip-ML"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <div class="sec-hd-left">
+      <span class="sec-title">Resultado</span>
+      <span class="sec-summary">Demonstração de resultados — R$ Bilhões</span>
+    </div>
+    <div class="sec-hd-right">
+      <div class="sec-health"><div class="health-dot a"></div><span class="sec-health-lbl">LL em queda −8,1% a.a.</span></div>
+      <span class="sec-arr open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="RL">
+        <div class="mlbl">Receita Líquida <span class="minfo" onclick="showInfo('RL',event)">ⓘ</span></div>
+        <div class="mval">R$ 512,4B</div>
+        <div class="msub">▲ +3,1% a.a.</div>
+        <div class="mval-compare" id="cmp-RL"><span class="mval-compare-ticker" id="ct-RL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Receita Líquida')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'RL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-RL">
+            <button class="period-btn active" onclick="setPeriod(this,'RL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'RL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'RL')" id="ysel-RL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-RL"><div class="chart-wrap"><svg class="chart-svg" id="svg-RL"></svg><div class="chart-tooltip" id="tip-RL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="LB">
+        <div class="mlbl">Lucro Bruto <span class="minfo" onclick="showInfo('LB',event)">ⓘ</span></div>
+        <div class="mval">R$ 286,1B</div>
+        <div class="msub">Margem: 55,8%</div>
+        <div class="mval-compare" id="cmp-LB"><span class="mval-compare-ticker" id="ct-LB"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Lucro Bruto')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'LB')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-LB">
+            <button class="period-btn active" onclick="setPeriod(this,'LB','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LB','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'LB')" id="ysel-LB"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-LB"><div class="chart-wrap"><svg class="chart-svg" id="svg-LB"></svg><div class="chart-tooltip" id="tip-LB"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="EBITDA">
+        <div class="mlbl">EBITDA <span class="minfo" onclick="showInfo('EBITDA',event)">ⓘ</span></div>
+        <div class="mval">R$ 280,7B</div>
+        <div class="msub">▼ -2,4% a.a.</div>
+        <div class="mval-compare" id="cmp-EBITDA"><span class="mval-compare-ticker" id="ct-EBITDA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EBITDA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'EBITDA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-EBITDA">
+            <button class="period-btn active" onclick="setPeriod(this,'EBITDA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EBITDA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'EBITDA')" id="ysel-EBITDA"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-EBITDA"><div class="chart-wrap"><svg class="chart-svg" id="svg-EBITDA"></svg><div class="chart-tooltip" id="tip-EBITDA"></div></div></div>
+      </div>
+      <div class="metric-cell featured" data-key="LL">
+        <div class="mlbl">Lucro Líquido <span class="minfo" onclick="showInfo('LL',event)">ⓘ</span></div>
+        <div class="mval">R$ 124,6B</div>
+        <div class="msub">▼ -8,1% a.a.</div>
+        <div class="mval-compare" id="cmp-LL"><span class="mval-compare-ticker" id="ct-LL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Lucro Líquido')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'LL')">Mostrar gráfico</button>
+          <div class="mtrend dn">▼ 3º ano consecutivo</div>
+          <div class="chart-period-sel" id="psel-LL">
+            <button class="period-btn active" onclick="setPeriod(this,'LL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'LL')" id="ysel-LL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-LL"><div class="chart-wrap"><svg class="chart-svg" id="svg-LL"></svg><div class="chart-tooltip" id="tip-LL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="CREC">
+        <div class="mlbl">Cresc. Receita (YoY) <span class="minfo" onclick="showInfo('CREC',event)">ⓘ</span></div>
+        <div class="mval pos">8,5%</div>
+        <div class="msub">Var. anual</div>
+        <div class="mval-compare" id="cmp-CREC"><span class="mval-compare-ticker" id="ct-CREC"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Cresc. Receita')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'CREC')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-CREC"><div class="chart-wrap"><svg class="chart-svg" id="svg-CREC"></svg><div class="chart-tooltip" id="tip-CREC"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="CLL">
+        <div class="mlbl">Cresc. Lucro (YoY) <span class="minfo" onclick="showInfo('CLL',event)">ⓘ</span></div>
+        <div class="mval pos">7,2%</div>
+        <div class="msub">Var. anual</div>
+        <div class="mval-compare" id="cmp-CLL"><span class="mval-compare-ticker" id="ct-CLL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Cresc. Lucro')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'CLL')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-CLL"><div class="chart-wrap"><svg class="chart-svg" id="svg-CLL"></svg><div class="chart-tooltip" id="tip-CLL"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="LPA">
+        <div class="mlbl">LPA <span class="minfo" onclick="showInfo('LPA',event)">ⓘ</span></div>
+        <div class="mval">R$ 11,85</div>
+        <div class="msub">Lucro por ação</div>
+        <div class="mval-compare" id="cmp-LPA"><span class="mval-compare-ticker" id="ct-LPA"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'LPA')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'LPA')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-LPA"><div class="chart-wrap"><svg class="chart-svg" id="svg-LPA"></svg><div class="chart-tooltip" id="tip-LPA"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="PAYOUT">
+        <div class="mlbl">Payout <span class="minfo" onclick="showInfo('PAYOUT',event)">ⓘ</span></div>
+        <div class="mval">44,2%</div>
+        <div class="msub">% lucro dist.</div>
+        <div class="mval-compare" id="cmp-PAYOUT"><span class="mval-compare-ticker" id="ct-PAYOUT"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Payout')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'PAYOUT')">Mostrar gráfico</button>
+        </div>
+        <div class="chart-area" id="chart-PAYOUT"><div class="chart-wrap"><svg class="chart-svg" id="svg-PAYOUT"></svg><div class="chart-tooltip" id="tip-PAYOUT"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <div class="sec-hd-left">
+      <span class="sec-title">Endividamento</span>
+      <span class="sec-summary">Estrutura de capital e risco financeiro</span>
+    </div>
+    <div class="sec-hd-right">
+      <div class="sec-health"><div class="health-dot g"></div><span class="sec-health-lbl">DL/EBITDA 0,71x</span></div>
+      <span class="sec-arr open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div class="mgrid">
+      <div class="metric-cell" data-key="DB">
+        <div class="mlbl">Dívida Bruta <span class="minfo" onclick="showInfo('DB',event)">ⓘ</span></div>
+        <div class="mval neg">R$ 312,8B</div>
+        <div class="msub">▲ +4,2% a.a.</div>
+        <div class="mval-compare" id="cmp-DB"><span class="mval-compare-ticker" id="ct-DB"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida Bruta')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DB')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DB">
+            <button class="period-btn active" onclick="setPeriod(this,'DB','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DB','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DB')" id="ysel-DB"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DB"><div class="chart-wrap"><svg class="chart-svg" id="svg-DB"></svg><div class="chart-tooltip" id="tip-DB"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="DL">
+        <div class="mlbl">Dívida Líquida <span class="minfo" onclick="showInfo('DL',event)">ⓘ</span></div>
+        <div class="mval neg">R$ 198,4B</div>
+        <div class="msub">Caixa: R$ 114,4B</div>
+        <div class="mval-compare" id="cmp-DL"><span class="mval-compare-ticker" id="ct-DL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida Líquida')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DL">
+            <button class="period-btn active" onclick="setPeriod(this,'DL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DL')" id="ysel-DL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DL"><div class="chart-wrap"><svg class="chart-svg" id="svg-DL"></svg><div class="chart-tooltip" id="tip-DL"></div></div></div>
+      </div>
+      <div class="metric-cell featured" data-key="ALAV">
+        <div class="mlbl">Alavancagem DL/EBITDA <span class="minfo" onclick="showInfo('ALAV',event)">ⓘ</span></div>
+        <div class="mval neu">0,71x</div>
+        <div class="msub">2023: 0,58x</div>
+        <div class="mval-compare" id="cmp-ALAV"><span class="mval-compare-ticker" id="ct-ALAV"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Alavancagem')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'ALAV')">Mostrar gráfico</button>
+          <div class="mtrend neu">▲ +0,13x vs. 2023</div>
+          <div class="chart-period-sel" id="psel-ALAV">
+            <button class="period-btn active" onclick="setPeriod(this,'ALAV','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ALAV','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ALAV')" id="ysel-ALAV"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-ALAV"><div class="chart-wrap"><svg class="chart-svg" id="svg-ALAV"></svg><div class="chart-tooltip" id="tip-ALAV"></div></div></div>
+      </div>
+      <div class="metric-cell" data-key="DPL">
+        <div class="mlbl">Dívida / PL <span class="minfo" onclick="showInfo('DPL',event)">ⓘ</span></div>
+        <div class="mval neu">1,48x</div>
+        <div class="msub">2023: 1,32x</div>
+        <div class="mval-compare" id="cmp-DPL"><span class="mval-compare-ticker" id="ct-DPL"></span> —</div>
+        <div class="mann" onclick="openNote(this)">✎</div>
+        <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Dívida/PL')"></textarea></div>
+        <div class="chart-toggle-row">
+          <button class="chart-toggle-btn" onclick="toggleChart(this,'DPL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-DPL">
+            <button class="period-btn active" onclick="setPeriod(this,'DPL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'DPL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'DPL')" id="ysel-DPL"></select>
+          </div>
+        </div>
+        <div class="chart-area" id="chart-DPL"><div class="chart-wrap"><svg class="chart-svg" id="svg-DPL"></svg><div class="chart-tooltip" id="tip-DPL"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ▸ DADOS NÃO DISPONÍVEIS -->
+<div class="section" id="sec-indisponivel">
+  <div class="sec-hd" onclick="toggleSec(this)">
+    <div class="sec-hd-left">
+      <span class="sec-title">Dados Não Disponíveis</span>
+      <span class="sec-summary">Indicadores operacionais do segmento Petróleo &amp; Gás — coleta manual no RI</span>
+    </div>
+    <div class="sec-hd-right">
+      <span class="ind-embreve-badge">Em implementação</span>
+      <span class="sec-arr open">▼</span>
+    </div>
+  </div>
+  <div class="sec-body">
+
+    <div class="ind-intro-box">
+      <div class="ind-intro-icon">⚠</div>
+      <div class="ind-intro-text">
+        <p>Os indicadores abaixo <strong>não estão disponíveis de forma automática</strong> nesta plataforma. São métricas operacionais específicas do setor de <strong>Petróleo &amp; Gás</strong> que precisam ser coletadas manualmente no site de <strong>Relações com Investidores</strong> da empresa — indicamos exatamente onde encontrar cada uma.</p>
+        <p>Estamos trabalhando para incorporar esses dados gradualmente. Eles são muito importantes para uma análise completa de empresas deste segmento.</p>
+        <div class="ind-sigilo-note">
+          Atenção: alguns destes indicadores não são de divulgação obrigatória. Empresas podem optar por não publicá-los por estratégia corporativa — para não expor sensibilidades competitivas al mercado. A ausência de um dado que analistas esperam também é uma informação relevante na sua análise de risco.
+        </div>
+      </div>
+    </div>
+
+    <div class="ind-grid">
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">EV/Reservas <span class="ind-name-alias">(P/NAV)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Relatório Anual ou 20-F → seção <em>"Proven Reserves"</em> / <em>"Certificação de Reservas"</em>. O EV já está disponível — basta o volume de reservas para calcular.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">EV/Reservas (P/NAV)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Enterprise Value dividido pelo volume total de reservas provadas em barris equivalentes (boe). Mede quanto o mercado paga por cada barril de petróleo ainda no solo.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>Se a empresa está cara ou barata em relação ao seu "estoque" geológico. Um EV/Reservas baixo pode indicar ativo subavaliado frente aos pares globais.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>É o principal múltiplo de valuation setorial para petrolíferas globais — usado por fundos especializados e pela própria Petrobras em comparações com pares como Shell e TotalEnergies.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Custo de Extração <span class="ind-name-alias">(Lifting Cost)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Relatório de Produção Trimestral → <em>"Custo de extração por barril"</em> ou <em>"lifting cost"</em> na seção de dados operacionais. Publicado em US$/boe.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Custo de Extração (Lifting Cost)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Custo operacional para extrair um barril equivalente de petróleo, excluindo depreciação, exaustão e amortização (DEA). Medido em US$/boe.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>A eficiência competitiva da extração. Lifting cost baixo significa que a empresa continua lucrativa mesmo com o Brent em queda acentuada.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Em ciclos de baixa do petróleo, empresas com lifting cost baixo sobrevivem e ganham market share. A Petrobras tem historicamente um dos menores custos de extração do mundo no pré-sal — dado central para qualquer análise de resiliência.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Reservas Provadas <span class="ind-name-alias">(1P / 2P / 3P)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Relatório Anual ou 20-F (NYSE) → seção <em>"Recursos e Reservas de Petróleo e Gás Natural"</em>. Divulgação obrigatória para empresas listadas nos EUA.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Reservas Provadas (1P / 2P / 3P)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Volume de hidrocarbonetos tecnicamente recuperáveis com graus distintos de certeza geológica. 1P = provadas (alta certeza), 2P = mais prováveis, 3P = possíveis.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>O "estoque" da empresa — quantos anos de produção a empresa ainda possui nos seus campos. É a matéria-prima fundamental do negócio petrolífero.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Crescimento de reservas é um dos maiores catalisadores de valorização para petrolíferas. Uma empresa que não repõe reservas está em processo lento de extinção do seu principal ativo.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Produção Diária <span class="ind-name-alias">(boe/d)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Relatório de Produção e Vendas (publicado mensalmente) → <em>"Produção de petróleo e gás natural"</em> em barris equivalentes de petróleo por dia.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Produção Diária (boe/d)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Volume total de petróleo e gás natural produzido diariamente, expresso em barris equivalentes de petróleo (boe/d). Inclui Líquidos de Gás Natural (LGN).</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>A escala e o dinamismo operacional. É o principal driver de receita — mais produção, a qualquer preço constante, significa mais receita e potencialmente mais dividendos.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Qualquer guidance de produção da Petrobras move o preço do papel. Crescimento consistente de produção é o maior catalisador de valorização para uma petrolífera operacionalmente saudável.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Vida Útil das Reservas <span class="ind-name-alias">(Reserve Life Index)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Relatório Anual → seção de Reservas. Calcular: <em>Reservas 1P (boe) ÷ Produção Anual (boe/ano)</em>. Pode aparecer como "Reserve Life Index" nos materiais do RI.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Vida Útil das Reservas (Reserve Life Index)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Número de anos que as reservas provadas atuais sustentam ao ritmo de produção atual. Fórmula: Reservas 1P ÷ Produção Anual em boe.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>A longevidade do negócio. Índice alto (&gt;15 anos) indica pista longa pela frente. Abaixo de 10 anos, exige prêmio de risco e atenção ao pipeline exploratório.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Petrolíferas com reservas longas têm mais previsibilidade de fluxo de caixa e maior atratividade para M&amp;A. É indicador-chave em processos de fusões e aquisições do setor global.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Breakeven Price <span class="ind-name-alias">(Ponto de Equilíbrio)</span></div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Apresentações para Investidores / Earnings Releases trimestrais → <em>"Breakeven Brent"</em> ou <em>"ponto de equilíbrio do Brent"</em> nos slides de resultados.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Breakeven Price (Ponto de Equilíbrio)</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Preço mínimo do barril de petróleo (Brent em US$/bbl) para que a empresa cubra todos os custos operacionais, de capital e distribua dividendos conforme a política vigente.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>A resistência a cenários adversos. Breakeven em US$ 35/bbl é muito mais sólido do que US$ 60/bbl em um ciclo de queda do Brent.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Define quem sobrevive em ciclos de baixa. Não é de divulgação obrigatória — a sua publicação é um sinal de transparência da gestão. Na ausência desse dado, compare via lifting cost + CapEx por boe produzido.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">Índice de Reposição de Reservas</div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Divulgação Anual de Reservas / 20-F → <em>"Reserve replacement ratio"</em> ou <em>"Índice de reposição de reservas"</em> na seção de operações de exploração.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">Índice de Reposição de Reservas</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Relação entre novas reservas adicionadas no período (descobertas, revisões, aquisições) e o volume produzido. Expresso em %.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>Se a empresa está crescendo, mantendo ou consumindo seu estoque geológico. &gt;100% = empresa repondo mais do que produz; &lt;100% = consumindo reservas sem reposição equivalente.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Petrolíferas com índice consistentemente abaixo de 100% por vários anos são um alerta estrutural — a empresa está vivendo do passado, sem construir valor para o futuro.</div>
+        </div>
+      </div>
+
+      <div class="ind-card">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-no">Indisponível</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">EBITDAX</div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Notas Explicativas das ITRs / Apresentações de Resultados → <em>"EBITDAX"</em> ou <em>"EBITDA ajustado excluindo despesas de exploração"</em>. Divulgação voluntária — verificar glossário financeiro do RI.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">EBITDAX</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>EBITDA acrescido das despesas de exploração (sísmica, poços secos, prospecção). Remove o efeito das atividades exploratórias do resultado operacional recorrente do período.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>A geração de caixa operacional pura, sem a distorção causada pelo nível de investimento exploratório — que pode variar muito de ano para ano conforme o ciclo da empresa.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Permite comparar petrolíferas em diferentes fases do ciclo exploratório. Amplamente usado por analistas em relatórios de cobertura setorial. Divulgação é <strong>voluntária</strong> — nem todas as empresas publicam abertamente.</div>
+        </div>
+      </div>
+
+      <div class="ind-card ind-card-partial">
+        <div class="ind-card-top">
+          <span class="ind-status ind-status-partial">⚠ Dados Parciais</span>
+          <button class="ind-info-btn" onclick="toggleIndInfo(this)" title="Saiba mais">ⓘ</button>
+        </div>
+        <div class="ind-card-name">CapEx Manutenção vs. Crescimento</div>
+        <div class="ind-card-partial-note">Temos o CapEx total extraído do DFC — mas o detalhamento por tipo de projeto (manutenção vs. expansão) não está disponível de forma estruturada.</div>
+        <div class="ind-card-ri-row"><span class="ind-ri-label">Onde encontrar:</span><a class="ind-ri-link" href="https://ri.petrobras.com.br" target="_blank" rel="noopener">RI Petrobras ↗</a></div>
+        <div class="ind-card-search"><span class="ind-search-label">O que procurar:</span> Plano de Negócios e Gestão (PNG 2024–2028) → seção de investimentos por área: <em>Exploração &amp; Produção</em>, <em>Refino</em>, <em>Gás e Energia</em>. Petrobras publica breakdown detalhado por projeto.</div>
+        <div class="ind-popup" role="tooltip">
+          <button class="ind-popup-close" onclick="closeIndInfo(this)">✕</button>
+          <div class="ind-popup-title">CapEx Manutenção vs. Crescimento</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que é</span>Separação do investimento de capital entre: (1) manutenção dos ativos existentes para preservar a produção atual e (2) desenvolvimento de novos projetos para crescimento futuro.</div>
+          <div class="ind-popup-row"><span class="ind-popup-lbl">O que mede</span>Qual fração do CapEx é "obrigação" para não deteriorar a operação vs. qual parte está construindo valor futuro. Determinante para calcular o FCF sustentável de longo prazo.</div>
+          <div class="ind-popup-row ind-popup-imp"><span class="ind-popup-lbl">Importância</span>Alto CapEx de crescimento pode mascarar baixa geração de caixa atual. Empresas maduras com CapEx majoritariamente de manutenção tendem a ser as melhores pagadoras de dividendos — padrão buscado por investidores de renda do setor.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="ind-footer">
+      <div class="ind-footer-text">
+        <strong>Sobre a divulgação voluntária:</strong> Alguns destes indicadores (como Breakeven Price, EBITDAX e Lifting Cost) não são de divulgação obrigatória pela CVM ou pela SEC. Empresas podem optar por não publicá-los por estratégia corporativa — para não expor sensibilidades competitivas. A ausência de um dado que analistas esperam receber também é uma informação relevante na sua análise de risco.
+      </div>
+    </div>
+
+  </div>
+</div>
+<!-- ◂ fim dados não disponíveis -->
+
+<!-- ► BALANÇO PATRIMONIAL ◄ -->
+<div class="section" id="sec-balanco">
+  <div class="sec-hd collapsed" onclick="toggleSec(this); if(!bpLoaded) bpLoad()">
+    <div class="sec-hd-left">
+      <span class="sec-title">Balanço Patrimonial</span>
+      <span class="sec-summary">Ativo, Passivo e Patrimônio Líquido — dados CVM via Brapi</span>
+    </div>
+    <div class="sec-hd-right">
+      <span class="sec-arr">▼</span>
+    </div>
+  </div>
+  <div class="sec-body" style="display:none">
+    <div class="bp-filter-bar">
+      <div class="bp-mode-grp">
+        <button class="bp-mode-btn active" id="bpBtnQ" onclick="bpSetMode('Q')">Trimestral</button>
+        <button class="bp-mode-btn" id="bpBtnA" onclick="bpSetMode('A')">Anual</button>
+      </div>
+      <select class="bp-year-sel" id="bpYearSel" onchange="bpSetYear(this.value)">
+        <option value="2024" selected>2024</option>
+      </select>
+      <span class="bp-source-note" id="bpSourceNote" data-placeholder="ticker">Fonte: Brapi · CVM · —</span>
+    </div>
+    <div id="bpLoadMsg" class="bp-loading">Abra a seção para carregar os dados.</div>
+    <div class="bp-table-wrap" id="bpTableWrap" style="display:none">
+      <table class="bp-table" id="bpTable">
+        <thead>
+          <tr>
+            <th class="bp-th bp-th-label">Indicador</th>
+            <th class="bp-th bp-th-val" id="bpH1">—</th>
+            <th class="bp-th bp-th-val" id="bpH2">—</th>
+            <th class="bp-th bp-th-val" id="bpH3">—</th>
+            <th class="bp-th bp-th-val" id="bpH4">—</th>
+          </tr>
+        </thead>
+        <tbody id="bpTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<!-- ◄ fim balanço patrimonial ► -->
+
+</div><div id="compare-col-b"></div></div><div class="stoggle" id="stoggle" onclick="toggleSidebar()">‹</div>
+
+<div class="sidebar" id="sidebar">
+  <div class="stabs">
+    <div class="stab active" onclick="switchTab('notes',this)">Anotações</div>
+    <div class="stab" onclick="switchTab('analysis',this)">Análise</div>
+    <div class="stab" onclick="switchTab('saves',this)">Histórico</div>
+  </div>
+
+  <div class="spanel active" id="panel-notes">
+    <div class="notes-list" id="notesList">
+      <div class="notes-empty" id="notesEmpty">
+        <div class="notes-empty-ico">✎</div>
+        <div>Passe o cursor sobre qualquer métrica e clique no ✎ para adicionar uma nota.</div>
+      </div>
+    </div>
+    <div class="notes-foot">
+      <div class="ai-sum-block" id="aiSumBlock"><div class="ai-sum-lbl">✦ Resumo IA</div><div id="aiSumText"></div></div>
+      <button class="btn-ai" onclick="summarizeNotes()">✦ Resumir anotações com IA</button>
+    </div>
+  </div>
+
+  <div class="spanel" id="panel-analysis">
+    <div class="an-head">
+      <div class="an-confirm"><div><div class="an-ticker" id="sidebarTicker" data-placeholder="ticker">—</div><div class="an-cname" id="sidebarAssetName" data-placeholder="name">—</div></div></div>
+      <input class="an-name-inp" type="text" placeholder="Nome da análise (ex: Tese Longa — Fev/26)">
+    </div>
+    <div class="an-body" id="anBody">
+      <textarea class="an-editor" id="anEditor" placeholder="Escreva sua análise. A IA sugere insights a cada 5 linhas escritas..." oninput="onAnInput(this)"></textarea>
+      <div class="ai-insight" id="aiInsight"><div class="ai-ins-lbl">✦ Insight IA</div><div id="aiInsightText"></div></div>
+    </div>
+    <div class="an-foot">
+      <div class="an-progress-wrap" title="Próximo insight IA a cada 5 linhas">
+        <div class="an-meta-row">
+          <span class="an-insight-hint">✦ Insight IA a cada 5 linhas</span>
+          <span class="an-word-count" id="anWordCount">0 palavras</span>
+        </div>
+        <div class="an-progress"><div class="an-progress-fill" id="anProgressFill"></div></div>
+      </div>
+      <div style="display:flex;gap:7px;padding:10px 14px 14px;">
+        <button class="btn-calc" onclick="openModal('calc')">⊞ Calculadoras</button>
+        <button class="btn-save" onclick="saveAnalysis()">Salvar análise</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="spanel" id="panel-saves">
+    <div class="saves-list" id="savesList">
+      <div class="notes-empty"><div class="notes-empty-ico">📁</div><div>Nenhuma análise salva ainda.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-calc">
+  <div class="modal">
+    <div class="modal-title">Calculadoras</div>
+    <div class="calc-tabs">
+      <div class="ctab active" onclick="switchCalc('graham',this)">Graham</div>
+      <div class="ctab" onclick="switchCalc('peg',this)">PEG Ratio</div>
+      <div class="ctab" onclick="switchCalc('dividendos',this)">Proj. Dividendos</div>
+      <div class="ctab" onclick="switchCalc('custoMedio',this)">Custo Médio</div>
+      <div class="ctab" onclick="switchCalc('valuation',this)">Valuation</div>
+    </div>
+    <div class="calc-body">
+
+      <div class="calc-section active" id="cs-graham">
+        <div class="crow">
+          <div class="cfield"><label>LPA (Lucro por Ação)</label><input type="number" id="g-lpa" placeholder="ex: 8.00" oninput="calcGraham()"></div>
+          <div class="cfield"><label>VPA (Valor Patrimonial)</label><input type="number" id="g-vpa" placeholder="ex: 32.00" oninput="calcGraham()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">Preço Justo Graham (√22,5 × LPA × VPA)</div>
+          <div class="cres-val" id="g-res">—</div>
+          <div class="cres-sub" id="g-sub"></div>
+        </div>
+      </div>
+
+      <div class="calc-section" id="cs-peg">
+        <div class="crow">
+          <div class="cfield"><label>P/L atual</label><input type="number" id="peg-pl" placeholder="ex: 4.8" oninput="calcPeg()"></div>
+          <div class="cfield"><label>Crescimento do Lucro (%)</label><input type="number" id="peg-g" placeholder="ex: 8" oninput="calcPeg()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">PEG Ratio (P/L ÷ Crescimento)</div>
+          <div class="cres-val" id="peg-res">—</div>
+          <div class="cres-sub" id="peg-sub">PEG &lt; 1 = potencialmente subvalorizado</div>
+        </div>
+      </div>
+
+      <div class="calc-section" id="cs-dividendos">
+        <div class="crow">
+          <div class="cfield"><label>Dividendo anual atual (R$)</label><input type="number" id="div-atual" placeholder="ex: 5.49" oninput="calcDiv()"></div>
+          <div class="cfield"><label>Crescimento anual (%)</label><input type="number" id="div-g" placeholder="ex: 5" oninput="calcDiv()"></div>
+        </div>
+        <div class="crow">
+          <div class="cfield"><label>Anos de projeção</label><input type="number" id="div-anos" placeholder="ex: 10" oninput="calcDiv()" min="1" max="30"></div>
+          <div class="cfield"><label>Preço de compra (R$)</label><input type="number" id="div-preco" placeholder="ex: 38.42" oninput="calcDiv()"></div>
+        </div>
+        <div class="cresult">
+          <div class="cres-lbl">Dividendo projetado no ano final</div>
+          <div class="cres-val" id="div-res">—</div>
+          <div class="cres-sub" id="div-sub"></div>
+        </div>
+      </div>
+
+      <div class="calc-section" id="cs-custoMedio">
+        <div id="cm-rows" style="display:flex;flex-direction:column;gap:9px;"></div>
+        <button class="btn" onclick="addCmRow()" style="align-self:flex-start;margin-top:4px;font-size:.72rem;">+ Adicionar compra</button>
+        <div class="cresult">
+          <div class="cres-lbl">Custo Médio por Ação</div>
+          <div class="cres-val" id="cm-res">—</div>
+          <div class="cres-sub" id="cm-sub"></div>
+        </div>
+      </div>
+
+      <div class="calc-section" id="cs-valuation">
+        <div class="cfield">
+          <label>Modelo de valuation</label>
+          <select id="val-modelo" onchange="switchValModel()">
+            <option value="">Selecione um modelo</option>
+            <option value="bazin">Bazin (DY mínimo)</option>
+            <option value="gordon">Gordon Growth Model</option>
+            <option value="lynch">Peter Lynch Fair Value</option>
+            <option value="greenblatt">Magic Formula (Greenblatt)</option>
+          </select>
+        </div>
+        <div class="val-model-desc" id="val-desc" style="display:none"></div>
+        <div id="val-inputs" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <div class="cresult" id="val-result" style="display:none">
+          <div class="cres-lbl" id="val-res-lbl">Preço Justo</div>
+          <div class="cres-val" id="val-res">—</div>
+          <div class="cres-sub" id="val-sub"></div>
+        </div>
+      </div>
+
+    </div>
+    <button class="modal-close" onclick="closeModal('calc')">Fechar</button>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-info">
+  <div class="modal info-modal">
+    <div class="info-title" id="infoTitle">—</div>
+    <div class="info-subtitle" id="infoSubtitle">Indicador Fundamentalista</div>
+    <div class="info-section">
+      <div class="info-section-title">O que é</div>
+      <div class="info-text" id="infoWhat"></div>
+    </div>
+    <div class="info-section">
+      <div class="info-section-title">Como analisar</div>
+      <div class="info-text" id="infoHow"></div>
+    </div>
+    <div class="info-section">
+      <div class="info-section-title">Limitações</div>
+      <div class="info-text" id="infoLimit"></div>
+    </div>
+    <button class="modal-close" onclick="closeModal('info')">Fechar</button>
+  </div>
+</div>
+
+<div class="modal-ov" id="modal-compare">
+  <div class="modal" style="width:400px">
+    <div class="modal-title">Comparar com outro ativo</div>
+    <div class="comp-input">
+      <input type="text" id="compInput" placeholder="Ex: VALE3" maxlength="6" oninput="this.value=this.value.toUpperCase()">
+      <button onclick="applyCompare()">Comparar</button>
+    </div>
+    <p style="font-size:.76rem;color:var(--tx3);line-height:1.6">Os valores do ativo comparado aparecerão abaixo de cada métrica para facilitar a análise lado a lado.</p>
+    <button class="modal-close" onclick="closeModal('compare')">Cancelar</button>
+  </div>
+</div>
+
+<script src="../js/analise-ativos.charts.js"></script>
+<script src="../js/analise-ativos.search.js"></script>
+<script src="../js/analise-ativos.workspace.js"></script>
+<script src="../js/analise-ativos.indices.js"></script>
+<script src="../js/analise-ativos.balanco.js"></script>
+<script src="../js/analise-ativos.js"></script>
+</body>
+</html>
