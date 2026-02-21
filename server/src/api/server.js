@@ -19,6 +19,7 @@ const logger = require('../utils/logger');
 const { createMessageRouter } = require('./routes/message');
 const { createAuthRouter } = require('./routes/auth');
 const { createInvestmentsRouter } = require('./routes/investments');
+const { createAnaliseAtivosRouter } = require('./routes/analise-ativos');
 
 /**
  * Cria e configura o servidor Express.
@@ -101,6 +102,10 @@ function createServer(dependencies = {}) {
   // Rotas de investimentos (GET manifest, query de métricas e cards)
   const investmentsRouter = createInvestmentsRouter(dependencies);
   app.use('/api/investments', investmentsRouter);
+
+  // Rotas da página Análise de Ativos (última pesquisa, anotações, resumos IA)
+  const analiseAtivosRouter = createAnaliseAtivosRouter();
+  app.use('/api/analise-ativos', analiseAtivosRouter);
 
   // --- Error handling global ---
   app.use((err, req, res, _next) => {

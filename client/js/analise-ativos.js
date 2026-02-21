@@ -1,4 +1,99 @@
-﻿// ─── SECTION COLLAPSE ───
+﻿/* ============================================================
+ * analise-ativos.js — Orquestrador principal
+ * ============================================================ */
+
+// ─── AUTH GUARD (Tarefa 1.2.1) ─────────────────────────────
+(function authGuard() {
+  const token = localStorage.getItem('yield_token');
+  const userRaw = localStorage.getItem('yield_user');
+
+  if (!token || !userRaw) {
+    window.location.href = '../html/login.html';
+    return;
+  }
+
+  try {
+    JSON.parse(userRaw);
+  } catch (_) {
+    localStorage.removeItem('yield_token');
+    localStorage.removeItem('yield_user');
+    window.location.href = '../html/login.html';
+  }
+})();
+
+/**
+ * Token JWT e cabeçalhos de autenticação reutilizáveis por todos os módulos.
+ * Exportados como constantes globais para que os demais arquivos JS da página
+ * possam acessá-los sem repetir a leitura do localStorage.
+ */
+const YIELD_TOKEN   = localStorage.getItem('yield_token');
+const YIELD_USER    = JSON.parse(localStorage.getItem('yield_user') || '{}');
+const YIELD_USER_ID = YIELD_USER._id || YIELD_USER.id || '';
+const AUTH_HEADERS  = {
+  'Content-Type': 'application/json',
+  'Authorization': `Bearer ${YIELD_TOKEN}`,
+};
+
+// Detectar URL base da API (mesmo padrão do login.js)
+function getBaseUrl() {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? '3000' : window.location.port;
+  return port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
+}
+const API_BASE = getBaseUrl();
+
+// ─── ÚLTIMA PESQUISA (Tarefa 1.2.2) ───────────────────────
+
+/**
+ * Salva o último ticker pesquisado pelo usuário na collection aa_user_searches.
+ * @param {string} ticker - Símbolo do ativo (ex.: "PETR4")
+ */
+async function saveLastSearch(ticker) {
+  if (!YIELD_USER_ID || !ticker) return;
+  try {
+    await fetch(`${API_BASE}/api/analise-ativos/last-search`, {
+      method: 'POST',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({ userId: YIELD_USER_ID, ticker }),
+    });
+  } catch (err) {
+    console.warn('[analise-ativos] Não foi possível salvar última pesquisa:', err.message);
+  }
+}
+
+/**
+ * Recupera o último ticker pesquisado pelo usuário e o carrega automaticamente.
+ * Chamado no DOMContentLoaded para evitar página vazia.
+ */
+async function loadLastSearch() {
+  if (!YIELD_USER_ID) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/analise-ativos/last-search/${YIELD_USER_ID}`, {
+      headers: AUTH_HEADERS,
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.ticker) {
+      // Preenche o campo de pesquisa e dispara o carregamento do ativo
+      const searchInput = document.getElementById('search-input') || document.querySelector('[data-search-input]');
+      if (searchInput) {
+        searchInput.value = data.ticker;
+        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      console.info(`[analise-ativos] Última pesquisa restaurada: ${data.ticker}`);
+    }
+  } catch (err) {
+    console.warn('[analise-ativos] Não foi possível carregar última pesquisa:', err.message);
+  }
+}
+
+// Carregar última pesquisa ao inicializar a página
+document.addEventListener('DOMContentLoaded', () => {
+  loadLastSearch();
+});
+
+// ─── SECTION COLLAPSE ───
 function toggleSec(hd){
   const body=hd.nextElementSibling;
   const arr=hd.querySelector('.sec-arr');
