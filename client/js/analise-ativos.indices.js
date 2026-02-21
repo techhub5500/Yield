@@ -1,4 +1,136 @@
-﻿// ─── INFO DATABASE ───
+﻿function aaMetricValueText(metric) {
+  if (!metric || metric.value === null || metric.value === undefined || Number.isNaN(Number(metric.value))) return '—';
+  const value = Number(metric.value);
+  switch (metric.type) {
+    case 'percent':
+      return `${value.toFixed(2)}%`;
+    case 'multiple':
+      return `${value.toFixed(2)}x`;
+    case 'currency_per_share':
+      return `R$ ${value.toFixed(2)}`;
+    case 'currency':
+      return window.aaFmtCompactCurrency(value);
+    default:
+      return value.toLocaleString('pt-BR');
+  }
+}
+
+function aaMetricClass(metric) {
+  if (!metric || metric.value === null || metric.value === undefined || Number.isNaN(Number(metric.value))) return '';
+  if (metric.type === 'percent') {
+    return Number(metric.value) >= 0 ? 'pos' : 'neg';
+  }
+  return 'neu';
+}
+
+function aaRenderUnavailable(segment) {
+  const sec = document.getElementById('sec-indisponivel');
+  if (!sec) return;
+  const grid = sec.querySelector('.ind-grid');
+  if (!grid) return;
+
+  const unavailable = Array.isArray(segment?.unavailable) ? segment.unavailable : [];
+  if (!unavailable.length) {
+    grid.innerHTML = `
+      <div class="ind-card">
+        <div class="ind-card-top"><span class="ind-status ind-status-partial">Dados suficientes neste segmento</span></div>
+        <div class="ind-card-name">Sem indicadores indisponíveis críticos mapeados</div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = unavailable.map((item) => `
+    <div class="ind-card">
+      <div class="ind-card-top">
+        <span class="ind-status ind-status-no">Indisponível</span>
+      </div>
+      <div class="ind-card-name">${item.name}</div>
+      <div class="ind-card-search"><span class="ind-search-label">Observação:</span> ${item.note}</div>
+    </div>
+  `).join('');
+}
+
+function aaRenderIndices() {
+  const core = window.AA.state.core;
+  if (!core || !core.indices) return;
+
+  const hidden = new Set(core.segment?.hiddenMetrics || []);
+  const compare = window.AA.state.compareCore?.indices || null;
+  const compareTicker = window.AA.state.compareTicker;
+
+  document.querySelectorAll('.metric-cell[data-key]').forEach((cell) => {
+    const key = cell.dataset.key;
+    const metric = core.indices[key];
+    if (!metric) return;
+
+    if (hidden.has(key)) {
+      cell.style.display = 'none';
+      return;
+    }
+
+    cell.style.display = '';
+
+    const mval = cell.querySelector('.mval');
+    const msub = cell.querySelector('.msub');
+    const mtrend = cell.querySelector('.mtrend');
+    const cmpWrap = document.getElementById(`cmp-${key}`);
+    const cmpTicker = document.getElementById(`ct-${key}`);
+
+    if (mval) {
+      if (key === 'DPL' && Number.isFinite(Number(metric.value)) && Number(metric.value) < 0) {
+        mval.textContent = `${Number(metric.value).toFixed(2)}x (PL negativo)`;
+      } else {
+        mval.textContent = aaMetricValueText(metric);
+      }
+      mval.classList.remove('pos', 'neg', 'neu');
+      const cls = aaMetricClass(metric);
+      if (cls) mval.classList.add(cls);
+    }
+
+    if (msub) {
+      if (key === 'DPL' && (metric.value === null || metric.value === undefined || !Number.isFinite(Number(metric.value)))) {
+        msub.textContent = 'Sem cálculo: patrimônio líquido zero/indisponível';
+      } else if (metric.yoy !== null && metric.yoy !== undefined && Number.isFinite(Number(metric.yoy))) {
+        const yoy = Number(metric.yoy);
+        msub.textContent = `${yoy >= 0 ? '▲' : '▼'} ${Math.abs(yoy).toFixed(2)}% vs mesmo tri ano anterior`;
+      } else {
+        msub.textContent = '—';
+      }
+    }
+
+    if (mtrend) {
+      mtrend.classList.remove('up', 'dn', 'neu');
+      if (metric.yoy === null || metric.yoy === undefined || !Number.isFinite(Number(metric.yoy))) {
+        mtrend.classList.add('neu');
+        mtrend.textContent = 'Sem comparação YoY';
+      } else {
+        const yoy = Number(metric.yoy);
+        mtrend.classList.add(yoy >= 0 ? 'up' : 'dn');
+        mtrend.textContent = `${yoy >= 0 ? '▲' : '▼'} ${Math.abs(yoy).toFixed(2)}% YoY`;
+      }
+    }
+
+    if (cmpWrap) {
+      if (compare && compare[key] && compare[key].value !== null && compare[key].value !== undefined) {
+        cmpWrap.classList.add('visible');
+        cmpWrap.innerHTML = `<span class="mval-compare-ticker">${compareTicker}</span> ${aaMetricValueText(compare[key])}`;
+      } else {
+        cmpWrap.classList.remove('visible');
+      }
+    }
+
+    if (cmpTicker) {
+      cmpTicker.textContent = compareTicker || '';
+    }
+  });
+
+  aaRenderUnavailable(core.segment);
+}
+
+window.aaRenderIndices = aaRenderIndices;
+
+// ─── INFO DATABASE ───
 const infoDB={
   PL:{title:'P/L — Preço/Lucro',sub:'Indicador de Valuation',what:'Relaciona o preço de mercado da ação com o lucro por ação gerado pela empresa. Indica quanto o mercado paga por cada R$ 1 de lucro.',how:'P/L baixo pode indicar subvalorização ou expectativa de queda nos lucros. P/L alto pode indicar crescimento esperado ou sobrevalorização. Compare sempre com o histórico da empresa e com o setor.',limit:'Não funciona bem para empresas com lucro negativo. Em setores cíclicos, um P/L aparentemente baixo pode ocorrer no pico do ciclo.'},
   PVP:{title:'P/VP — Preço/Valor Patrimonial',sub:'Indicador de Valuation',what:'Compara o preço de mercado com o valor patrimonial por ação (patrimônio líquido ÷ ações). Indica se o mercado valora a empresa acima ou abaixo do seu patrimônio contábil.',how:'P/VP < 1 pode indicar desconto sobre o valor dos ativos. P/VP > 1 indica ágio — o mercado reconhece valor além do balanço. Essencial para bancos e seguradoras.',limit:'O valor patrimonial contábil pode não refletir o valor real dos ativos, especialmente em empresas intensivas em intangíveis.'},

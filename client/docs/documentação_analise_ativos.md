@@ -1,6 +1,6 @@
 # Documentação Técnica — `analise_ativos.html`
 
-> **Escopo deste documento:** Objetivos **1.2** e **1.3** do Plano de Implementação.
+> **Escopo deste documento:** Objetivos **1.2**, **1.3**, **2.1**, **2.2** e **2.3** do Plano de Implementação.
 > **Data de implementação:** 2026-02-21
 > **Versão:** 1.0.0
 > **Autor:** GitHub Copilot
@@ -825,9 +825,196 @@ Este documento registra apenas os Objetivos 1.2 e 1.3. Os objetivos seguintes se
 | **1.1** | Separação HTML, CSS e JS | ✅ Concluído (anterior) |
 | **1.2** | Autenticação e sessão por usuário | ✅ Concluído |
 | **1.3** | Backend: rotas e collections MongoDB | ✅ Concluído |
-| **2.1** | Integração com a API Brapi | ⏳ Pendente |
-| **2.2** | Gráficos com Chart.js | ⏳ Pendente |
-| **2.3** | Balanço Patrimonial dinâmico | ⏳ Pendente |
+| **2.1** | Integração com a API Brapi | ✅ Concluído |
+| **2.2** | Gráficos com Chart.js | ✅ Concluído |
+| **2.3** | Balanço Patrimonial dinâmico | ✅ Concluído |
 | **3.1** | Workspace: anotações, resumo e histórico | ⏳ Pendente |
 | **3.2** | Benchmark Setorial (Tavily + Gemini) | ⏳ Pendente |
 | **3.3** | Dossiê e Dados Não Disponíveis | ⏳ Pendente |
+
+---
+
+## 9. Fase 2 — Dados Dinâmicos Core (Brapi + Gráficos + Índices)
+
+### 9.1 Visão de Arquitetura
+
+A Fase 2 foi implementada com separação explícita entre:
+
+- **Camada de acesso externo**: `server/src/tools/analise-ativos/brapi.service.js`
+- **Camada de domínio de índices**: `server/src/tools/analise-ativos/indices.engine.js`
+- **Camada HTTP**: novas rotas em `server/src/api/routes/analise-ativos.js`
+- **Camada de apresentação**: módulos cliente `analise-ativos.search.js`, `analise-ativos.indices.js`, `analise-ativos.charts.js`, `analise-ativos.balanco.js`
+
+Fluxo principal:
+
+```
+Frontend
+  └─ GET /api/analise-ativos/core/:ticker
+      ├─ BrapiService.fetchQuote(...modules fundamentalistas...)
+      │   ├─ verifica aa_index_cache
+      │   └─ chama Brapi se cache expirado
+      └─ indices.engine.buildIndicesPayload(raw)
+        ├─ calcula índices universais/dinâmicos
+        ├─ classifica segmento
+        ├─ define hiddenMetrics e unavailable
+        └─ prepara séries para gráficos
+```
+
+### 9.2 Serviços Criados
+
+#### `brapi.service.js`
+
+Responsabilidades:
+
+- Normalizar ticker
+- Construir chave de cache por tipo de consulta
+- Ler/gravar `aa_index_cache`
+- Aplicar TTL lógico:
+  - **12h** para módulos fundamentalistas
+  - **30min** para cotação/histórico/search
+- Chamar `https://brapi.dev/api/*` usando token via `process.env`
+- Tratar falhas de API externa com status consistente
+
+Decisões técnicas:
+
+- Cache físico usa `aa_index_cache` (TTL Mongo 12h) + **invalidação lógica por tipo** para suportar 30min sem criar coleção adicional.
+- Busca (`/quote/list`) também reutiliza cache para reduzir latência no autocomplete.
+
+#### `indices.engine.js`
+
+Responsabilidades:
+
+- Classificar segmento por `summaryProfile.sector/industry`
+- Calcular índices da tela por chave (`PL`, `PVP`, `EVEBITDA`, `DY`, `EV`, `PSR`, `ROE`, `ROIC`, `ROA`, `MEBITDA`, `ML`, `RL`, `LB`, `EBITDA`, `LL`, `CREC`, `CLL`, `LPA`, `PAYOUT`, `DB`, `DL`, `ALAV`, `DPL`)
+- Calcular YoY com base trimestral (`current` vs mesmo tri do ano anterior quando disponível)
+- Definir `hiddenMetrics` por segmento (ex.: bancos/seguros)
+- Definir lista dinâmica de “Dados não disponíveis” por segmento
+- Montar séries anuais/trimestrais usadas nos gráficos
+
+Decisões técnicas:
+
+- **DY**: calculado por soma de dividendos dos últimos 12 meses ÷ preço atual.
+- **Payout**: proxy por dividendos 12m ÷ LPA.
+- **Alavancagem**: `(Dívida Líquida / EBITDA)` com fallback robusto para campos ausentes.
+- Sem mock: quando não existe dado suficiente, retorna `null` para frontend renderizar fallback visual.
+
+### 9.3 Endpoints da Fase 2
+
+Adicionados em `server/src/api/routes/analise-ativos.js` (todos com JWT):
+
+| Endpoint | Finalidade | Cache |
+|---|---|---|
+| `GET /api/analise-ativos/search?query=...` | Autocomplete de ativos | 30min |
+| `GET /api/analise-ativos/core/:ticker` | Header + índices + séries + segmento | 12h |
+| `GET /api/analise-ativos/history/:ticker?range=&interval=` | Histórico para gráfico | 30min |
+| `GET /api/analise-ativos/balance/:ticker` | BP trimestral/anual | 12h |
+
+Tratamento de erro:
+
+- Ticker inválido → `400`
+- Ticker inexistente → `404`
+- Falha externa Brapi → `502`
+- Sem `500` nos cenários esperados de entrada inválida
+
+### 9.4 Frontend — Módulos Atualizados
+
+#### `analise-ativos.search.js`
+
+- Remove base local mockada
+- Implementa autocomplete real (`/search`)
+- Carrega ticker principal via `/core/:ticker`
+- Atualiza `asset-hd` dinamicamente (nome, setor, preço, variação, timestamp)
+- Persiste última pesquisa (Fase 1 preservada)
+- Implementa compare mode real com segundo ticker via `/core/:ticker`
+
+#### `analise-ativos.indices.js`
+
+- Renderiza cards por `data-key` com payload dinâmico
+- Aplica classe visual (`pos/neg/neu`) por tipo/valor
+- Atualiza subtexto YoY por card
+- Exibe comparação ativa no bloco `mval-compare`
+- Esconde métricas por segmento (`hiddenMetrics`)
+- Reconstrói seção “Dados não disponíveis” por segmento
+
+#### `analise-ativos.charts.js`
+
+- Remove datasets mockados
+- Busca histórico real em `/history/:ticker`
+- Renderiza:
+  - Valor de Mercado (estimado a partir do histórico de preço e market cap atual)
+  - Receita Líquida (séries anuais/trimestrais)
+  - Caixa (EBITDA)
+- Implementa filtros de período e ano
+- Implementa comparação em duas linhas (ativo principal vs comparado)
+- Mantém API global de botões (`setMktcapFilter`, `setReceitaPeriod`, etc.)
+
+#### `analise-ativos.balanco.js`
+
+- Remove token e ticker hardcoded
+- Usa `GET /api/analise-ativos/balance/:ticker`
+- Respeita modo Trimestral/Anual
+- Esconde linhas cujo valor é nulo/zero em todos os períodos visíveis
+- Recarrega automaticamente ao trocar ticker
+
+### 9.5 Estratégia de Cache
+
+#### Nível banco (TTL MongoDB)
+
+- `aa_index_cache` com índice TTL em `createdAt`
+
+#### Nível aplicação (frescor lógico)
+
+- Fundamentalistas: validação de frescor `<= 12h`
+- Histórico/cotação/autocomplete: validação de frescor `<= 30min`
+
+Isso permite:
+
+- Reuso da mesma coleção
+- Baixa latência de UI
+- Menor custo de chamadas externas
+- Expiração automática de documentos antigos
+
+### 9.6 Testes de Rotas — Evidência
+
+Validações realizadas em terminal com JWT real:
+
+1. **Cotação + módulos fundamentalistas** (`/core/PETR4`)  
+  - Primeira chamada: `cacheHit=false`  
+  - Segunda chamada: `cacheHit=true`
+
+2. **Histórico por ranges distintos** (`/history/PETR4`)  
+  - `1mo/1d` retornou série com pontos  
+  - `1y/1wk` retornou série com cardinalidade diferente
+
+3. **Cache de histórico**  
+  - Segunda chamada do mesmo range retornou `cacheHit=true`
+
+4. **Ticker inválido** (`/core/XXXX99`)  
+  - Retorno `404`, sem `500`
+
+5. **Múltiplos tickers** (`PETR4`, `VALE3`, `ITUB4`)  
+  - Todos com `200` e payload completo
+
+6. **Sem erro 500 nas rotas da fase**  
+  - `search`, `core`, `history`, `balance` testadas com status `200` (ou `404` esperado para inválido)
+
+### 9.7 Arquivos Criados / Modificados na Fase 2
+
+#### Criados
+
+| Arquivo | Descrição |
+|---|---|
+| `server/src/tools/analise-ativos/brapi.service.js` | Integração Brapi + cache + tratamento de erro |
+| `server/src/tools/analise-ativos/indices.engine.js` | Cálculo de índices, segmento e séries |
+
+#### Modificados
+
+| Arquivo | Mudança principal |
+|---|---|
+| `server/src/api/routes/analise-ativos.js` | Novos endpoints `search/core/history/balance` |
+| `client/js/analise-ativos.js` | Estado global `AA`, formatação e restore de ticker |
+| `client/js/analise-ativos.search.js` | Busca/troca de ticker/comparação dinâmicas |
+| `client/js/analise-ativos.indices.js` | Render dinâmico de índices + YoY + indisponíveis |
+| `client/js/analise-ativos.charts.js` | Gráficos dinâmicos + filtros + comparação |
+| `client/js/analise-ativos.balanco.js` | BP dinâmico por ticker |
+

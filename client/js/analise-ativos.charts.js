@@ -1,564 +1,601 @@
-﻿// ─── DATA ───
-const chartData = {};
-const metrics = ['PL','PVP','EVEBITDA','DY','EV','PSR','ROE','ROIC','ROA','MEBITDA','ML','RL','LB','EBITDA','LL','CREC','CLL','LPA','PAYOUT','DB','DL','ALAV','DPL'];
-const baseValues = {
-  PL:[9.2,7.4,5.1,4.2,4.8,5.6,4.8],
-  PVP:[2.1,1.8,1.3,1.0,1.2,1.4,1.2],
-  EVEBITDA:[6.8,5.4,3.9,3.2,3.6,4.0,3.6],
-  DY:[8.2,5.1,11.4,14.8,13.2,12.1,14.3],
-  EV:[610,650,680,750,780,720,738],
-  PSR:[1.3,1.2,1.0,0.9,1.1,1.0,1.1],
-  ROE:[18.2,12.4,31.2,34.8,28.4,26.1,28.4],
-  ROIC:[12.1,8.8,20.1,22.4,18.7,17.2,18.7],
-  ROA:[6.2,4.1,10.5,11.8,9.2,8.6,9.2],
-  MEBITDA:[44.2,38.8,52.4,56.1,54.8,51.2,54.8],
-  ML:[23,19,26,29,25,23,25],
-  RL:[380,320,460,510,512,498,512],
-  LB:[210,175,255,290,286,272,286],
-  EBITDA:[168,124,241,288,281,265,281],
-  LL:[88,54,148,162,125,118,125],
-  CREC:[12,6,14,16,9,5,9],
-  CLL:[14,-1,16,19,7,-7,7],
-  LPA:[9,7,13,15,12,11,12],
-  PAYOUT:[42,47,52,57,44,42,44],
-  DB:[290,310,285,298,312,308,312],
-  DL:[182,208,168,185,198,192,198],
-  ALAV:[1.09,1.68,0.70,0.64,0.71,0.73,0.71],
-  DPL:[1.72,2.14,1.24,1.30,1.48,1.42,1.48]
+﻿const AA_METRICS = ['PL','PVP','EVEBITDA','DY','EV','PSR','ROE','ROIC','ROA','MEBITDA','ML','RL','LB','EBITDA','LL','CREC','CLL','LPA','PAYOUT','DB','DL','ALAV','DPL'];
+const aaMetricState = {};
+AA_METRICS.forEach((k) => { aaMetricState[k] = { period: 'A', year: new Date().getFullYear(), open: false }; });
+
+const aaMacroState = {
+  mktcap: { filter: 'YTD' },
+  receita: { period: 'A', year: new Date().getFullYear() },
+  caixa: { period: 'A', year: new Date().getFullYear() },
 };
-const years = [2018,2019,2020,2021,2022,2023,2024,2025];
-const quarters = {A:baseValues,1:null,2:null,3:null,4:null};
-const metricState = {};
-metrics.forEach(k => { metricState[k]={period:'A',year:2025,open:false}; generateQData(k); });
-function generateQData(k){const b=baseValues[k];quarters[1]={};quarters[2]={};quarters[3]={};quarters[4]={};metrics.forEach(m=>{const bv=baseValues[m];[1,2,3,4].forEach(q=>{if(!quarters[q][m])quarters[q][m]=[];quarters[q][m]=bv.map((v,i)=>+(v*(0.88+Math.random()*.24)).toFixed(2));});});}
 
-// YEAR SELECTS
-metrics.forEach(k => {
-  const sel = document.getElementById('ysel-'+k);
-  if(!sel) return;
-  for(let i=2025;i>=2018;i--){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
-});
+const aaHistoryRangeMap = {
+  MTD: { range: '1mo', interval: '1d' },
+  YTD: { range: '1y', interval: '1d' },
+  '12M': { range: '1y', interval: '1wk' },
+  ORIGEM: { range: '5y', interval: '1mo' },
+};
 
-function getChartVals(key, period, year){
-  const yIdx = years.indexOf(parseInt(year));
-  if(period==='A'){
-    const end=yIdx<0?years.length:yIdx+1;
-    return baseValues[key].slice(0,end).map((v,i)=>({v,label:String(years[i])}));
+const AA_CHART_COLORS = {
+  primary: 'rgba(196,154,108,0.95)',
+  primaryFill: 'rgba(196,154,108,0.16)',
+  compare: 'rgba(191,102,73,0.95)',
+  compareFill: 'rgba(191,102,73,0.12)',
+  ebitda: 'rgba(122,172,136,0.95)',
+  ebitdaFill: 'rgba(122,172,136,0.14)',
+  fcf: 'rgba(191,102,73,0.95)',
+  fcfFill: 'rgba(191,102,73,0.12)',
+};
+
+function aaGetSeriesByPeriod(seriesObj, period, year) {
+  if (!seriesObj) return [];
+  if (period === 'A') {
+    return (seriesObj.A || []).filter((row) => {
+      const y = Number(String(row.label).replace(/\D/g, '').slice(0, 4));
+      return !Number.isFinite(y) || y <= year;
+    });
   }
-  const q=parseInt(period.replace('T',''));
-  const arr=quarters[q]&&quarters[q][key]?quarters[q][key]:baseValues[key];
-  const end=yIdx<0?arr.length:yIdx+1;
-  return arr.slice(0,end).map((v,i)=>({v,label:`${q}T/${String(years[i]).slice(2)}`}));
+  // Try direct key first (1T, 2T, etc. - used by macro series)
+  let series = seriesObj[period];
+  // Fall back to filtering Q array by quarter number (used by metric series)
+  if ((!series || !series.length) && Array.isArray(seriesObj.Q) && seriesObj.Q.length) {
+    const qNum = parseInt(period, 10);
+    if (qNum >= 1 && qNum <= 4) {
+      series = seriesObj.Q.filter((row) => row.quarter === qNum);
+    }
+  }
+  return (series || []).filter((row) => {
+    const p = String(row.label || '').split('/');
+    if (p.length < 2) return true;
+    const yy = Number(p[1]);
+    return !Number.isFinite(yy) || yy <= Number(String(year).slice(2));
+  });
 }
 
-// CHART RENDER
-function renderChart(key){
-  const state=metricState[key];
-  const dataA=getChartVals(key,state.period,state.year);
-  if(!dataA.length)return;
-  const svgA=document.getElementById('svg-'+key);
-  const tipA=document.getElementById('tip-'+key);
-  if(!svgA)return;
-  const W=svgA.parentElement.offsetWidth||300, H=120;
+function aaGetChartBounds(seriesList) {
+  const values = (seriesList || [])
+    .flatMap((series) => (series || []).map((row) => Number(row?.value)))
+    .filter((value) => Number.isFinite(value));
 
-  if(compareActive && Object.keys(compareBaseValues).length){
-    // ── DUAL-LINE MODE ──
-    const dataB=getCompareChartVals(key,state.period,state.year);
-    const valsA=dataA.map(d=>d.v), valsB=dataB.map(d=>d.v);
-    const allVals=[...valsA,...valsB];
-    const mn=Math.min(...allVals), mx=Math.max(...allVals);
+  if (!values.length) return { min: 0, max: 1 };
 
-    const buildDual=(svg,tip)=>{
-      if(!svg)return;
-      svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-      const pad={t:22,b:22,l:8,r:8};
-      const xSA=i=>(W-pad.l-pad.r)/(Math.max(dataA.length-1,1))*i+pad.l;
-      const xSB=i=>(W-pad.l-pad.r)/(Math.max(dataB.length-1,1))*i+pad.l;
-      const yS=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
-      const ptsA=dataA.map((d,i)=>`${xSA(i)},${yS(d.v)}`).join(' ');
-      const ptsB=dataB.length>1?dataB.map((d,i)=>`${xSB(i)},${yS(d.v)}`).join(' '):'';
-      const fillA=`${pad.l},${H-pad.b} `+ptsA+` ${xSA(dataA.length-1)},${H-pad.b}`;
-      const uid=key+svg.id.slice(-1);
-      svg.innerHTML=`
-        <defs>
-          <linearGradient id="lg-${uid}" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="rgba(196,154,108,0.18)"/>
-            <stop offset="100%" stop-color="rgba(196,154,108,0)"/>
-          </linearGradient>
-        </defs>
-        <polygon points="${fillA}" fill="url(#lg-${uid})"/>
-        <polyline points="${ptsA}" fill="none" stroke="rgba(196,154,108,0.85)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-        ${ptsB?`<polyline points="${ptsB}" fill="none" stroke="rgba(122,172,136,0.85)" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`:''}
-        ${dataA.map((d,i)=>`<circle cx="${xSA(i)}" cy="${yS(d.v)}" r="3" fill="var(--bg-card)" stroke="rgba(196,154,108,0.85)" stroke-width="1.5" class="dot dot-a" data-i="${i}" data-v="${d.v}" data-l="${d.label}"/>`).join('')}
-        ${dataB.map((d,i)=>`<circle cx="${xSB(i)}" cy="${yS(d.v)}" r="3" fill="var(--bg-card)" stroke="rgba(122,172,136,0.85)" stroke-width="1.5" class="dot dot-b" data-i="${i}" data-v="${d.v}" data-l="${d.label}"/>`).join('')}
-        ${dataA.map((d,i)=>`<text x="${xSA(i)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.2)" font-family="DM Mono,monospace">${d.label}</text>`).join('')}
-      `;
-      if(tip){
-        svg.querySelectorAll('.dot-a').forEach(dot=>{
-          dot.addEventListener('mouseenter',()=>{
-            const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l;
-            const prev=i>0?valsA[i-1]:null,chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
-            let ch='';if(chg!==null){const cl=parseFloat(chg)>=0?'pos':'neg';ch=`<div class="ct-chg ${cl}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-            tip.style.display='block';
-            tip.innerHTML=`<div class="ct-date">${lbl} · <span style="color:var(--gold)">PETR4</span></div><div class="ct-val">${v}</div>${ch}`;
-            const r=svg.getBoundingClientRect(),cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy')),sx=r.width/W;
-            let l=cx*sx+10,t=cy-40;if(l+150>r.width)l=cx*sx-160;
-            tip.style.left=l+'px';tip.style.top=t+'px';
-          });
-          dot.addEventListener('mouseleave',()=>{tip.style.display='none';});
-        });
-        svg.querySelectorAll('.dot-b').forEach(dot=>{
-          dot.addEventListener('mouseenter',()=>{
-            const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l;
-            const prev=i>0?valsB[i-1]:null,chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
-            let ch='';if(chg!==null){const cl=parseFloat(chg)>=0?'pos':'neg';ch=`<div class="ct-chg ${cl}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-            tip.style.display='block';
-            tip.innerHTML=`<div class="ct-date">${lbl} · <span style="color:var(--green)">${compareTicker}</span></div><div class="ct-val">${v}</div>${ch}`;
-            const r=svg.getBoundingClientRect(),cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy')),sx=r.width/W;
-            let l=cx*sx+10,t=cy-40;if(l+150>r.width)l=cx*sx-160;
-            tip.style.left=l+'px';tip.style.top=t+'px';
-          });
-          dot.addEventListener('mouseleave',()=>{tip.style.display='none';});
-        });
-      }
-      // Legend
-      const wrap=svg.parentElement;
-      let legend=wrap.querySelector('.chart-legend');
-      if(!legend){legend=document.createElement('div');legend.className='chart-legend';wrap.appendChild(legend);}
-      legend.innerHTML=`<span class="chart-legend-item"><span class="chart-legend-dot a"></span>PETR4</span><span class="chart-legend-item"><span class="chart-legend-dot b"></span>${compareTicker}</span>`;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (min === max) {
+    const delta = Math.abs(min || 1) * 0.1;
+    return { min: min - delta, max: max + delta };
+  }
+  return { min, max };
+}
+
+function aaBuildPathGeometry(data, width, height, min, max) {
+  if (!Array.isArray(data) || !data.length) return { points: [], linePath: '', areaPath: '' };
+
+  const padX = 10;
+  const padY = 14;
+  const drawW = width - padX * 2;
+  const drawH = height - padY * 2;
+
+  const points = data.map((item, index) => {
+    const x = padX + (drawW * (data.length === 1 ? 0.5 : index / (data.length - 1)));
+    const val = Number(item?.value);
+    const y = padY + (max === min ? drawH / 2 : drawH - ((val - min) / (max - min)) * drawH);
+    return {
+      x,
+      y,
+      value: val,
+      label: String(item?.label || ''),
     };
-
-    buildDual(svgA,tipA);
-    buildDual(document.getElementById('svg-'+key+'-b'),document.getElementById('tip-'+key+'-b'));
-
-  } else {
-    // ── SINGLE-LINE MODE ──
-    svgA.setAttribute('viewBox',`0 0 ${W} ${H}`);
-    const vals=dataA.map(d=>d.v);
-    const mn=Math.min(...vals), mx=Math.max(...vals);
-    const pad={t:14,b:22,l:8,r:8};
-    const xScale=i=>(W-pad.l-pad.r)/(dataA.length-1)*i+pad.l;
-    const yScale=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
-    const pts=dataA.map((d,i)=>`${xScale(i)},${yScale(d.v)}`).join(' ');
-    const fillPts=`${pad.l},${H-pad.b} `+pts+` ${xScale(dataA.length-1)},${H-pad.b}`;
-    svgA.innerHTML=`
-      <defs>
-        <linearGradient id="lg-${key}" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="rgba(196,154,108,0.3)"/>
-          <stop offset="100%" stop-color="rgba(196,154,108,0)"/>
-        </linearGradient>
-      </defs>
-      <polygon points="${fillPts}" fill="url(#lg-${key})"/>
-      <polyline points="${pts}" fill="none" stroke="rgba(196,154,108,0.7)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-      ${dataA.map((d,i)=>`
-        <circle cx="${xScale(i)}" cy="${yScale(d.v)}" r="3.5" fill="var(--bg-card)" stroke="rgba(196,154,108,0.8)" stroke-width="1.5" class="dot"
-          data-i="${i}" data-v="${d.v}" data-l="${d.label}"/>
-      `).join('')}
-      ${dataA.map((d,i)=>`
-        <text x="${xScale(i)}" y="${H-4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="DM Mono,monospace">${d.label}</text>
-      `).join('')}
-    `;
-    svgA.querySelectorAll('.dot').forEach(dot=>{
-      dot.addEventListener('mouseenter',e=>{
-        const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l;
-        const prev=i>0?vals[i-1]:null;
-        const chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
-        let chgHtml='';
-        if(chg!==null){const cls=parseFloat(chg)>=0?'pos':'neg';chgHtml=`<div class="ct-chg ${cls}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-        tipA.style.display='block';
-        tipA.innerHTML=`<div class="ct-date">${lbl}</div><div class="ct-val">${v}</div>${chgHtml}`;
-        const svgRect=svgA.getBoundingClientRect();
-        const cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy'));
-        const scaleX=svgRect.width/W;
-        let left=cx*scaleX+10, top=cy-40;
-        if(left+150>svgRect.width)left=cx*scaleX-160;
-        tipA.style.left=left+'px'; tipA.style.top=top+'px';
-      });
-      dot.addEventListener('mouseleave',()=>{ tipA.style.display='none'; });
-    });
-  }
-}
-
-// TOGGLE CHART (with compare-column sync)
-function toggleChart(btn, key){
-  const area=document.getElementById('chart-'+key);
-  const psel=document.getElementById('psel-'+key);
-  const open=area.classList.toggle('visible');
-  psel.classList.toggle('visible',open);
-  btn.textContent=open?'Esconder gráfico':'Mostrar gráfico';
-  btn.classList.toggle('active',open);
-  metricState[key].open=open;
-  // Sync B column
-  if(compareActive){
-    const areaB=document.getElementById('chart-'+key+'-b');
-    const pselB=document.getElementById('psel-'+key+'-b');
-    if(areaB){ areaB.classList.toggle('visible',open); if(pselB) pselB.classList.toggle('visible',open); }
-    const colB=document.getElementById('compare-col-b');
-    if(colB){ const cell=colB.querySelector(`.metric-cell[data-key="${key}"]`); if(cell){ const b=cell.querySelector('.chart-toggle-btn'); if(b){b.textContent=open?'Esconder gráfico':'Mostrar gráfico';b.classList.toggle('active',open);} } }
-  }
-  if(open) setTimeout(()=>renderChart(key),20);
-}
-
-// TOGGLE CHART from B column (mirrors toggleChart, syncs A)
-function toggleChartSync(btn, key){
-  const areaB=document.getElementById('chart-'+key+'-b');
-  const pselB=document.getElementById('psel-'+key+'-b');
-  const open=areaB.classList.toggle('visible');
-  if(pselB) pselB.classList.toggle('visible',open);
-  btn.textContent=open?'Esconder gráfico':'Mostrar gráfico';
-  btn.classList.toggle('active',open);
-  // Sync A column
-  const areaA=document.getElementById('chart-'+key);
-  const pselA=document.getElementById('psel-'+key);
-  if(areaA){ areaA.classList.toggle('visible',open); if(pselA) pselA.classList.toggle('visible',open); }
-  const content=document.getElementById('content');
-  if(content){ const cell=content.querySelector(`.metric-cell[data-key="${key}"]`); if(cell){ const b=cell.querySelector('.chart-toggle-btn'); if(b){b.textContent=open?'Esconder gráfico':'Mostrar gráfico';b.classList.toggle('active',open);} } }
-  metricState[key].open=open;
-  if(open) setTimeout(()=>renderChart(key),20);
-}
-
-function setPeriod(btn, key, p){
-  // Clear active on both column period selectors
-  document.querySelectorAll(`#psel-${key} .period-btn, #psel-${key}-b .period-btn`).forEach(b=>b.classList.remove('active'));
-  // Mark active on the matching button in both columns
-  const idx=Array.from(btn.parentElement.querySelectorAll('.period-btn')).indexOf(btn);
-  [document.getElementById('psel-'+key), document.getElementById('psel-'+key+'-b')].forEach(ps=>{
-    if(ps){ const btns=ps.querySelectorAll('.period-btn'); if(btns[idx]) btns[idx].classList.add('active'); }
   });
-  metricState[key].period=p;
-  if(metricState[key].open) renderChart(key);
+
+  const linePath = points.map((p, index) => `${index === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const last = points[points.length - 1];
+  const first = points[0];
+  const baseY = padY + drawH;
+  const areaPath = `${linePath} L ${last.x} ${baseY} L ${first.x} ${baseY} Z`;
+
+  return { points, linePath, areaPath };
 }
 
-function setYear(sel, key){
-  metricState[key].year=parseInt(sel.value);
-  // Sync the other column's year select
-  if(compareActive){
-    const isB=sel.id&&sel.id.endsWith('-b');
-    const syncSel=document.getElementById(isB?`ysel-${key}`:`ysel-${key}-b`);
-    if(syncSel&&syncSel!==sel) syncSel.value=sel.value;
+function aaFmtTooltipValue(value, fmt) {
+  if (!Number.isFinite(Number(value))) return '—';
+  if (typeof fmt === 'function') return fmt(Number(value));
+  return window.aaFmtCompactCurrency(Number(value));
+}
+
+function aaFmtByType(type) {
+  if (type === 'percent') return (v) => `${Number(v).toFixed(2)}%`;
+  if (type === 'multiple') return (v) => `${Number(v).toFixed(2)}x`;
+  if (type === 'currency_per_share') return (v) => `R$ ${Number(v).toFixed(2)}`;
+  return (v) => window.aaFmtCompactCurrency(Number(v));
+}
+
+function aaTooltipHtml(label, rows) {
+  const lines = rows.map((row) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+      <span style="display:inline-flex;align-items:center;gap:6px;color:var(--tx2);font-size:.7rem;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${row.color};display:inline-block;"></span>${row.name}
+      </span>
+      <span style="font-family:'DM Mono',monospace;color:var(--tx);font-size:.8rem;">${aaFmtTooltipValue(row.value, row.fmt)}</span>
+    </div>
+  `).join('');
+
+  return `<div class="mct-date">${label || 'Período'}</div>${lines}`;
+}
+
+function aaRenderLineChart({ svgId, tipId, datasets = [], height = 188 }) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+
+  const validDatasets = (datasets || []).filter((dataset) => Array.isArray(dataset.data) && dataset.data.length);
+  const wrap = svg.parentElement;
+  const width = wrap?.clientWidth || 320;
+
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+  if (!validDatasets.length) {
+    svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="var(--tx2,#888)" font-size="11" font-family="inherit" opacity="0.6">Sem dados históricos</text>';
+    const tip = tipId ? document.getElementById(tipId) : null;
+    if (tip) tip.style.display = 'none';
+    return;
   }
-  if(metricState[key].open) renderChart(key);
-}
 
-// ─── MACRO CHARTS ───
-const macroChartState = { mktcap:{filter:'YTD'}, receita:{period:'A',year:2025}, caixa:{period:'A',year:2025} };
-
-const macroData = {
-  mktcap: {
-    MTD: [
-      {label:'01/02',v:456200,idx:3.18},{label:'03/02',v:461800,idx:3.22},{label:'04/02',v:458300,idx:3.19},
-      {label:'05/02',v:470100,idx:3.27},{label:'06/02',v:467500,idx:3.25},{label:'07/02',v:472200,idx:3.29},
-      {label:'10/02',v:468800,idx:3.26},{label:'11/02',v:465100,idx:3.24},{label:'12/02',v:471900,idx:3.28},
-      {label:'13/02',v:474300,idx:3.30},{label:'14/02',v:469200,idx:3.27},{label:'17/02',v:475800,idx:3.31}
-    ],
-    YTD: [
-      {label:'Jan/26',v:441200,idx:3.07},{label:'Fev/26',v:475800,idx:3.31}
-    ],
-    '12M': [
-      {label:'Mar/25',v:398400,idx:2.87},{label:'Abr/25',v:408200,idx:2.94},{label:'Mai/25',v:412600,idx:2.97},
-      {label:'Jun/25',v:428800,idx:3.08},{label:'Jul/25',v:418300,idx:3.01},{label:'Ago/25',v:435100,idx:3.13},
-      {label:'Set/25',v:430600,idx:3.10},{label:'Out/25',v:448200,idx:3.22},{label:'Nov/25',v:442700,idx:3.18},
-      {label:'Dez/25',v:438100,idx:3.15},{label:'Jan/26',v:441200,idx:3.17},{label:'Fev/26',v:475800,idx:3.31}
-    ],
-    ORIGEM: [
-      {label:'2016',v:124300,idx:1.19},{label:'2017',v:148600,idx:1.38},{label:'2018',v:182400,idx:1.62},
-      {label:'2019',v:268100,idx:2.08},{label:'2020',v:212800,idx:1.81},{label:'2021',v:324600,idx:2.46},
-      {label:'2022',v:518200,idx:3.64},{label:'2023',v:412400,idx:3.03},{label:'2024',v:438100,idx:3.15},
-      {label:'2025',v:441200,idx:3.17},{label:'2026p',v:475800,idx:3.31}
-    ]
-  },
-  receita: {
-    A: [
-      {label:'2018',v:304810},{label:'2019',v:302800},{label:'2020',v:272100},
-      {label:'2021',v:452600},{label:'2022',v:591200},{label:'2023',v:512100},
-      {label:'2024',v:498300},{label:'2025',v:512000}
-    ],
-    '1T': [
-      {label:'1T/18',v:72100},{label:'1T/19',v:74800},{label:'1T/20',v:58400},{label:'1T/21',v:98700},
-      {label:'1T/22',v:142600},{label:'1T/23',v:124300},{label:'1T/24',v:118400},{label:'1T/25',v:124800}
-    ],
-    '2T': [
-      {label:'2T/18',v:78200},{label:'2T/19',v:76100},{label:'2T/20',v:52100},{label:'2T/21',v:106800},
-      {label:'2T/22',v:152100},{label:'2T/23',v:128400},{label:'2T/24',v:126100},{label:'2T/25',v:128200}
-    ],
-    '3T': [
-      {label:'3T/18',v:76400},{label:'3T/19',v:78400},{label:'3T/20',v:74800},{label:'3T/21',v:118400},
-      {label:'3T/22',v:144800},{label:'3T/23',v:129800},{label:'3T/24',v:124600},{label:'3T/25',v:128700}
-    ],
-    '4T': [
-      {label:'4T/18',v:78110},{label:'4T/19',v:73500},{label:'4T/20',v:86800},{label:'4T/21',v:128700},
-      {label:'4T/22',v:151700},{label:'4T/23',v:129600},{label:'4T/24',v:129200}
-    ]
-  },
-  caixa: {
-    A: [
-      {label:'2018',ebitda:140200,fcl:68400},{label:'2019',ebitda:128400,fcl:54200},
-      {label:'2020',ebitda:162800,fcl:82100},{label:'2021',ebitda:238400,fcl:128600},
-      {label:'2022',ebitda:288100,fcl:158200},{label:'2023',ebitda:280600,fcl:142800},
-      {label:'2024',ebitda:265400,fcl:132100},{label:'2025',ebitda:281200,fcl:148600}
-    ],
-    '1T': [
-      {label:'1T/18',ebitda:32400,fcl:14200},{label:'1T/19',ebitda:30100,fcl:12800},
-      {label:'1T/20',ebitda:34800,fcl:16100},{label:'1T/21',ebitda:58200,fcl:28400},
-      {label:'1T/22',ebitda:72100,fcl:38600},{label:'1T/23',ebitda:68400,fcl:34800},
-      {label:'1T/24',ebitda:64100,fcl:31200},{label:'1T/25',ebitda:68800,fcl:35100}
-    ],
-    '2T': [
-      {label:'2T/18',ebitda:34200,fcl:15800},{label:'2T/19',ebitda:31400,fcl:13600},
-      {label:'2T/20',ebitda:28100,fcl:10400},{label:'2T/21',ebitda:61800,fcl:30200},
-      {label:'2T/22',ebitda:74800,fcl:40100},{label:'2T/23',ebitda:70100,fcl:36400},
-      {label:'2T/24',ebitda:66800,fcl:33600},{label:'2T/25',ebitda:70400,fcl:36800}
-    ],
-    '3T': [
-      {label:'3T/18',ebitda:36100,fcl:16800},{label:'3T/19',ebitda:32800,fcl:14200},
-      {label:'3T/20',ebitda:38400,fcl:18600},{label:'3T/21',ebitda:62400,fcl:31800},
-      {label:'3T/22',ebitda:70200,fcl:38400},{label:'3T/23',ebitda:72400,fcl:38100},
-      {label:'3T/24',ebitda:68100,fcl:34200},{label:'3T/25',ebitda:71800,fcl:38200}
-    ],
-    '4T': [
-      {label:'4T/18',ebitda:37500,fcl:21400},{label:'4T/19',ebitda:34100,fcl:13600},
-      {label:'4T/20',ebitda:61500,fcl:36900},{label:'4T/21',ebitda:56000,fcl:28200},
-      {label:'4T/22',ebitda:71000,fcl:41100},{label:'4T/23',ebitda:69700,fcl:33500},
-      {label:'4T/24',ebitda:67200,fcl:33100}
-    ]
-  }
-};
-
-function fmtBi(v){ return v>=1000000?`R$ ${(v/1000000).toFixed(2)}T`:`R$ ${(v/1000).toFixed(1)}B`; }
-function fmtRi(v){ return `R$ ${(v/1000).toFixed(0)}B`; }
-
-function getMktcapData(filter){ return macroData.mktcap[filter]||macroData.mktcap.YTD; }
-
-function getReceitaData(period, year){
-  const raw = macroData.receita[period]||macroData.receita.A;
-  if(period==='A') return raw.filter(d=>parseInt(d.label)<=year);
-  const yShort = String(year).slice(2);
-  return raw.filter(d=>{ const p=d.label.split('/'); return p.length>1&&parseInt(p[1])<=parseInt(yShort); });
-}
-
-function getCaixaData(period, year){
-  const raw = macroData.caixa[period]||macroData.caixa.A;
-  if(period==='A') return raw.filter(d=>parseInt(d.label)<=year);
-  const yShort = String(year).slice(2);
-  return raw.filter(d=>{ const p=d.label.split('/'); return p.length>1&&parseInt(p[1])<=parseInt(yShort); });
-}
-
-function renderMktcapChart(filter){
-  const data=getMktcapData(filter);
-  if(!data||!data.length)return;
-  const svg=document.getElementById('svg-mktcap');
-  const tip=document.getElementById('tip-mktcap');
-  if(!svg)return;
-  const W=svg.parentElement.offsetWidth||320, H=188;
-  const vals=data.map(d=>d.v);
-  const mn=Math.min(...vals), mx=Math.max(...vals);
-  const pad={t:14,b:26,l:8,r:8};
-  const xS=i=>(W-pad.l-pad.r)/(Math.max(data.length-1,1))*i+pad.l;
-  const yS=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
-  const pts=data.map((d,i)=>`${xS(i)},${yS(d.v)}`).join(' ');
-  const fill=`${pad.l},${H-pad.b} `+pts+` ${xS(data.length-1)},${H-pad.b}`;
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  const step=Math.max(1,Math.floor(data.length/6));
-  svg.innerHTML=`
-    <defs>
-      <linearGradient id="lg-mc" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="rgba(196,154,108,0.28)"/>
-        <stop offset="100%" stop-color="rgba(196,154,108,0)"/>
-      </linearGradient>
-    </defs>
-    <polygon points="${fill}" fill="url(#lg-mc)"/>
-    <polyline points="${pts}" fill="none" stroke="rgba(196,154,108,0.88)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    ${data.map((d,i)=>`<circle cx="${xS(i)}" cy="${yS(d.v)}" r="3.5" fill="var(--bg-card)" stroke="rgba(196,154,108,0.9)" stroke-width="1.5" class="mmc" data-i="${i}" data-v="${d.v}" data-l="${d.label}" data-idx="${d.idx}"/>`).join('')}
-    ${data.map((d,i)=>i%step===0||i===data.length-1?`<text x="${xS(i)}" y="${H-6}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="DM Mono,monospace">${d.label}</text>`:'').join('')}
-  `;
-  svg.querySelectorAll('.mmc').forEach(dot=>{
-    dot.addEventListener('mouseenter',()=>{
-      const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l,idx=dot.dataset.idx;
-      const prev=i>0?vals[i-1]:null;
-      const chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
-      let ch=''; if(chg!==null){const cl=parseFloat(chg)>=0?'pos':'neg';ch=`<div class="mct-chg ${cl}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-      tip.style.display='block';
-      tip.innerHTML=`<div class="mct-date">${lbl}</div><div class="mct-val">${fmtBi(v)}</div><div class="mct-idx">P/VPA: ${parseFloat(idx).toFixed(2)}x</div>${ch}`;
-      const r=svg.getBoundingClientRect(),cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy')),sx=r.width/W;
-      let l=cx*sx+12,t=cy-54; if(l+172>r.width)l=cx*sx-185; if(t<0)t=cy+16;
-      tip.style.left=l+'px'; tip.style.top=t+'px';
-    });
-    dot.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  const bounds = aaGetChartBounds(validDatasets.map((d) => d.data));
+  const prepared = validDatasets.map((dataset) => {
+    const geom = aaBuildPathGeometry(dataset.data, width, height, bounds.min, bounds.max);
+    return { ...dataset, ...geom };
   });
-  const last=data[data.length-1], prev=data.length>1?data[data.length-2]:null;
-  document.getElementById('mktcap-val').textContent=fmtBi(last.v);
-  if(prev){
-    const chg=((last.v-prev.v)/Math.abs(prev.v)*100).toFixed(1);
-    const el=document.getElementById('mktcap-chg');
-    el.textContent=(parseFloat(chg)>=0?'▲ +':'▼ ')+Math.abs(chg)+'% no período';
-    el.className='macro-chart-chg '+(parseFloat(chg)>=0?'up':'dn');
-  }
-}
 
-function renderReceitaChart(period, year){
-  const data=getReceitaData(period,year);
-  if(!data||!data.length)return;
-  const svg=document.getElementById('svg-receita');
-  const tip=document.getElementById('tip-receita');
-  if(!svg)return;
-  const W=svg.parentElement.offsetWidth||320, H=188;
-  const vals=data.map(d=>d.v);
-  const mn=Math.min(...vals), mx=Math.max(...vals);
-  const pad={t:14,b:26,l:8,r:8};
-  const xS=i=>(W-pad.l-pad.r)/(Math.max(data.length-1,1))*i+pad.l;
-  const yS=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
-  const pts=data.map((d,i)=>`${xS(i)},${yS(d.v)}`).join(' ');
-  const fill=`${pad.l},${H-pad.b} `+pts+` ${xS(data.length-1)},${H-pad.b}`;
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  const step=Math.max(1,Math.floor(data.length/6));
-  svg.innerHTML=`
-    <defs>
-      <linearGradient id="lg-rc" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="rgba(106,141,172,0.28)"/>
-        <stop offset="100%" stop-color="rgba(106,141,172,0)"/>
-      </linearGradient>
-    </defs>
-    <polygon points="${fill}" fill="url(#lg-rc)"/>
-    <polyline points="${pts}" fill="none" stroke="rgba(106,141,172,0.88)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    ${data.map((d,i)=>`<circle cx="${xS(i)}" cy="${yS(d.v)}" r="3.5" fill="var(--bg-card)" stroke="rgba(106,141,172,0.9)" stroke-width="1.5" class="mrc" data-i="${i}" data-v="${d.v}" data-l="${d.label}"/>`).join('')}
-    ${data.map((d,i)=>i%step===0||i===data.length-1?`<text x="${xS(i)}" y="${H-6}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="DM Mono,monospace">${d.label}</text>`:'').join('')}
-  `;
-  svg.querySelectorAll('.mrc').forEach(dot=>{
-    dot.addEventListener('mouseenter',()=>{
-      const i=parseInt(dot.dataset.i),v=parseFloat(dot.dataset.v),lbl=dot.dataset.l;
-      const prev=i>0?vals[i-1]:null;
-      const chg=prev!==null?((v-prev)/Math.abs(prev)*100).toFixed(1):null;
-      const margem=period==='A'?'55,9%':period==='1T'?'54,2%':period==='2T'?'56,1%':period==='3T'?'55,4%':'57,2%';
-      let ch=''; if(chg!==null){const cl=parseFloat(chg)>=0?'pos':'neg';ch=`<div class="mct-chg ${cl}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-      tip.style.display='block';
-      tip.innerHTML=`<div class="mct-date">${lbl}</div><div class="mct-val">${fmtRi(v)}</div><div class="mct-idx">Margem Bruta: ${margem}</div>${ch}`;
-      const r=svg.getBoundingClientRect(),cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy')),sx=r.width/W;
-      let l=cx*sx+12,t=cy-54; if(l+172>r.width)l=cx*sx-185; if(t<0)t=cy+16;
-      tip.style.left=l+'px'; tip.style.top=t+'px';
-    });
-    dot.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
-  });
-  const last=data[data.length-1], prev2=data.length>1?data[data.length-2]:null;
-  document.getElementById('receita-val').textContent=fmtRi(last.v);
-  if(prev2){
-    const chg=((last.v-prev2.v)/Math.abs(prev2.v)*100).toFixed(1);
-    const el=document.getElementById('receita-chg');
-    el.textContent=(parseFloat(chg)>=0?'▲ +':'▼ ')+Math.abs(chg)+'% vs anterior';
-    el.className='macro-chart-chg '+(parseFloat(chg)>=0?'up':'dn');
-  }
-}
+  // Single-point rendering: show a visible bar + value label instead of an invisible dot
+  const isSinglePoint = validDatasets.every((d) => d.data.length === 1);
 
-function renderCaixaChart(period, year){
-  const data=getCaixaData(period,year);
-  if(!data||!data.length)return;
-  const svg=document.getElementById('svg-caixa');
-  const tip=document.getElementById('tip-caixa');
-  if(!svg)return;
-  const W=svg.parentElement.offsetWidth||320, H=188;
-  const allV=[...data.map(d=>d.ebitda),...data.map(d=>d.fcl)];
-  const mn=Math.min(...allV), mx=Math.max(...allV);
-  const pad={t:14,b:26,l:8,r:8};
-  const xS=i=>(W-pad.l-pad.r)/(Math.max(data.length-1,1))*i+pad.l;
-  const yS=v=>H-pad.b-(mx===mn?0.5:(v-mn)/(mx-mn))*(H-pad.t-pad.b);
-  const ptsE=data.map((d,i)=>`${xS(i)},${yS(d.ebitda)}`).join(' ');
-  const ptsF=data.map((d,i)=>`${xS(i)},${yS(d.fcl)}`).join(' ');
-  const step=Math.max(1,Math.floor(data.length/6));
-  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
-  svg.innerHTML=`
-    <defs>
-      <linearGradient id="lg-cxe" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="rgba(122,172,136,0.2)"/>
-        <stop offset="100%" stop-color="rgba(122,172,136,0)"/>
-      </linearGradient>
-      <linearGradient id="lg-cxf" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="rgba(191,102,73,0.15)"/>
-        <stop offset="100%" stop-color="rgba(191,102,73,0)"/>
-      </linearGradient>
-    </defs>
-    <polygon points="${pad.l},${H-pad.b} ${ptsE} ${xS(data.length-1)},${H-pad.b}" fill="url(#lg-cxe)"/>
-    <polygon points="${pad.l},${H-pad.b} ${ptsF} ${xS(data.length-1)},${H-pad.b}" fill="url(#lg-cxf)"/>
-    <polyline points="${ptsE}" fill="none" stroke="rgba(122,172,136,0.88)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <polyline points="${ptsF}" fill="none" stroke="rgba(191,102,73,0.88)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="6,3"/>
-    ${data.map((d,i)=>`<circle cx="${xS(i)}" cy="${yS(d.ebitda)}" r="3.5" fill="var(--bg-card)" stroke="rgba(122,172,136,0.9)" stroke-width="1.5" class="mce" data-i="${i}" data-l="${d.label}" data-e="${d.ebitda}" data-f="${d.fcl}"/>`).join('')}
-    ${data.map((d,i)=>`<circle cx="${xS(i)}" cy="${yS(d.fcl)}" r="3.5" fill="var(--bg-card)" stroke="rgba(191,102,73,0.88)" stroke-width="1.5" class="mcf" data-i="${i}" data-l="${d.label}" data-e="${d.ebitda}" data-f="${d.fcl}"/>`).join('')}
-    ${data.map((d,i)=>i%step===0||i===data.length-1?`<text x="${xS(i)}" y="${H-6}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.22)" font-family="DM Mono,monospace">${d.label}</text>`:'').join('')}
-  `;
-  const bindCaixaTip=(cls,isE)=>{
-    svg.querySelectorAll('.'+cls).forEach(dot=>{
-      dot.addEventListener('mouseenter',()=>{
-        const i=parseInt(dot.dataset.i),e=parseFloat(dot.dataset.e),f=parseFloat(dot.dataset.f),lbl=dot.dataset.l;
-        const series=isE?data.map(d=>d.ebitda):data.map(d=>d.fcl);
-        const curr=isE?e:f;
-        const prev=i>0?series[i-1]:null;
-        const chg=prev!==null?((curr-prev)/Math.abs(prev)*100).toFixed(1):null;
-        const conv=(f/e*100).toFixed(1);
-        let ch=''; if(chg!==null){const cl=parseFloat(chg)>=0?'pos':'neg';ch=`<div class="mct-chg ${cl}">${parseFloat(chg)>=0?'▲':'▼'} ${Math.abs(chg)}% vs anterior</div>`;}
-        const serieLabel=isE?`<span style="color:var(--green)">EBITDA</span>`:`<span style="color:var(--terra)">Geração de Caixa</span>`;
-        tip.style.display='block';
-        tip.innerHTML=`<div class="mct-date">${lbl} · ${serieLabel}</div><div class="mct-val">${fmtRi(curr)}</div><div class="mct-idx">Conversão FCL: ${conv}%</div>${ch}`;
-        const r=svg.getBoundingClientRect(),cx=parseFloat(dot.getAttribute('cx')),cy=parseFloat(dot.getAttribute('cy')),sx=r.width/W;
-        let l=cx*sx+12,t=cy-54; if(l+175>r.width)l=cx*sx-188; if(t<0)t=cy+16;
-        tip.style.left=l+'px'; tip.style.top=t+'px';
-      });
-      dot.addEventListener('mouseleave',()=>{ tip.style.display='none'; });
+  if (isSinglePoint) {
+    const padX = 10;
+    const padY = 14;
+    const drawH = height - padY * 2;
+    const barWidth = Math.max(Math.min(width * 0.12, 36), 16);
+    const gap = barWidth + 10;
+    const totalW = prepared.length * barWidth + (prepared.length - 1) * 10;
+    const startX = (width - totalW) / 2;
+
+    svg.innerHTML = prepared.map((dataset, i) => {
+      const val = dataset.data[0]?.value ?? 0;
+      const cx = startX + i * gap + barWidth / 2;
+      const barH = Math.max(drawH * 0.55, 24);
+      const barY = padY + (drawH - barH) / 2;
+      const labelY = barY - 6;
+      const fmtFn = dataset.fmt || ((v) => window.aaFmtCompactCurrency ? window.aaFmtCompactCurrency(v) : String(v));
+      const fmtVal = fmtFn(val);
+      return `
+        <rect x="${cx - barWidth / 2}" y="${barY}" width="${barWidth}" rx="4" ry="4"
+              height="${barH}" fill="${dataset.fill || dataset.color}" opacity="0.7"></rect>
+        <rect x="${cx - barWidth / 2}" y="${barY}" width="${barWidth}" rx="4" ry="4"
+              height="${barH}" fill="none" stroke="${dataset.color}" stroke-width="1.5"></rect>
+        <circle cx="${cx}" cy="${barY + barH / 2}" r="4" fill="${dataset.color}"></circle>
+        <text x="${cx}" y="${labelY}" text-anchor="middle" fill="${dataset.color}"
+              font-size="11" font-family="'DM Mono',monospace" font-weight="500">${fmtVal}</text>
+        <text x="${cx}" y="${barY + barH + 14}" text-anchor="middle" fill="var(--tx2,#888)"
+              font-size="9" font-family="inherit">${dataset.data[0]?.label || dataset.name || ''}</text>
+      `;
+    }).join('');
+
+    const tip = tipId ? document.getElementById(tipId) : null;
+    if (tip) {
+      const moveHandler = (evt) => {
+        const rows = prepared.map((dataset) => ({
+          name: dataset.name || 'Série',
+          value: dataset.data[0]?.value,
+          color: dataset.color,
+          fmt: dataset.fmt,
+        }));
+        tip.innerHTML = aaTooltipHtml(prepared[0]?.data[0]?.label || 'Atual', rows);
+        tip.style.display = 'block';
+        const wrapRect = wrap.getBoundingClientRect();
+        tip.style.left = `${Math.min(Math.max(evt.clientX - wrapRect.left + 12, 8), Math.max(wrapRect.width - 190, 8))}px`;
+        tip.style.top = `${Math.min(Math.max(evt.clientY - wrapRect.top - 12, 8), Math.max(wrapRect.height - 90, 8))}px`;
+      };
+      svg.onmousemove = moveHandler;
+      svg.onmouseenter = moveHandler;
+      svg.onmouseleave = () => { tip.style.display = 'none'; };
+    }
+    return;
+  }
+
+  svg.innerHTML = prepared.map((dataset) => `
+    ${dataset.areaPath ? `<path d="${dataset.areaPath}" fill="${dataset.fill || 'transparent'}"></path>` : ''}
+    ${dataset.linePath ? `<path d="${dataset.linePath}" fill="none" stroke="${dataset.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ${dataset.dashed ? 'stroke-dasharray="5 4"' : ''}></path>` : ''}
+    ${dataset.points?.length === 1 ? `<circle cx="${dataset.points[0].x}" cy="${dataset.points[0].y}" r="3" fill="${dataset.color}"></circle>` : ''}
+  `).join('');
+
+  const tip = tipId ? document.getElementById(tipId) : null;
+  const primary = prepared[0];
+
+  if (!tip || !wrap || !primary?.points?.length) return;
+
+  const moveHandler = (evt) => {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const xSvg = ((evt.clientX - rect.left) / rect.width) * width;
+    let idx = 0;
+    let best = Infinity;
+
+    primary.points.forEach((point, index) => {
+      const dist = Math.abs(point.x - xSvg);
+      if (dist < best) {
+        best = dist;
+        idx = index;
+      }
     });
+
+    const rows = prepared.map((dataset) => {
+      const points = dataset.points || [];
+      const mappedIndex = points.length <= 1
+        ? 0
+        : Math.round((idx / Math.max(primary.points.length - 1, 1)) * (points.length - 1));
+      const point = points[Math.max(0, Math.min(points.length - 1, mappedIndex))];
+      return {
+        name: dataset.name || 'Série',
+        value: point?.value,
+        color: dataset.color,
+        fmt: dataset.fmt,
+      };
+    });
+
+    const primaryPoint = primary.points[Math.max(0, Math.min(primary.points.length - 1, idx))];
+    tip.innerHTML = aaTooltipHtml(primaryPoint?.label, rows);
+    tip.style.display = 'block';
+
+    const wrapRect = wrap.getBoundingClientRect();
+    const left = Math.min(Math.max(evt.clientX - wrapRect.left + 12, 8), Math.max(wrapRect.width - 190, 8));
+    const top = Math.min(Math.max(evt.clientY - wrapRect.top - 12, 8), Math.max(wrapRect.height - 90, 8));
+
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
   };
-  bindCaixaTip('mce',true);
-  bindCaixaTip('mcf',false);
-  const last=data[data.length-1], prev3=data.length>1?data[data.length-2]:null;
-  document.getElementById('caixa-val').textContent=`EBITDA ${fmtRi(last.ebitda)}`;
-  if(prev3){
-    const chg=((last.ebitda-prev3.ebitda)/Math.abs(prev3.ebitda)*100).toFixed(1);
-    const el=document.getElementById('caixa-chg');
-    el.textContent=(parseFloat(chg)>=0?'▲ +':'▼ ')+Math.abs(chg)+'% vs anterior';
-    el.className='macro-chart-chg '+(parseFloat(chg)>=0?'up':'dn');
+
+  const leaveHandler = () => {
+    tip.style.display = 'none';
+  };
+
+  svg.onmousemove = moveHandler;
+  svg.onmouseenter = moveHandler;
+  svg.onmouseleave = leaveHandler;
+}
+
+function aaRenderLine(svgId, primaryData, compareData, tipId) {
+  aaRenderLineChart({
+    svgId,
+    tipId,
+    datasets: [
+      { name: window.AA.state.ticker || 'Principal', data: primaryData || [], color: AA_CHART_COLORS.primary, fill: AA_CHART_COLORS.primaryFill },
+      { name: window.AA.state.compareTicker || 'Comparado', data: compareData || [], color: AA_CHART_COLORS.compare, fill: AA_CHART_COLORS.compareFill, dashed: true },
+    ].filter((dataset) => Array.isArray(dataset.data) && dataset.data.length),
+  });
+}
+
+async function aaFetchHistory(ticker, filter) {
+  if (!ticker) return [];
+  const map = aaHistoryRangeMap[filter] || aaHistoryRangeMap.YTD;
+  const key = `${ticker}:${map.range}:${map.interval}`;
+  if (window.AA.state.history[key]) return window.AA.state.history[key];
+
+  const res = await fetch(`${window.AA.apiBase}/api/analise-ativos/history/${ticker}?range=${map.range}&interval=${map.interval}`, {
+    headers: window.AA.authHeaders,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return [];
+
+  const history = Array.isArray(data.history) ? data.history : [];
+  window.AA.state.history[key] = history;
+  return history;
+}
+
+function aaEstimateMktCapPoints(history, core) {
+  if (!Array.isArray(history) || !history.length) return [];
+  const currentPrice = Number(core?.asset?.regularMarketPrice);
+  const currentMktCap = Number(core?.asset?.marketCap);
+  const ratio = Number.isFinite(currentPrice) && currentPrice > 0 && Number.isFinite(currentMktCap)
+    ? currentMktCap / currentPrice
+    : null;
+
+  return history.map((h) => {
+    const close = Number(h.close);
+    const ts = h.date ? new Date(h.date) : (h.date || h.timestamp ? new Date((h.date || h.timestamp) * 1000) : null);
+    const label = ts && !Number.isNaN(ts.getTime())
+      ? ts.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+      : String(h.date || h.timestamp || '');
+
+    const value = Number.isFinite(close) && Number.isFinite(ratio) ? close * ratio : null;
+    return { label, value };
+  }).filter((p) => Number.isFinite(Number(p.value)));
+}
+
+async function aaRenderMktCap() {
+  const core = window.AA.state.core;
+  if (!core) return;
+
+  const filter = aaMacroState.mktcap.filter;
+  const historyMain = await aaFetchHistory(window.AA.state.ticker, filter);
+  const dataMain = aaEstimateMktCapPoints(historyMain, core);
+
+  let dataCompare = [];
+  if (window.AA.state.compareTicker && window.AA.state.compareCore) {
+    const historyCompare = await aaFetchHistory(window.AA.state.compareTicker, filter);
+    dataCompare = aaEstimateMktCapPoints(historyCompare, window.AA.state.compareCore);
+  }
+
+  aaRenderLine('svg-mktcap', dataMain, dataCompare, 'tip-mktcap');
+
+  const last = dataMain[dataMain.length - 1];
+  const prev = dataMain[dataMain.length - 2];
+  const valEl = document.getElementById('mktcap-val');
+  const chgEl = document.getElementById('mktcap-chg');
+
+  if (valEl) valEl.textContent = window.aaFmtCompactCurrency(last?.value);
+  if (chgEl && last && prev && prev.value) {
+    const pct = ((last.value - prev.value) / Math.abs(prev.value)) * 100;
+    chgEl.className = `macro-chart-chg ${pct >= 0 ? 'up' : 'dn'}`;
+    chgEl.textContent = `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(2)}% no período`;
   }
 }
 
-function setMktcapFilter(btn, filter){
-  document.querySelectorAll('#mktcap-filters .mf-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  macroChartState.mktcap.filter=filter;
-  renderMktcapChart(filter);
-}
-function setReceitaPeriod(btn, p){
-  document.querySelectorAll('#receita-filters .mf-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  macroChartState.receita.period=p;
-  renderReceitaChart(p, macroChartState.receita.year);
-}
-function setReceitaYear(sel){
-  macroChartState.receita.year=parseInt(sel.value);
-  renderReceitaChart(macroChartState.receita.period, macroChartState.receita.year);
-}
-function setCaixaPeriod(btn, p){
-  document.querySelectorAll('#caixa-filters .mf-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  macroChartState.caixa.period=p;
-  renderCaixaChart(p, macroChartState.caixa.year);
-}
-function setCaixaYear(sel){
-  macroChartState.caixa.year=parseInt(sel.value);
-  renderCaixaChart(macroChartState.caixa.period, macroChartState.caixa.year);
+function aaMapMacroSeries(seriesObj, period, year, valueKey = 'value') {
+  const series = aaGetSeriesByPeriod(seriesObj, period, year);
+  return series.map((row) => ({ label: row.label, value: Number(row[valueKey]) })).filter((r) => Number.isFinite(r.value));
 }
 
-// Populate macro year selects
-['receita','caixa'].forEach(id=>{
-  const sel=document.getElementById('ysel-macro-'+id);
-  if(!sel)return;
-  for(let i=2025;i>=2018;i--){const o=document.createElement('option');o.value=i;o.textContent=i;sel.appendChild(o);}
-});
+function aaRenderReceita() {
+  const core = window.AA.state.core;
+  if (!core) return;
 
-// Init macro charts
-window.addEventListener('load',()=>{
-  renderMktcapChart('YTD');
-  renderReceitaChart('A',2025);
-  renderCaixaChart('A',2025);
-});
+  const period = aaMacroState.receita.period;
+  const year = aaMacroState.receita.year;
 
-window.addEventListener('resize',()=>{
-  metrics.forEach(k=>{ if(metricState[k]&&metricState[k].open) renderChart(k); });
-  renderMktcapChart(macroChartState.mktcap.filter);
-  renderReceitaChart(macroChartState.receita.period, macroChartState.receita.year);
-  renderCaixaChart(macroChartState.caixa.period, macroChartState.caixa.year);
+  const mainObj = core.series?.macro?.receita || {};
+  const dataMain = aaMapMacroSeries(mainObj, period, year, 'value');
+
+  let dataCompare = [];
+  if (window.AA.state.compareCore) {
+    const compareObj = window.AA.state.compareCore.series?.macro?.receita || {};
+    dataCompare = aaMapMacroSeries(compareObj, period, year, 'value');
+  }
+
+  aaRenderLine('svg-receita', dataMain, dataCompare, 'tip-receita');
+
+  const last = dataMain[dataMain.length - 1];
+  const prev = dataMain[dataMain.length - 2];
+  const valEl = document.getElementById('receita-val');
+  const chgEl = document.getElementById('receita-chg');
+  if (valEl) valEl.textContent = window.aaFmtCompactCurrency(last?.value);
+  if (chgEl && last && prev && prev.value) {
+    const pct = ((last.value - prev.value) / Math.abs(prev.value)) * 100;
+    chgEl.className = `macro-chart-chg ${pct >= 0 ? 'up' : 'dn'}`;
+    chgEl.textContent = `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(2)}% vs anterior`;
+  }
+}
+
+function aaRenderCaixa() {
+  const core = window.AA.state.core;
+  if (!core) return;
+
+  const period = aaMacroState.caixa.period;
+  const year = aaMacroState.caixa.year;
+
+  const rows = aaGetSeriesByPeriod(core.series?.macro?.caixa || {}, period, year);
+  let ebitdaSeries = rows
+    .map((row) => ({ label: row.label, value: Number(row.ebitda) }))
+    .filter((r) => Number.isFinite(r.value));
+
+  let fcfSeries = rows
+    .map((row) => ({ label: row.label, value: Number(row.fcl) }))
+    .filter((r) => Number.isFinite(r.value));
+
+  if (!ebitdaSeries.length || !fcfSeries.length) {
+    const fallbackLabel = String(year);
+    const fallbackEbitda = Number(core?.indices?.EBITDA?.value);
+    const fallbackFcf = Number(
+      core?.raw?.cashFlowStatementHistoryQuarterly?.[0]?.freeCashFlow
+      ?? core?.raw?.cashFlowStatementHistoryQuarterly?.[0]?.operatingCashFlow
+      ?? core?.raw?.cashFlowStatementHistory?.[0]?.freeCashFlow
+      ?? core?.raw?.cashFlowStatementHistory?.[0]?.operatingCashFlow
+    );
+
+    if (!ebitdaSeries.length && Number.isFinite(fallbackEbitda)) {
+      ebitdaSeries = [{ label: fallbackLabel, value: fallbackEbitda }];
+    }
+    if (!fcfSeries.length && Number.isFinite(fallbackFcf)) {
+      fcfSeries = [{ label: fallbackLabel, value: fallbackFcf }];
+    }
+  }
+
+  aaRenderLineChart({
+    svgId: 'svg-caixa',
+    tipId: 'tip-caixa',
+    datasets: [
+      { name: 'EBITDA', data: ebitdaSeries, color: AA_CHART_COLORS.ebitda, fill: AA_CHART_COLORS.ebitdaFill },
+      { name: 'Geração de Caixa', data: fcfSeries, color: AA_CHART_COLORS.fcf, fill: AA_CHART_COLORS.fcfFill },
+    ],
+  });
+
+  const last = ebitdaSeries[ebitdaSeries.length - 1];
+  const prev = ebitdaSeries[ebitdaSeries.length - 2];
+  const lastFcf = fcfSeries[fcfSeries.length - 1];
+  const valEl = document.getElementById('caixa-val');
+  const chgEl = document.getElementById('caixa-chg');
+
+  if (valEl) {
+    valEl.textContent = `EBITDA ${window.aaFmtCompactCurrency(last?.value)} · FCL ${window.aaFmtCompactCurrency(lastFcf?.value)}`;
+  }
+  if (chgEl && last && prev && prev.value) {
+    const pct = ((last.value - prev.value) / Math.abs(prev.value)) * 100;
+    chgEl.className = `macro-chart-chg ${pct >= 0 ? 'up' : 'dn'}`;
+    chgEl.textContent = `${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(2)}% vs anterior`;
+  }
+}
+
+function aaMetricSeries(core, key, period, year) {
+  const chartSeries = core?.series?.metrics?.[key];
+  const fromBackend = aaGetSeriesByPeriod(chartSeries || {}, period, year)
+    .map((row) => ({ label: row.label, value: Number(row.value) }))
+    .filter((row) => Number.isFinite(row.value));
+
+  if (fromBackend.length) return fromBackend;
+
+  const idx = core?.indices?.[key];
+  if (!idx || idx.value === null || idx.value === undefined) return [];
+  return [{ label: String(year), value: Number(idx.value) }].filter((row) => Number.isFinite(row.value));
+}
+
+function renderChart(key) {
+  const core = window.AA.state.core;
+  if (!core) return;
+  const state = aaMetricState[key];
+  if (!state) return;
+
+  const metricType = core.indices?.[key]?.type || 'currency';
+  const fmt = aaFmtByType(metricType);
+
+  const main = aaMetricSeries(core, key, state.period, state.year);
+  const compare = window.AA.state.compareCore
+    ? aaMetricSeries(window.AA.state.compareCore, key, state.period, state.year)
+    : [];
+
+  aaRenderLineChart({
+    svgId: `svg-${key}`,
+    tipId: `tip-${key}`,
+    valueFmt: fmt,
+    datasets: [
+      { name: window.AA.state.ticker || 'Principal', data: main || [], color: AA_CHART_COLORS.primary, fill: AA_CHART_COLORS.primaryFill, fmt },
+      { name: window.AA.state.compareTicker || 'Comparado', data: compare || [], color: AA_CHART_COLORS.compare, fill: AA_CHART_COLORS.compareFill, dashed: true, fmt },
+    ].filter((dataset) => Array.isArray(dataset.data) && dataset.data.length),
+  });
+}
+
+function toggleChart(btn, key) {
+  if (!aaMetricState[key]) return;
+  const area = document.getElementById(`chart-${key}`);
+  const psel = document.getElementById(`psel-${key}`);
+  if (!area) return;
+
+  const open = area.classList.toggle('visible');
+  if (psel) psel.classList.toggle('visible', open);
+  btn.textContent = open ? 'Esconder gráfico' : 'Mostrar gráfico';
+  btn.classList.toggle('active', open);
+  aaMetricState[key].open = open;
+
+  if (open) {
+    renderChart(key);
+  }
+}
+
+function setPeriod(btn, key, period) {
+  aaMetricState[key].period = period;
+  const parent = btn.parentElement;
+  if (parent) {
+    parent.querySelectorAll('.period-btn').forEach((el) => el.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (aaMetricState[key].open) renderChart(key);
+}
+
+function setYear(sel, key) {
+  aaMetricState[key].year = Number(sel.value);
+  if (aaMetricState[key].open) renderChart(key);
+}
+
+function setMktcapFilter(btn, filter) {
+  document.querySelectorAll('#mktcap-filters .mf-btn').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  aaMacroState.mktcap.filter = filter;
+  aaRenderMktCap();
+}
+
+function setReceitaPeriod(btn, period) {
+  document.querySelectorAll('#receita-filters .mf-btn').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  aaMacroState.receita.period = period;
+  aaRenderReceita();
+}
+
+function setReceitaYear(sel) {
+  aaMacroState.receita.year = Number(sel.value);
+  aaRenderReceita();
+}
+
+function setCaixaPeriod(btn, period) {
+  document.querySelectorAll('#caixa-filters .mf-btn').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+  aaMacroState.caixa.period = period;
+  aaRenderCaixa();
+}
+
+function setCaixaYear(sel) {
+  aaMacroState.caixa.year = Number(sel.value);
+  aaRenderCaixa();
+}
+
+function aaFillYearSelect(id, years = []) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const values = years.length ? years : [new Date().getFullYear()];
+  sel.innerHTML = values.map((year, index) => `<option value="${year}" ${index === 0 ? 'selected' : ''}>${year}</option>`).join('');
+}
+
+function aaBuildYearsFromCore(core) {
+  const annual = core?.series?.macro?.receita?.A || [];
+  const years = annual
+    .map((row) => Number(String(row.label).replace(/\D/g, '').slice(0, 4)))
+    .filter((year) => Number.isFinite(year))
+    .sort((a, b) => b - a);
+  return [...new Set(years)];
+}
+
+function aaRenderCharts() {
+  const core = window.AA.state.core;
+  if (!core) return;
+
+  const years = aaBuildYearsFromCore(core);
+  const maxYear = years[0] || new Date().getFullYear();
+
+  AA_METRICS.forEach((key) => {
+    if (!aaMetricState[key].year) aaMetricState[key].year = maxYear;
+    aaFillYearSelect(`ysel-${key}`, years);
+    const sel = document.getElementById(`ysel-${key}`);
+    if (sel) sel.value = String(aaMetricState[key].year);
+    if (aaMetricState[key].open) renderChart(key);
+  });
+
+  aaFillYearSelect('ysel-macro-receita', years);
+  aaFillYearSelect('ysel-macro-caixa', years);
+  aaMacroState.receita.year = Number(document.getElementById('ysel-macro-receita')?.value || maxYear);
+  aaMacroState.caixa.year = Number(document.getElementById('ysel-macro-caixa')?.value || maxYear);
+
+  aaRenderMktCap();
+  aaRenderReceita();
+  aaRenderCaixa();
+}
+
+function aaRenderAll() {
+  if (typeof window.aaRenderIndices === 'function') window.aaRenderIndices();
+  aaRenderCharts();
+  if (typeof window.aaRefreshBalanceIfOpen === 'function') window.aaRefreshBalanceIfOpen();
+}
+
+window.renderChart = renderChart;
+window.toggleChart = toggleChart;
+window.setPeriod = setPeriod;
+window.setYear = setYear;
+window.setMktcapFilter = setMktcapFilter;
+window.setReceitaPeriod = setReceitaPeriod;
+window.setReceitaYear = setReceitaYear;
+window.setCaixaPeriod = setCaixaPeriod;
+window.setCaixaYear = setCaixaYear;
+window.aaRenderCharts = aaRenderCharts;
+window.aaRenderAll = aaRenderAll;
+
+window.addEventListener('resize', () => {
+  aaRenderCharts();
+  AA_METRICS.forEach((key) => {
+    if (aaMetricState[key].open) renderChart(key);
+  });
 });

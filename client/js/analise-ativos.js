@@ -2,13 +2,21 @@
  * analise-ativos.js — Orquestrador principal
  * ============================================================ */
 
+// ─── URL BASE (deve ser definida antes do authGuard) ────────
+function getBaseUrl() {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? '3000' : window.location.port;
+  return port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
+}
+
 // ─── AUTH GUARD (Tarefa 1.2.1) ─────────────────────────────
 (function authGuard() {
   const token = localStorage.getItem('yield_token');
   const userRaw = localStorage.getItem('yield_user');
 
   if (!token || !userRaw) {
-    window.location.href = '../html/login.html';
+    window.location.href = getBaseUrl() + '/html/login.html';
     return;
   }
 
@@ -17,7 +25,7 @@
   } catch (_) {
     localStorage.removeItem('yield_token');
     localStorage.removeItem('yield_user');
-    window.location.href = '../html/login.html';
+    window.location.href = getBaseUrl() + '/html/login.html';
   }
 })();
 
@@ -34,14 +42,38 @@ const AUTH_HEADERS  = {
   'Authorization': `Bearer ${YIELD_TOKEN}`,
 };
 
-// Detectar URL base da API (mesmo padrão do login.js)
-function getBaseUrl() {
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  const port = hostname === 'localhost' || hostname === '127.0.0.1' ? '3000' : window.location.port;
-  return port ? `${protocol}//${hostname}:${port}` : `${protocol}//${hostname}`;
-}
 const API_BASE = getBaseUrl();
+
+window.AA = {
+  apiBase: API_BASE,
+  authHeaders: AUTH_HEADERS,
+  state: {
+    ticker: null,
+    compareTicker: null,
+    core: null,
+    compareCore: null,
+    history: {},
+    compareHistory: {},
+  },
+};
+
+function aaFmtCurrency(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const num = Number(value);
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 2 });
+}
+
+function aaFmtCompactCurrency(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const num = Number(value);
+  if (Math.abs(num) >= 1e12) return `R$ ${(num / 1e12).toFixed(2)}T`;
+  if (Math.abs(num) >= 1e9) return `R$ ${(num / 1e9).toFixed(1)}B`;
+  if (Math.abs(num) >= 1e6) return `R$ ${(num / 1e6).toFixed(1)}M`;
+  return aaFmtCurrency(num);
+}
+
+window.aaFmtCurrency = aaFmtCurrency;
+window.aaFmtCompactCurrency = aaFmtCompactCurrency;
 
 // ─── ÚLTIMA PESQUISA (Tarefa 1.2.2) ───────────────────────
 
@@ -72,19 +104,24 @@ async function loadLastSearch() {
     const res = await fetch(`${API_BASE}/api/analise-ativos/last-search/${YIELD_USER_ID}`, {
       headers: AUTH_HEADERS,
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (typeof window.selectAsset === 'function') window.selectAsset('PETR4');
+      return;
+    }
     const data = await res.json();
     if (data && data.ticker) {
-      // Preenche o campo de pesquisa e dispara o carregamento do ativo
-      const searchInput = document.getElementById('search-input') || document.querySelector('[data-search-input]');
+      const searchInput = document.getElementById('navSearchInp');
       if (searchInput) {
         searchInput.value = data.ticker;
-        searchInput.dispatchEvent(new Event('input', { bubbles: true }));
       }
+      if (typeof window.selectAsset === 'function') window.selectAsset(data.ticker);
       console.info(`[analise-ativos] Última pesquisa restaurada: ${data.ticker}`);
+      return;
     }
+    if (typeof window.selectAsset === 'function') window.selectAsset('PETR4');
   } catch (err) {
     console.warn('[analise-ativos] Não foi possível carregar última pesquisa:', err.message);
+    if (typeof window.selectAsset === 'function') window.selectAsset('PETR4');
   }
 }
 

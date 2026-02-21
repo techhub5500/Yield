@@ -26,6 +26,8 @@ const { ObjectId, MongoClient } = require('mongodb');
 const config     = require('../../config');
 const aaConfig   = require('../../config/analise-ativos.config');
 const { COLS, validators, ensureIndexes } = require('../../tools/analise-ativos/schemas');
+const { BrapiService, normalizeTicker } = require('../../tools/analise-ativos/brapi.service');
+const { buildIndicesPayload } = require('../../tools/analise-ativos/indices.engine');
 const logger     = require('../../utils/logger');
 
 // ─── Conexão MongoDB (singleton) ────────────────────────────────────────────
@@ -125,9 +127,181 @@ function toObjectId(id) {
  */
 function createAnaliseAtivosRouter() {
   const router = express.Router();
+  const brapiService = new BrapiService({ getDb, logger });
+
+  const fundamentalModules = [
+    aaConfig.brapiModules.keyStats,
+    aaConfig.brapiModules.financialData,
+    'financialDataHistoryQuarterly',
+    aaConfig.brapiModules.summaryProfile,
+    aaConfig.brapiModules.incomeQuarterly,
+    aaConfig.brapiModules.balanceQuarterly,
+    aaConfig.brapiModules.incomeAnnual,
+    aaConfig.brapiModules.balanceAnnual,
+    'cashflowHistoryQuarterly',
+    'cashflowHistory',
+  ];
 
   // Aplicar verificação de token em todas as rotas deste router
   router.use(verifyToken);
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 2 — DADOS DINÂMICOS BRAPI
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * GET /api/analise-ativos/search?query=PETR
+   * Busca de ativos na Brapi para autocomplete da navbar.
+   */
+  router.get('/search', async (req, res, next) => {
+    try {
+      const query = String(req.query.query || '').trim();
+      if (!query || query.length < 2) {
+        return res.json({ results: [], meta: { cacheHit: false } });
+      }
+
+      const result = await brapiService.search(query);
+      return res.json({
+        results: result.data,
+        meta: result.meta,
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'system', `GET search: ${err.message}`);
+      return res.status(err.status || 502).json({ error: err.message });
+    }
+  });
+
+  /**
+   * GET /api/analise-ativos/core/:ticker
+   * Retorna payload principal da página (asset-hd + índices + séries macro).
+   */
+  router.get('/core/:ticker', async (req, res, next) => {
+    try {
+      const ticker = normalizeTicker(req.params.ticker);
+      if (!ticker) return res.status(400).json({ error: 'Ticker inválido' });
+
+      const quoteResult = await brapiService.fetchQuote(ticker, {
+        modules: fundamentalModules,
+        dividends: true,
+        cacheTtl: aaConfig.ttl.indices,
+      });
+
+      const raw = quoteResult.data;
+      const indicesPayload = buildIndicesPayload(raw);
+
+      return res.json({
+        ticker,
+        meta: {
+          cacheHit: quoteResult.meta.cacheHit,
+          cachedAt: quoteResult.meta.cachedAt,
+        },
+        asset: {
+          symbol: raw.symbol || ticker,
+          longName: raw.longName || raw.shortName || ticker,
+          shortName: raw.shortName || raw.longName || ticker,
+          regularMarketPrice: raw.regularMarketPrice ?? null,
+          regularMarketChangePercent: raw.regularMarketChangePercent ?? null,
+          regularMarketTime: raw.regularMarketTime || null,
+          sector: raw.summaryProfile?.sector || null,
+          industry: raw.summaryProfile?.industry || null,
+          marketCap: raw.marketCap ?? raw.defaultKeyStatistics?.marketCap ?? null,
+        },
+        indices: indicesPayload.indices,
+        segment: {
+          key: indicesPayload.segment,
+          label: indicesPayload.segmentLabel,
+          hiddenMetrics: indicesPayload.segmentConfig.hiddenMetrics,
+          unavailable: indicesPayload.segmentConfig.unavailable,
+        },
+        series: indicesPayload.series,
+        raw: {
+          incomeStatementHistoryQuarterly: raw.incomeStatementHistoryQuarterly || [],
+          incomeStatementHistory: raw.incomeStatementHistory || [],
+          financialDataHistoryQuarterly: raw.financialDataHistoryQuarterly || [],
+          balanceSheetHistoryQuarterly: raw.balanceSheetHistoryQuarterly || [],
+          balanceSheetHistory: raw.balanceSheetHistory || [],
+          cashFlowStatementHistoryQuarterly: raw.cashflowHistoryQuarterly || raw.cashFlowStatementHistoryQuarterly || [],
+          cashFlowStatementHistory: raw.cashflowHistory || raw.cashFlowStatementHistory || [],
+        },
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'system', `GET core: ${err.message}`);
+      const status = err.status === 404 ? 404 : (err.status || 502);
+      return res.status(status).json({ error: err.message });
+    }
+  });
+
+  /**
+   * GET /api/analise-ativos/history/:ticker?range=1mo&interval=1d
+   * Retorna histórico de preço para os gráficos de mercado/cotação.
+   */
+  router.get('/history/:ticker', async (req, res, next) => {
+    try {
+      const ticker = normalizeTicker(req.params.ticker);
+      const range = String(req.query.range || '1mo');
+      const interval = String(req.query.interval || '1d');
+
+      if (!ticker) return res.status(400).json({ error: 'Ticker inválido' });
+
+      const historyResult = await brapiService.fetchQuote(ticker, {
+        range,
+        interval,
+        cacheTtl: aaConfig.ttl.quote,
+      });
+
+      const history = Array.isArray(historyResult.data.historicalDataPrice)
+        ? historyResult.data.historicalDataPrice
+        : [];
+
+      return res.json({
+        ticker,
+        range,
+        interval,
+        meta: {
+          cacheHit: historyResult.meta.cacheHit,
+          cachedAt: historyResult.meta.cachedAt,
+        },
+        history,
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'system', `GET history: ${err.message}`);
+      const status = err.status === 404 ? 404 : (err.status || 502);
+      return res.status(status).json({ error: err.message });
+    }
+  });
+
+  /**
+   * GET /api/analise-ativos/balance/:ticker
+   * Retorna módulos de balanço trimestral e anual.
+   */
+  router.get('/balance/:ticker', async (req, res, next) => {
+    try {
+      const ticker = normalizeTicker(req.params.ticker);
+      if (!ticker) return res.status(400).json({ error: 'Ticker inválido' });
+
+      const result = await brapiService.fetchQuote(ticker, {
+        modules: [
+          aaConfig.brapiModules.balanceQuarterly,
+          aaConfig.brapiModules.balanceAnnual,
+        ],
+        cacheTtl: aaConfig.ttl.indices,
+      });
+
+      return res.json({
+        ticker,
+        meta: {
+          cacheHit: result.meta.cacheHit,
+          cachedAt: result.meta.cachedAt,
+        },
+        quarterly: result.data.balanceSheetHistoryQuarterly || [],
+        annual: result.data.balanceSheetHistory || [],
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'system', `GET balance: ${err.message}`);
+      const status = err.status === 404 ? 404 : (err.status || 502);
+      return res.status(status).json({ error: err.message });
+    }
+  });
 
   // ════════════════════════════════════════════════════════════
   // ÚLTIMA PESQUISA — aa_user_searches

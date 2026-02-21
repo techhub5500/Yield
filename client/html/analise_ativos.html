@@ -191,7 +191,7 @@
   <div class="macro-chart-card">
     <div class="macro-chart-hd">
       <div class="macro-chart-info">
-        <div class="macro-chart-title">Caixa — EBITDA &amp; FCL</div>
+        <div class="macro-chart-title">EBITDA vs FCL</div>
         <div class="macro-chart-val" id="caixa-val">R$ 281B</div>
         <div class="macro-chart-chg up" id="caixa-chg">▲ +5,9% vs anterior</div>
       </div>
@@ -338,6 +338,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'EV')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'EV')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-EV">
+            <button class="period-btn active" onclick="setPeriod(this,'EV','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'EV','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EV','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EV','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'EV','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'EV')" id="ysel-EV"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-EV"><div class="chart-wrap"><svg class="chart-svg" id="svg-EV"></svg><div class="chart-tooltip" id="tip-EV"></div></div></div>
       </div>
@@ -350,6 +359,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'PSR')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'PSR')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-PSR">
+            <button class="period-btn active" onclick="setPeriod(this,'PSR','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PSR','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PSR','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PSR','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PSR','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PSR')" id="ysel-PSR"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-PSR"><div class="chart-wrap"><svg class="chart-svg" id="svg-PSR"></svg><div class="chart-tooltip" id="tip-PSR"></div></div></div>
       </div>
@@ -465,6 +483,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Margem Líquida')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'ML')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-ML">
+            <button class="period-btn active" onclick="setPeriod(this,'ML','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'ML','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ML','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ML','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'ML','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'ML')" id="ysel-ML"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-ML"><div class="chart-wrap"><svg class="chart-svg" id="svg-ML"></svg><div class="chart-tooltip" id="tip-ML"></div></div></div>
       </div>
@@ -579,6 +606,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Cresc. Receita')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'CREC')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-CREC">
+            <button class="period-btn active" onclick="setPeriod(this,'CREC','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'CREC','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CREC','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CREC','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CREC','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'CREC')" id="ysel-CREC"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-CREC"><div class="chart-wrap"><svg class="chart-svg" id="svg-CREC"></svg><div class="chart-tooltip" id="tip-CREC"></div></div></div>
       </div>
@@ -591,6 +627,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Cresc. Lucro')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'CLL')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-CLL">
+            <button class="period-btn active" onclick="setPeriod(this,'CLL','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'CLL','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CLL','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CLL','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'CLL','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'CLL')" id="ysel-CLL"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-CLL"><div class="chart-wrap"><svg class="chart-svg" id="svg-CLL"></svg><div class="chart-tooltip" id="tip-CLL"></div></div></div>
       </div>
@@ -603,6 +648,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'LPA')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'LPA')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-LPA">
+            <button class="period-btn active" onclick="setPeriod(this,'LPA','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'LPA','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LPA','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LPA','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'LPA','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'LPA')" id="ysel-LPA"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-LPA"><div class="chart-wrap"><svg class="chart-svg" id="svg-LPA"></svg><div class="chart-tooltip" id="tip-LPA"></div></div></div>
       </div>
@@ -615,6 +669,15 @@
         <div class="mnote"><textarea placeholder="Sua anotação..." rows="2" onblur="saveNote(this,'Payout')"></textarea></div>
         <div class="chart-toggle-row">
           <button class="chart-toggle-btn" onclick="toggleChart(this,'PAYOUT')">Mostrar gráfico</button>
+          <div class="chart-period-sel" id="psel-PAYOUT">
+            <button class="period-btn active" onclick="setPeriod(this,'PAYOUT','A')">Anual</button>
+            <button class="period-btn" onclick="setPeriod(this,'PAYOUT','1T')">1T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PAYOUT','2T')">2T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PAYOUT','3T')">3T</button>
+            <button class="period-btn" onclick="setPeriod(this,'PAYOUT','4T')">4T</button>
+            <span class="period-sep">|</span>
+            <select class="year-sel" onchange="setYear(this,'PAYOUT')" id="ysel-PAYOUT"></select>
+          </div>
         </div>
         <div class="chart-area" id="chart-PAYOUT"><div class="chart-wrap"><svg class="chart-svg" id="svg-PAYOUT"></svg><div class="chart-tooltip" id="tip-PAYOUT"></div></div></div>
       </div>
