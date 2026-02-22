@@ -111,7 +111,7 @@ function validateAiSummary(doc) {
     userId:    String(doc.userId  || '').trim(),
     ticker:    String(doc.ticker  || '').trim().toUpperCase(),
     content:   String(doc.content || '').trim(),
-    model:     String(doc.model   || aaConfig.gemini.model),
+    model:     String(doc.model   || aaConfig.openai.model),
     timestamp: doc.timestamp instanceof Date ? doc.timestamp : new Date(),
   };
 

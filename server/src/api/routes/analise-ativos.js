@@ -28,6 +28,9 @@ const aaConfig   = require('../../config/analise-ativos.config');
 const { COLS, validators, ensureIndexes } = require('../../tools/analise-ativos/schemas');
 const { BrapiService, normalizeTicker } = require('../../tools/analise-ativos/brapi.service');
 const { buildIndicesPayload } = require('../../tools/analise-ativos/indices.engine');
+const { OpenAIService } = require('../../tools/analise-ativos/openai.service');
+const { BenchmarkService, normalizeIndexKey } = require('../../tools/analise-ativos/benchmark.service');
+const { TavilyService } = require('../../tools/analise-ativos/tavily.service');
 const logger     = require('../../utils/logger');
 
 // ─── Conexão MongoDB (singleton) ────────────────────────────────────────────
@@ -128,6 +131,9 @@ function toObjectId(id) {
 function createAnaliseAtivosRouter() {
   const router = express.Router();
   const brapiService = new BrapiService({ getDb, logger });
+  const openaiService = new OpenAIService({ logger });
+  const benchmarkService = new BenchmarkService({ getDb, logger, openaiService });
+  const tavilyService = new TavilyService({ getDb, logger, openaiService });
 
   const fundamentalModules = [
     aaConfig.brapiModules.keyStats,
@@ -497,6 +503,61 @@ function createAnaliseAtivosRouter() {
   // ════════════════════════════════════════════════════════════
 
   /**
+   * POST /api/analise-ativos/summarize
+   *
+   * Gera resumo analítico das anotações do usuário via GPT-5-mini.
+   * Body: { userId: string, ticker?: string }
+   */
+  router.post('/summarize', async (req, res, next) => {
+    try {
+      const userId = String(req.body?.userId || '').trim();
+      const ticker = String(req.body?.ticker || '').trim().toUpperCase();
+
+      if (!userId) return res.status(400).json({ error: 'userId obrigatório' });
+      if (userId !== req.user.userId) return res.status(403).json({ error: 'Acesso negado' });
+
+      const db = await getDb();
+      const query = { userId };
+      if (ticker) query.ticker = ticker;
+
+      const annotations = await db.collection(COLS.annotations)
+        .find(query, { sort: { timestamp: 1 } })
+        .toArray();
+
+      if (!annotations.length) {
+        return res.status(404).json({ error: 'Nenhuma anotação encontrada para resumir' });
+      }
+
+      const generated = await openaiService.summarizeAnnotations(annotations);
+
+      const { valid, errors, doc } = validators.aiSummary({
+        userId,
+        ticker,
+        content: generated.content,
+        model: generated.model,
+        timestamp: new Date(),
+      });
+
+      if (!valid) {
+        return res.status(400).json({ error: 'Resumo inválido', details: errors });
+      }
+
+      const result = await db.collection(COLS.aiSummaries).insertOne(doc);
+
+      return res.status(201).json({
+        success: true,
+        summary: {
+          _id: result.insertedId.toString(),
+          ...doc,
+        },
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'ai', `POST summarize: ${err.message}`);
+      return res.status(err.status || 502).json({ error: err.message });
+    }
+  });
+
+  /**
    * GET /api/analise-ativos/summaries/:userId
    *
    * Lista todos os resumos gerados por IA para o usuário, ordenados do
@@ -552,6 +613,71 @@ function createAnaliseAtivosRouter() {
     } catch (err) {
       logger.error('AnaliseAtivosRoute', 'system', `DELETE summaries: ${err.message}`);
       next(err);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // BENCHMARK SETORIAL — aa_benchmark_cache
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * GET /api/analise-ativos/benchmark/:ticker/:indexKey
+   *
+   * Retorna benchmark setorial de um indicador com cache de 90 dias.
+   */
+  router.get('/benchmark/:ticker/:indexKey', async (req, res) => {
+    try {
+      const ticker = normalizeTicker(req.params.ticker);
+      const indexKey = normalizeIndexKey(req.params.indexKey);
+      if (!ticker || !indexKey) return res.status(400).json({ error: 'Ticker/indexKey inválidos' });
+
+      let sector = String(req.query?.sector || '').trim();
+      if (!sector) {
+        const result = await brapiService.fetchQuote(ticker, {
+          modules: [aaConfig.brapiModules.summaryProfile],
+          cacheTtl: aaConfig.ttl.indices,
+        });
+        sector = String(result.data?.summaryProfile?.sector || 'Geral').trim();
+      }
+
+      const benchmark = await benchmarkService.getBenchmark({ ticker, indexKey, sector });
+
+      return res.json({
+        ticker,
+        indexKey,
+        sector,
+        benchmark,
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'ai', `GET benchmark: ${err.message}`);
+      return res.status(err.status || 502).json({ error: err.message });
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════
+  // DOSSIÊ — aa_dossie_cache
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * POST /api/analise-ativos/dossie
+   *
+   * Gera/retorna dossiê público consolidado por ticker.
+   * Body: { ticker: string }
+   */
+  router.post('/dossie', async (req, res) => {
+    try {
+      const ticker = normalizeTicker(req.body?.ticker);
+      if (!ticker) return res.status(400).json({ error: 'Ticker obrigatório' });
+
+      const dossie = await tavilyService.getDossie(ticker);
+
+      return res.json({
+        ticker,
+        dossie,
+      });
+    } catch (err) {
+      logger.error('AnaliseAtivosRoute', 'ai', `POST dossie: ${err.message}`);
+      return res.status(err.status || 502).json({ error: err.message });
     }
   });
 

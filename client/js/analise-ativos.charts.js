@@ -572,6 +572,7 @@ function aaRenderAll() {
   if (typeof window.aaRenderIndices === 'function') window.aaRenderIndices();
   aaRenderCharts();
   if (typeof window.aaRefreshBalanceIfOpen === 'function') window.aaRefreshBalanceIfOpen();
+  if (typeof window.aaRefreshWorkspace === 'function') window.aaRefreshWorkspace().catch(() => {});
 }
 
 window.renderChart = renderChart;

@@ -24,10 +24,10 @@ server/src/
     analise-ativos.js        ← rotas Express para esta página
   tools/analise-ativos/
     brapi.service.js         ← chamadas à Brapi + cache
-    gemini.service.js        ← chamadas ao Gemini Flash
+    openai.service.js        ← chamadas ao gpt 5 mini 
     tavily.service.js        ← chamadas à Tavily
     indices.engine.js        ← filtro por segmento + cálculos derivados
-    benchmark.service.js     ← benchmark setorial (Tavily + Gemini, cache 3 meses)
+    benchmark.service.js     ← benchmark setorial (Tavily + gpt-5-mini, cache 3 meses)
   config/
     analise-ativos.config.js ← constantes de cache, TTLs, tokens
 
@@ -87,7 +87,7 @@ Registrar o router em `server/src/api/server.js` com `app.use('/api/analise-ativ
 Criar `server/src/tools/analise-ativos/` com schemas Mongoose para as cinco collections novas. Configurar TTL index em `aa_index_cache` (12h), `aa_benchmark_cache` (90 dias) e `aa_dossie_cache` (7 dias) diretamente no schema, para que a expiração seja automática e não exija cron.
 
 **Tarefa 1.3.3 — `analise-ativos.config.js` com constantes de ambiente**
-Centralizar em `server/src/config/analise-ativos.config.js`: token da Brapi (`BRAPI_TOKEN`), chave do Gemini (`GEMINI_API_KEY`), chave da Tavily (`TAVILY_API_KEY`), TTLs numéricos e a lista de módulos Brapi usados por esta página. Consumir via `process.env` para não vazar tokens no código.
+Centralizar em `server/src/config/analise-ativos.config.js`: token da Brapi (`BRAPI_TOKEN`), chave do openai (`OPENAI_API_KEY`), chave da Tavily (`TAVILY_API_KEY`), TTLs numéricos e a lista de módulos Brapi usados por esta página. Consumir via `process.env` para não vazar tokens no código.
 
 ---
 
@@ -143,18 +143,31 @@ Em `analise-ativos.balanco.js`, consumir os módulos `balanceSheetHistoryQuarter
 **Tarefa 3.1.1 — Anotações por card com snapshot de dados**
 Em `analise-ativos.workspace.js`, ao clicar no ícone de caneta de um card, abrir um `<textarea>` inline. Ao salvar, enviar `POST /api/analise-ativos/annotations` com `{ userId, cardId, cardLabel, annotationText, cardSnapshot: { ...dadosDoCardNoMomento }, timestamp }`. O `cardSnapshot` é armazenado no banco mas não exibido no frontend — exibir apenas a mensagem: *"Os dados do card no momento da anotação foram salvos."* Implementar botão de exclusão que dispara `DELETE /api/analise-ativos/annotations/:id`.
 
-**Tarefa 3.1.2 — Resumir Anotações via Gemini Flash**
-Ao clicar em "Resumir Anotações", coletar todas as anotações do usuário via `GET /api/analise-ativos/annotations/:userId`. No backend, criar rota `POST /api/analise-ativos/summarize` que usa `@google/genai` com modelo `gemini-3-flash-preview`. Cada anotação deve ser enviada como uma entrada separada no array `contents` do prompt (ex.: `{ role: 'user', parts: [{ text: 'Anotação sobre {{cardLabel}}:\n{{annotationText}}\n\nDados do card:\n{{JSON.stringify(cardSnapshot)}}' }] }`), seguida por uma instrução `{ role: 'user', parts: [{ text: 'Gere um resumo completo e analítico de todas as anotações acima, por tópico.' }] }`. Salvar o resumo gerado em `aa_ai_summaries` e retornar ao frontend.
+**Tarefa 3.1.2 — Resumir Anotações via GPT-5-mini**
+Ao clicar em "Resumir Anotações", coletar todas as anotações do usuário via `GET /api/analise-ativos/annotations/:userId`. No backend, criar rota `POST /api/analise-ativos/summarize` que usa `openai` com modelo `gpt-5-mini`. Cada anotação deve ser enviada como uma entrada separada no array `contents` do prompt (ex.: `{ role: 'user', parts: [{ text: 'Anotação sobre {{cardLabel}}:\n{{annotationText}}\n\nDados do card:\n{{JSON.stringify(cardSnapshot)}}' }] }`), seguida por uma instrução `{ role: 'user', parts: [{ text: 'Gere um resumo completo e analítico de todas as anotações acima, por tópico.' }] }`. Salvar o resumo gerado em `aa_ai_summaries` e retornar ao frontend. 
+exemplo:
+`import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+const response = await client.responses.create({
+  model: "gpt-5-mini",
+  input: "Resuma este texto em 3 linhas: A inteligência artificial..."
+});
+
+console.log(response.output_text);`
 
 **Tarefa 3.1.3 — Histórico de resumos com exclusão**
 Na aba "Histórico" do Workspace, carregar resumos via `GET /api/analise-ativos/summaries/:userId` ordenados por `timestamp` decrescente. Exibir cada resumo com data de geração e botão de exclusão (`DELETE /api/analise-ativos/summaries/:id`). Os resumos persistem indefinidamente (sem TTL).
 
 ---
 
-### Objetivo 3.2 — Benchmark Setorial (Tavily + Gemini, cache 3 meses)
+### Objetivo 3.2 — Benchmark Setorial (Tavily + gpt-5-mini, cache 3 meses)
 
 **Tarefa 3.2.1 — `benchmark.service.js`: busca e geração do benchmark**
-No backend, criar `server/src/tools/analise-ativos/benchmark.service.js`. Para cada índice que deve exibir benchmark setorial (conforme `MAPEAMENTO_INDICES_BRAPI.md`), verificar primeiro `aa_benchmark_cache` com chave `{ ticker, indexKey }`. Se não estiver em cache ou expirado (90 dias), usar `@tavily/core` com query como `"benchmark setorial {indexKey} setor {sector} Brasil 2025 2026"` — `searchDepth: 'advanced'`. Passar os resultados da Tavily como contexto para `gemini-3-flash-preview` com instrução: *"Com base nos dados abaixo, informe o benchmark médio do setor para o indicador {indexKey}. Retorne apenas o valor numérico e a unidade."* Salvar resultado em `aa_benchmark_cache`.
+No backend, criar `server/src/tools/analise-ativos/benchmark.service.js`. Para cada índice que deve exibir benchmark setorial (conforme `MAPEAMENTO_INDICES_BRAPI.md`), verificar primeiro `aa_benchmark_cache` com chave `{ ticker, indexKey }`. Se não estiver em cache ou expirado (90 dias), usar `@tavily/core` com query como `"benchmark setorial {indexKey} setor {sector} Brasil 2025 2026"` — `searchDepth: 'advanced'`. Passar os resultados da Tavily como contexto para `gpt-5-mini` com instrução: *"Com base nos dados abaixo, informe o benchmark médio do setor para o indicador {indexKey}. Retorne apenas o valor numérico e a unidade."* Salvar resultado em `aa_benchmark_cache`. analise a documentação da tavily em  `server\docs\md\API_travily.md`
 
 **Tarefa 3.2.2 — Exibir benchmarks nos cards de índices**
 No frontend (`analise-ativos.indices.js`), após renderizar o valor do índice em cada card, fazer `GET /api/analise-ativos/benchmark/:ticker/:indexKey` para cada card que possui benchmark. Exibir o valor retornado abaixo do valor do índice, com label "Benchmark setorial". Se o serviço estiver processando (primeira execução), exibir um skeleton loader.
@@ -163,8 +176,8 @@ No frontend (`analise-ativos.indices.js`), após renderizar o valor do índice e
 
 ### Objetivo 3.3 — Dossiê e Dados Não Disponíveis
 
-**Tarefa 3.3.1 — `tavily.service.js`: geração do dossiê via Tavily + Gemini**
-Criar `server/src/tools/analise-ativos/tavily.service.js`. Ao clicar em "Ver Dossiê" no frontend, disparar `POST /api/analise-ativos/dossie` com `{ ticker }`. Verificar `aa_dossie_cache` (TTL 7 dias). Se expirado, usar `@tavily/core` com queries para cada dado do dossiê (governança, estrutura societária, histórico de remuneração de diretores, riscos regulatórios, processos judiciais relevantes). Usar `searchDepth: 'advanced'`. Consolidar as respostas da Tavily e enviar para `gemini-3-flash-preview` como contexto, solicitando um dossiê estruturado em Markdown. Salvar em `aa_dossie_cache` e retornar ao frontend.
+**Tarefa 3.3.1 — `tavily.service.js`: geração do dossiê via Tavily + gpt-5-mini**
+Criar `server/src/tools/analise-ativos/tavily.service.js`. Ao clicar em "Ver Dossiê" no frontend, disparar `POST /api/analise-ativos/dossie` com `{ ticker }`. Verificar `aa_dossie_cache` (TTL 7 dias). Se expirado, usar `@tavily/core` com queries para cada dado do dossiê (governança, estrutura societária, histórico de remuneração de diretores, riscos regulatórios, processos judiciais relevantes). Usar `searchDepth: 'advanced'`. Consolidar as respostas da Tavily e enviar para `gpt-5-mini` como contexto, solicitando um dossiê estruturado em Markdown. Salvar em `aa_dossie_cache` e retornar ao frontend.
 
 **Tarefa 3.3.2 — Seção "Dados não disponíveis" por segmento**
 Em `analise-ativos.indices.js`, após detectar o segmento da empresa, gerar dinamicamente a seção "Dados não disponíveis" com os índices marcados como ❌ Indisponível no `MAPEAMENTO_INDICES_BRAPI.md` que sejam relevantes para o segmento (ex.: para Bancos: Índice de Basileia, NIM, NPL, Índice de Cobertura, Eficiência Bancária, etc.; para Petróleo: EV/Reservas, Lifting Cost, Breakeven). Cada segmento terá sua própria lista estática configurada no `indices.engine.js`, garantindo que a seção reflita exatamente os dados que seriam úteis mas não estão disponíveis na API.
@@ -177,7 +190,7 @@ Em `analise-ativos.indices.js`, após detectar o segmento da empresa, gerar dina
 |---|---|---|
 | **1** | Separação + infraestrutura + auth | HTML/CSS/JS separados, rotas backend criadas, auth integrado, collections MongoDB definidas |
 | **2** | Dados dinâmicos core | Asset header dinâmico, barra de pesquisa funcional, gráficos com filtros e modo comparação, índices por segmento com tags YoY, balanço patrimonial dinamizado |
-| **3** | IA, workspace e benchmark | Anotações persistentes, resumo via Gemini, histórico, benchmark setorial via Tavily+Gemini, dossiê público, seção de dados indisponíveis por segmento |
+| **3** | IA, workspace e benchmark | Anotações persistentes, resumo via gpt-5-mini, histórico, benchmark setorial via Tavily+gpt-5-mini, dossiê público, seção de dados indisponíveis por segmento |
 
 ---
 
@@ -186,7 +199,6 @@ Em `analise-ativos.indices.js`, após detectar o segmento da empresa, gerar dina
 | Recurso | Caminho |
 |---|---|
 | Documentação Brapi | `server/docs/md/API_BRAPI.MD` |
-| Documentação Gemini | `server/docs/md/gemini.md` (modelo: `gemini-3-flash-preview`) |
 | Documentação Tavily | `server/docs/md/API_travily.md` (pacote: `@tavily/core`) |
 | Índices por segmento | `server/docs/md/INDICES.md` |
 | Disponibilidade na API | `server/docs/md/MAPEAMENTO_INDICES_BRAPI.md` |

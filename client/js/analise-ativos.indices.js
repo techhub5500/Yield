@@ -23,6 +23,85 @@ function aaMetricClass(metric) {
   return 'neu';
 }
 
+const AA_BENCHMARK_KEYS = new Set([
+  'PL', 'PVP', 'EVEBITDA', 'DY', 'ROE', 'ROIC', 'ROA', 'MEBITDA', 'ML',
+  'CREC', 'CLL', 'LPA', 'PAYOUT', 'ALAV', 'DPL',
+]);
+
+function aaFormatBenchmark(benchmark = {}) {
+  const value = benchmark?.value;
+  const unit = String(benchmark?.unit || '').trim();
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return benchmark?.text || 'Benchmark setorial indisponível';
+  }
+
+  const num = Number(value);
+  if (unit === '%' || unit === 'percent') return `${num.toFixed(2)}%`;
+  if (unit === 'x' || unit === 'multiple') return `${num.toFixed(2)}x`;
+  if (unit === 'R$') return window.aaFmtCompactCurrency(num);
+  return `${num.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim();
+}
+
+function aaEnsureBenchmarkNode(cell) {
+  let node = cell.querySelector('.mbenchmark');
+  if (node) return node;
+
+  node = document.createElement('div');
+  node.className = 'save-card-meta mbenchmark';
+  node.style.marginTop = '4px';
+  node.textContent = 'Benchmark setorial: carregando...';
+
+  const anchor = cell.querySelector('.msub');
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(node, anchor.nextSibling);
+  } else {
+    cell.appendChild(node);
+  }
+
+  return node;
+}
+
+async function aaLoadBenchmarksForVisibleCards() {
+  const ticker = window.AA?.state?.ticker;
+  const sector = window.AA?.state?.core?.asset?.sector || '';
+  if (!ticker) return;
+
+  if (!window.AA.state.benchmarks) window.AA.state.benchmarks = {};
+  if (!window.AA.state.benchmarks[ticker]) window.AA.state.benchmarks[ticker] = {};
+
+  const visibleCells = [...document.querySelectorAll('.metric-cell[data-key]')]
+    .filter((cell) => cell.style.display !== 'none')
+    .filter((cell) => AA_BENCHMARK_KEYS.has(cell.dataset.key));
+
+  await Promise.all(visibleCells.map(async (cell) => {
+    const key = cell.dataset.key;
+    const cacheKey = `${ticker}:${key}`;
+    const benchmarkNode = aaEnsureBenchmarkNode(cell);
+
+    const cached = window.AA.state.benchmarks[ticker][cacheKey];
+    if (cached) {
+      benchmarkNode.textContent = `Benchmark setorial: ${aaFormatBenchmark(cached)}`;
+      return;
+    }
+
+    benchmarkNode.textContent = 'Benchmark setorial: carregando...';
+
+    try {
+      const res = await fetch(`${window.AA.apiBase}/api/analise-ativos/benchmark/${encodeURIComponent(ticker)}/${encodeURIComponent(key)}?sector=${encodeURIComponent(sector)}`, {
+        headers: window.AA.authHeaders,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Falha ao carregar benchmark');
+
+      const benchmark = data.benchmark || {};
+      window.AA.state.benchmarks[ticker][cacheKey] = benchmark;
+      benchmarkNode.textContent = `Benchmark setorial: ${aaFormatBenchmark(benchmark)}`;
+    } catch (_) {
+      benchmarkNode.textContent = 'Benchmark setorial: indisponível';
+    }
+  }));
+}
+
 function aaRenderUnavailable(segment) {
   const sec = document.getElementById('sec-indisponivel');
   if (!sec) return;
@@ -126,6 +205,7 @@ function aaRenderIndices() {
   });
 
   aaRenderUnavailable(core.segment);
+  aaLoadBenchmarksForVisibleCards().catch(() => {});
 }
 
 window.aaRenderIndices = aaRenderIndices;

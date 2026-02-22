@@ -243,19 +243,88 @@ function calcValuation(){
 document.querySelectorAll('.metric-cell').forEach(c=>c.classList.add('mcell'));
 
 // ─── DOSSIÊ TOGGLE ───
-function toggleDossier() {
+function mdToHtml(md) {
+  const safe = String(md || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+  return safe
+    .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+    .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+    .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+    .replace(/^\-\s+(.*)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+function renderDossie(content, meta = {}) {
+  const panel = document.getElementById('dossierPanel');
+  if (!panel) return;
+
+  const subtitle = panel.querySelector('.dossier-subtitle');
+  if (subtitle) {
+    const date = meta.cachedAt ? new Date(meta.cachedAt) : new Date();
+    subtitle.textContent = `Atualizado em ${date.toLocaleDateString('pt-BR')} · Fonte: ${meta.source || 'Tavily + GPT-5-mini'}`;
+  }
+
+  const grid = panel.querySelector('.dossier-grid');
+  if (!grid) return;
+
+  grid.innerHTML = `
+    <div class="dossier-block" style="grid-column:1/-1">
+      <div class="dossier-block-title">Dossiê consolidado</div>
+      <div class="d-val">${mdToHtml(content)}</div>
+    </div>
+  `;
+}
+
+async function loadDossie() {
+  const ticker = window.AA?.state?.ticker;
+  if (!ticker) return;
+
+  const panel = document.getElementById('dossierPanel');
+  const grid = panel?.querySelector('.dossier-grid');
+  if (grid) {
+    grid.innerHTML = '<div class="dossier-block" style="grid-column:1/-1"><div class="dossier-block-title">Dossiê consolidado</div><div class="d-val">Carregando dossiê...</div></div>';
+  }
+
+  const res = await fetch(`${window.AA.apiBase}/api/analise-ativos/dossie`, {
+    method: 'POST',
+    headers: AUTH_HEADERS,
+    body: JSON.stringify({ ticker }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Falha ao carregar dossiê');
+
+  renderDossie(data?.dossie?.content || 'Dossiê indisponível.', {
+    source: data?.dossie?.source,
+    cachedAt: data?.dossie?.cachedAt,
+  });
+}
+
+async function toggleDossier() {
   const panel = document.getElementById('dossierPanel');
   const btn = document.getElementById('btn-dossier');
-  
+
   const isOpening = panel.classList.toggle('visible');
-  
+
   if (isOpening) {
     btn.style.background = 'var(--green)';
     btn.style.color = '#fff';
     btn.style.borderColor = 'var(--green)';
     btn.textContent = 'Ocultar Dossiê';
+    try {
+      await loadDossie();
+    } catch (err) {
+      const grid = panel?.querySelector('.dossier-grid');
+      if (grid) {
+        grid.innerHTML = `<div class="dossier-block" style="grid-column:1/-1"><div class="dossier-block-title">Dossiê consolidado</div><div class="d-val">Falha ao carregar dossiê: ${err.message}</div></div>`;
+      }
+    }
   } else {
-    // Retorna ao estilo original do CSS (.tag-t)
     btn.style.background = '';
     btn.style.color = '';
     btn.style.borderColor = '';

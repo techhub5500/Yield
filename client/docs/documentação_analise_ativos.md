@@ -1,8 +1,8 @@
 # Documentação Técnica — `analise_ativos.html`
 
-> **Escopo deste documento:** Objetivos **1.2**, **1.3**, **2.1**, **2.2** e **2.3** do Plano de Implementação.
+> **Escopo deste documento:** Objetivos **1.2**, **1.3**, **2.1**, **2.2**, **2.3**, **3.1**, **3.2** e **3.3** do Plano de Implementação.
 > **Data de implementação:** 2026-02-21
-> **Versão:** 1.0.0
+> **Versão:** 1.1.0
 > **Autor:** GitHub Copilot
 
 ---
@@ -22,6 +22,8 @@
 6. [Fluxo de Dados Completo](#6-fluxo-de-dados-completo)
 7. [Segurança](#7-segurança)
 8. [Arquivos Criados / Modificados](#8-arquivos-criados--modificados)
+9. [Fase 2 — Dados Dinâmicos Core](#9-fase-2--dados-dinâmicos-core-brapi--gráficos--índices)
+10. [Fase 3 — IA, Workspace e Benchmark Setorial](#10-fase-3--ia-workspace-e-benchmark-setorial)
 
 ---
 
@@ -828,9 +830,9 @@ Este documento registra apenas os Objetivos 1.2 e 1.3. Os objetivos seguintes se
 | **2.1** | Integração com a API Brapi | ✅ Concluído |
 | **2.2** | Gráficos com Chart.js | ✅ Concluído |
 | **2.3** | Balanço Patrimonial dinâmico | ✅ Concluído |
-| **3.1** | Workspace: anotações, resumo e histórico | ⏳ Pendente |
-| **3.2** | Benchmark Setorial (Tavily + Gemini) | ⏳ Pendente |
-| **3.3** | Dossiê e Dados Não Disponíveis | ⏳ Pendente |
+| **3.1** | Workspace: anotações, resumo e histórico | ✅ Concluído |
+| **3.2** | Benchmark Setorial (Tavily + GPT-5-mini) | ✅ Concluído |
+| **3.3** | Dossiê e Dados Não Disponíveis | ✅ Concluído |
 
 ---
 
@@ -1035,4 +1037,149 @@ Validações realizadas em terminal com JWT real:
 | `client/js/analise-ativos.indices.js` | Render dinâmico de índices + YoY + indisponíveis |
 | `client/js/analise-ativos.charts.js` | Gráficos dinâmicos + filtros + comparação |
 | `client/js/analise-ativos.balanco.js` | BP dinâmico por ticker |
+
+---
+
+## 10. Fase 3 — IA, Workspace e Benchmark Setorial
+
+### 10.1 Visão de Arquitetura
+
+A Fase 3 foi implementada em três trilhas integradas:
+
+1. **Workspace por usuário** (anotações persistentes, resumo IA e histórico)
+2. **Benchmark setorial** (Tavily + GPT-5-mini com cache de 90 dias)
+3. **Dossiê corporativo** (Tavily + GPT-5-mini com cache de 7 dias)
+
+Fluxo simplificado:
+
+```
+Frontend (workspace/índices/dossiê)
+  ├─ POST /annotations
+  ├─ POST /summarize
+  ├─ GET  /summaries/:userId
+  ├─ GET  /benchmark/:ticker/:indexKey
+  └─ POST /dossie
+
+Backend (routes/analise-ativos.js)
+  ├─ OpenAIService      → geração de resumo, benchmark e dossiê
+  ├─ BenchmarkService   → busca Tavily + cache aa_benchmark_cache
+  └─ TavilyService      → pipeline por tópico + cache aa_dossie_cache
+```
+
+### 10.2 Objetivo 3.1 — Workspace: anotações, resumo e histórico
+
+#### 10.2.1 Anotações por card com snapshot
+
+- O módulo `client/js/analise-ativos.workspace.js` saiu de modo mock e passou a usar API real.
+- Cada anotação salva:
+  - `userId`
+  - `ticker`
+  - `cardId`
+  - `cardLabel`
+  - `annotationText`
+  - `cardSnapshot` (valor, tendência, YoY e timestamp do card)
+- Após salvar, o frontend exibe: **"Os dados do card no momento da anotação foram salvos."**
+- Exclusão implementada via `DELETE /api/analise-ativos/annotations/:id`.
+
+#### 10.2.2 Resumo de anotações via GPT-5-mini
+
+- Criada rota `POST /api/analise-ativos/summarize`.
+- Backend coleta as anotações do usuário, envia cada item ao modelo com contexto de snapshot e gera resumo analítico em Markdown.
+- O resumo é persistido em `aa_ai_summaries` com `model: gpt-5-mini`.
+
+#### 10.2.3 Histórico de resumos com exclusão
+
+- Aba “Histórico” no workspace passa a carregar `GET /api/analise-ativos/summaries/:userId`.
+- Exclusão via `DELETE /api/analise-ativos/summaries/:id` implementada no frontend e backend.
+
+### 10.3 Objetivo 3.2 — Benchmark Setorial
+
+#### 10.3.1 Serviço de benchmark
+
+- Novo arquivo: `server/src/tools/analise-ativos/benchmark.service.js`.
+- Estratégia:
+  1. Consulta cache `aa_benchmark_cache` por `{ ticker, indexKey }`
+  2. Em cache miss, executa Tavily (`searchDepth: advanced`)
+  3. Consolida com GPT-5-mini (resposta estruturada)
+  4. Persiste benchmark no cache
+
+#### 10.3.2 Exibição no frontend
+
+- `client/js/analise-ativos.indices.js` agora busca benchmark por card visível.
+- Loader textual: “Benchmark setorial: carregando...”.
+- Resultado exibido abaixo do indicador principal.
+
+### 10.4 Objetivo 3.3 — Dossiê
+
+#### 10.4.1 Pipeline de dossiê via Tavily + GPT-5-mini
+
+- Novo arquivo: `server/src/tools/analise-ativos/tavily.service.js`.
+- Busca por tópicos:
+  - Governança
+  - Estrutura Societária
+  - Remuneração de Diretores
+  - Riscos Regulatórios
+  - Processos Judiciais Relevantes
+- Consolidação final em Markdown via GPT-5-mini.
+- Cache em `aa_dossie_cache` com TTL de 7 dias.
+
+#### 10.4.2 Frontend do dossiê
+
+- `client/js/analise-ativos.js` passou a carregar dossiê dinâmico ao abrir “Ver Dossiê”.
+- A seção renderiza o conteúdo retornado pelo backend e informa data/fonte.
+
+### 10.5 Correções de Configuração (Gemini → OpenAI)
+
+Foram aplicadas correções para garantir compatibilidade com a migração feita manualmente:
+
+- `server/src/config/analise-ativos.config.js`
+  - `openai.apiKey` agora aceita fallback: `OPENAI_API_KEY || GEMINE_API_KEY || GEMINI_API_KEY`
+- `server/src/tools/analise-ativos/schemas.js`
+  - `validateAiSummary` passou a usar `aaConfig.openai.model` (antes referenciava chave antiga)
+
+### 10.6 Endpoints da Fase 3
+
+| Endpoint | Finalidade |
+|---|---|
+| `POST /api/analise-ativos/summarize` | Gerar resumo das anotações do usuário |
+| `GET /api/analise-ativos/benchmark/:ticker/:indexKey` | Retornar benchmark setorial por indicador |
+| `POST /api/analise-ativos/dossie` | Gerar/retornar dossiê consolidado por ticker |
+
+### 10.7 Evidências de Teste (Terminal)
+
+Validações executadas após implementação:
+
+1. **Testes backend**
+   - `npm test` em `server/`
+   - Resultado: **21/21 testes passando**
+
+2. **Smoke test do router**
+   - Carregamento de `createAnaliseAtivosRouter()` sem erro
+   - Rotas registradas corretamente
+
+3. **Validação de ambiente**
+   - Leitura de chave OpenAI com fallback (`OPENAI_API_KEY`, `GEMINE_API_KEY`, `GEMINI_API_KEY`)
+   - Leitura de `TAVILY_API_KEY` confirmada
+
+### 10.8 Arquivos Criados / Modificados na Fase 3
+
+#### Criados
+
+| Arquivo | Descrição |
+|---|---|
+| `server/src/tools/analise-ativos/openai.service.js` | Camada de integração GPT-5-mini (resumo, benchmark, dossiê) |
+| `server/src/tools/analise-ativos/benchmark.service.js` | Pipeline de benchmark setorial com cache |
+| `server/src/tools/analise-ativos/tavily.service.js` | Pipeline de dossiê por tópicos com cache |
+
+#### Modificados
+
+| Arquivo | Mudança principal |
+|---|---|
+| `server/src/api/routes/analise-ativos.js` | Novas rotas `/summarize`, `/benchmark`, `/dossie` |
+| `server/src/config/analise-ativos.config.js` | Config OpenAI + fallback de variáveis de ambiente |
+| `server/src/tools/analise-ativos/schemas.js` | Ajuste do modelo padrão em `aa_ai_summaries` |
+| `client/js/analise-ativos.workspace.js` | Workspace real com persistência, resumo e histórico |
+| `client/js/analise-ativos.indices.js` | Exibição de benchmark setorial por card |
+| `client/js/analise-ativos.js` | Dossiê dinâmico via backend |
+| `client/js/analise-ativos.charts.js` | Refresh do workspace no ciclo de render global |
 

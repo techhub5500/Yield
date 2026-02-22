@@ -19,10 +19,10 @@ const config = {
     baseUrl: 'https://brapi.dev/api',
   },
 
-  gemini: {
-    apiKey: process.env.GEMINI_API_KEY || '',
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || process.env.GEMINE_API_KEY || process.env.GEMINI_API_KEY || '',
     /** Modelo utilizado para geração de resumos e dossiê */
-    model: 'gemini-2.0-flash',
+    model: 'gpt-5-mini',
   },
 
   tavily: {
